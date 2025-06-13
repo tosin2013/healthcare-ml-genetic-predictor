@@ -15,7 +15,7 @@ Validate that the **corrected architecture** works as specified in ADR-001:
 
 ### **Step 1: Set up local environment**
 ```bash
-# Start local Kafka cluster
+# Start local Kafka cluster with Podman
 ./scripts/test-local-setup.sh
 ```
 
@@ -68,6 +68,7 @@ User Input (Browser)
 ┌─────────────────┐
 │ Local Kafka     │ 4. genetic-data-raw topic
 │ localhost:9092  │    (Monitor in Kafka UI)
+│ (Podman)        │
 └─────────┬───────┘
           │ Kafka Consume
           ▼
@@ -105,7 +106,7 @@ User Input (Browser)
 
 **Monitor Raw Data Topic:**
 ```bash
-docker exec test-kafka kafka-console-consumer \
+podman exec test-kafka kafka-console-consumer \
   --topic genetic-data-raw \
   --bootstrap-server localhost:9092 \
   --from-beginning
@@ -113,7 +114,7 @@ docker exec test-kafka kafka-console-consumer \
 
 **Monitor Annotated Data Topic:**
 ```bash
-docker exec test-kafka kafka-console-consumer \
+podman exec test-kafka kafka-console-consumer \
   --topic genetic-data-annotated \
   --bootstrap-server localhost:9092 \
   --from-beginning
@@ -177,7 +178,7 @@ curl http://localhost:8081/q/metrics
 **1. Kafka Connection Errors**
 ```bash
 # Check if Kafka is running
-docker ps | grep kafka
+podman ps | grep kafka
 # Restart if needed
 ./scripts/test-local-setup.sh
 ```
@@ -208,17 +209,17 @@ cd ../vep-service
 
 **Check Kafka Topics:**
 ```bash
-docker exec test-kafka kafka-topics --list --bootstrap-server localhost:9092
+podman exec test-kafka kafka-topics --list --bootstrap-server localhost:9092
 ```
 
 **Check Consumer Groups:**
 ```bash
-docker exec test-kafka kafka-consumer-groups --list --bootstrap-server localhost:9092
+podman exec test-kafka kafka-consumer-groups --list --bootstrap-server localhost:9092
 ```
 
 **Reset Consumer Group (if needed):**
 ```bash
-docker exec test-kafka kafka-consumer-groups \
+podman exec test-kafka kafka-consumer-groups \
   --bootstrap-server localhost:9092 \
   --group vep-annotation-service-group \
   --reset-offsets --to-earliest \
@@ -253,9 +254,9 @@ docker exec test-kafka kafka-consumer-groups \
 ```bash
 # Stop services (Ctrl+C in terminals)
 # Stop Kafka
-docker-compose -f docker-compose.test.yml down
+podman-compose -f podman-compose.test.yml down
 # Clean up volumes (optional)
-docker-compose -f docker-compose.test.yml down -v
+podman-compose -f podman-compose.test.yml down -v
 ```
 
 ## 📋 **Next Steps**

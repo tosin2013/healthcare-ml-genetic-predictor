@@ -31,20 +31,26 @@ print_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
 
-# Check if Docker is running
-if ! docker info > /dev/null 2>&1; then
-    print_error "Docker is not running. Please start Docker first."
+# Check if Podman is available
+if ! command -v podman &> /dev/null; then
+    print_error "Podman is not installed. Please install podman first."
+    exit 1
+fi
+
+# Check if Podman is working
+if ! podman info > /dev/null 2>&1; then
+    print_error "Podman is not working properly. Please check podman setup."
     exit 1
 fi
 
 print_status "Starting local Kafka cluster for testing..."
 
-# Create docker-compose for local testing
-cat > docker-compose.test.yml << 'EOF'
+# Create podman-compose for local testing
+cat > podman-compose.test.yml << 'EOF'
 version: '3.8'
 services:
   zookeeper:
-    image: confluentinc/cp-zookeeper:7.4.0
+    image: docker.io/confluentinc/cp-zookeeper:7.4.0
     hostname: zookeeper
     container_name: test-zookeeper
     ports:
@@ -56,7 +62,7 @@ services:
       - healthcare-ml-test
 
   kafka:
-    image: confluentinc/cp-kafka:7.4.0
+    image: docker.io/confluentinc/cp-kafka:7.4.0
     hostname: kafka
     container_name: test-kafka
     depends_on:
@@ -79,7 +85,7 @@ services:
       - healthcare-ml-test
 
   kafka-ui:
-    image: provectuslabs/kafka-ui:latest
+    image: docker.io/provectuslabs/kafka-ui:latest
     container_name: test-kafka-ui
     depends_on:
       - kafka
@@ -98,8 +104,8 @@ networks:
 EOF
 
 # Start the services
-print_status "Starting Kafka cluster..."
-docker-compose -f docker-compose.test.yml up -d
+print_status "Starting Kafka cluster with Podman..."
+podman-compose -f podman-compose.test.yml up -d
 
 # Wait for Kafka to be ready
 print_status "Waiting for Kafka to be ready..."
@@ -107,12 +113,12 @@ sleep 10
 
 # Create the required topics
 print_status "Creating Kafka topics..."
-docker exec test-kafka kafka-topics --create --topic genetic-data-raw --bootstrap-server localhost:9092 --partitions 3 --replication-factor 1
-docker exec test-kafka kafka-topics --create --topic genetic-data-annotated --bootstrap-server localhost:9092 --partitions 3 --replication-factor 1
+podman exec test-kafka kafka-topics --create --topic genetic-data-raw --bootstrap-server localhost:9092 --partitions 3 --replication-factor 1
+podman exec test-kafka kafka-topics --create --topic genetic-data-annotated --bootstrap-server localhost:9092 --partitions 3 --replication-factor 1
 
 # Verify topics
 print_status "Verifying topics..."
-docker exec test-kafka kafka-topics --list --bootstrap-server localhost:9092
+podman exec test-kafka kafka-topics --list --bootstrap-server localhost:9092
 
 print_success "Local Kafka cluster is ready!"
 print_status "Kafka UI available at: http://localhost:8090"
@@ -127,7 +133,7 @@ echo "   3. Open browser: http://localhost:8080/genetic-client.html"
 echo "   4. Test the data flow!"
 echo ""
 echo "🔍 Monitor topics:"
-echo "   - Raw data: docker exec test-kafka kafka-console-consumer --topic genetic-data-raw --bootstrap-server localhost:9092"
-echo "   - Annotated data: docker exec test-kafka kafka-console-consumer --topic genetic-data-annotated --bootstrap-server localhost:9092"
+echo "   - Raw data: podman exec test-kafka kafka-console-consumer --topic genetic-data-raw --bootstrap-server localhost:9092"
+echo "   - Annotated data: podman exec test-kafka kafka-console-consumer --topic genetic-data-annotated --bootstrap-server localhost:9092"
 echo ""
-echo "🛑 To stop: docker-compose -f docker-compose.test.yml down"
+echo "🛑 To stop: podman-compose -f podman-compose.test.yml down"

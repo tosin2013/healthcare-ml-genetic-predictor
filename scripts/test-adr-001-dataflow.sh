@@ -33,7 +33,7 @@ echo "======================================================"
 
 # Test 1: Check if Kafka is running
 print_status "1. Checking Kafka availability..."
-if docker exec test-kafka kafka-topics --list --bootstrap-server localhost:9092 > /dev/null 2>&1; then
+if podman exec test-kafka kafka-topics --list --bootstrap-server localhost:9092 > /dev/null 2>&1; then
     print_success "Kafka is running and accessible"
 else
     print_error "Kafka is not running. Run './scripts/test-local-setup.sh' first"
@@ -42,7 +42,7 @@ fi
 
 # Test 2: Check if topics exist
 print_status "2. Verifying Kafka topics..."
-TOPICS=$(docker exec test-kafka kafka-topics --list --bootstrap-server localhost:9092)
+TOPICS=$(podman exec test-kafka kafka-topics --list --bootstrap-server localhost:9092)
 if echo "$TOPICS" | grep -q "genetic-data-raw"; then
     print_success "genetic-data-raw topic exists"
 else
@@ -98,10 +98,10 @@ echo ""
 echo "4. 📊 Monitor the data flow:"
 echo ""
 echo "   Terminal 1 - Raw Data Topic:"
-echo "   docker exec test-kafka kafka-console-consumer --topic genetic-data-raw --bootstrap-server localhost:9092 --from-beginning"
+echo "   podman exec test-kafka kafka-console-consumer --topic genetic-data-raw --bootstrap-server localhost:9092 --from-beginning"
 echo ""
 echo "   Terminal 2 - Annotated Data Topic:"
-echo "   docker exec test-kafka kafka-console-consumer --topic genetic-data-annotated --bootstrap-server localhost:9092 --from-beginning"
+echo "   podman exec test-kafka kafka-console-consumer --topic genetic-data-annotated --bootstrap-server localhost:9092 --from-beginning"
 echo ""
 echo "   Terminal 3 - Kafka UI:"
 echo "   http://localhost:8090"
@@ -150,7 +150,7 @@ test_message_flow() {
     }'
     
     # Send message to Kafka
-    echo "$test_message" | docker exec -i test-kafka kafka-console-producer --topic genetic-data-raw --bootstrap-server localhost:9092
+    echo "$test_message" | podman exec -i test-kafka kafka-console-producer --topic genetic-data-raw --bootstrap-server localhost:9092
     
     print_success "Test message sent to genetic-data-raw topic"
     print_status "Check VEP service logs to see if it processes the message"
@@ -173,4 +173,4 @@ echo "2. Follow the manual testing instructions above"
 echo "3. Verify the data flow matches the ADR-001 specification"
 echo "4. Check that services are properly separated"
 echo ""
-echo "🛑 To cleanup: docker-compose -f docker-compose.test.yml down"
+echo "🛑 To cleanup: podman-compose -f podman-compose.test.yml down"
