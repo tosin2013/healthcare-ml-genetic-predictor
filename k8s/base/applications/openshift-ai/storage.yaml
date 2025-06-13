@@ -20,7 +20,7 @@ spec:
   resources:
     requests:
       storage: 20Gi
-  storageClassName: gp3-csi
+  storageClassName: managed-csi
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -44,7 +44,7 @@ spec:
   resources:
     requests:
       storage: 100Gi
-  storageClassName: ocs-storagecluster-cephfs
+  storageClassName: azurefile-csi
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -68,7 +68,7 @@ spec:
   resources:
     requests:
       storage: 50Gi
-  storageClassName: ocs-storagecluster-cephfs
+  storageClassName: azurefile-csi
 ---
 apiVersion: v1
 kind: Secret

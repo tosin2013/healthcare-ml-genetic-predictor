@@ -26,7 +26,7 @@ spec:
       from:
         kind: ImageStreamTag
         namespace: openshift
-        name: "java:17-ubi8"
+        name: "java:openjdk-17-ubi8"
       env:
         - name: MAVEN_ARGS
           value: "clean package -DskipTests"
@@ -51,7 +51,7 @@ spec:
         from:
           kind: ImageStreamTag
           namespace: openshift
-          name: "java:17-ubi8"
+          name: "java:openjdk-17-ubi8"
   resources:
     requests:
       memory: "1Gi"

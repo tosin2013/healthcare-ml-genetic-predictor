@@ -34,7 +34,7 @@ data:
   
   # Quarkus Configuration
   quarkus.log.level: "INFO"
-  quarkus.log.category."com.redhat.healthcare".level: "DEBUG"
+  quarkus.log.category.com-redhat-healthcare.level: "DEBUG"
   quarkus.http.port: "8080"
   quarkus.http.host: "0.0.0.0"
   
