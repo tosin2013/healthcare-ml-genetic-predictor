@@ -21,11 +21,39 @@ This ADR provides the **big picture architecture** that unifies all components i
 
 ## Strategic Vision
 
-### Healthcare ML Platform Goals
+### MVP Demo Goals (Primary Focus)
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                    Healthcare ML Platform Vision                            │
+│                    MVP Demo: Azure Machine Scaling & Cost Tracking         │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  🎯 PRIMARY DEMO OBJECTIVES                                                 │
+│  • Azure machine scaling when genetic data submitted via WebSocket UI      │
+│  • OpenShift Cost Management Operator integration for real-time cost tracking│
+│  • "Big Data" button to trigger large-scale processing and scaling         │
+│  • Visual cost attribution and chargeback demonstration                    │
+│                                                                             │
+│  🚀 SCALING DEMONSTRATION                                                   │
+│  • KEDA triggers pod scaling based on Kafka message volume                 │
+│  • Cluster Autoscaler triggers node scaling for resource demands           │
+│  • Real-time visualization of scaling events and cost impact               │
+│  • Cost per genetic analysis calculation and attribution                   │
+│                                                                             │
+│  🌟 COMMUNITY PROJECT EXTENSIONS (Nice-to-Have)                            │
+│  • Advanced ML models for genetic analysis                                 │
+│  • Research collaboration platform                                         │
+│  • Clinical decision support features                                      │
+│  • Security and compliance enhancements                                    │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Extended Vision (Community Contributions)
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    Community Project: Healthcare ML Platform               │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                             │
 │  🏥 CLINICAL EXCELLENCE        🔬 RESEARCH INNOVATION       💰 COST EFFICIENCY│
