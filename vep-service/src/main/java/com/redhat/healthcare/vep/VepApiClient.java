@@ -16,7 +16,6 @@ import java.util.concurrent.CompletionStage;
 @RegisterRestClient(configKey = "vep-api")
 @ClientHeaderParam(name = "User-Agent", value = "Healthcare-ML-VEP-Service/1.0")
 @ClientHeaderParam(name = "Content-Type", value = MediaType.APPLICATION_JSON)
-@Path("/vep")
 public interface VepApiClient {
 
     /**

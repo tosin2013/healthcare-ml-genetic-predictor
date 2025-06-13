@@ -1,0 +1,12 @@
+com/redhat/healthcare/vep/VepApiResponse.class
+com/redhat/healthcare/vep/VepAnnotationProcessor.class
+com/redhat/healthcare/vep/VepHealthCheck.class
+com/redhat/healthcare/vep/TranscriptConsequence.class
+com/redhat/healthcare/vep/IntergenicConsequence.class
+com/redhat/healthcare/vep/VepAnnotationResult.class
+com/redhat/healthcare/vep/VepAnnotationService.class
+com/redhat/healthcare/vep/GeneticSequenceData.class
+com/redhat/healthcare/vep/VepServiceInfo.class
+com/redhat/healthcare/vep/VepApiClient.class
+com/redhat/healthcare/vep/RegulatoryFeatureConsequence.class
+com/redhat/healthcare/vep/AnnotatedGeneticData.class
