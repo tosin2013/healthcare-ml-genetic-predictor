@@ -6,11 +6,11 @@ metadata:
   annotations:
     config.kubernetes.io/local-config: "true"
 
-# VEP Service Resources
+# VEP Service Resources - ADR-001: Event-driven Knative service for auto-scaling
 resources:
-  - deployment.yaml
-  - service.yaml
-  - knative-service.yaml
+  # - deployment.yaml        # Removed per ADR-001: VEP uses Knative for event-driven scaling
+  # - service.yaml          # Not needed: Knative service includes built-in service
+  - knative-service.yaml    # ADR-001: VEP service uses Knative for cost-efficient scaling
   - configmap.yaml
   - buildconfig.yaml
   - imagestream.yaml
@@ -28,6 +28,8 @@ commonAnnotations:
   insights.openshift.io/billing-model: chargeback
   insights.openshift.io/cost-center: genomics-research
   insights.openshift.io/project: vep-annotation-v1
+  deployment-method: "knative"     # ADR-001: Changed from deployment to knative
+  adr-decision: "ADR-001"          # Track architectural decision
 
 # VEP service image configuration
 images:
@@ -35,21 +37,5 @@ images:
     newName: image-registry.openshift-image-registry.svc:5000/healthcare-ml-demo/vep-service
     newTag: latest
 
-# VEP-specific patches
-patches:
-  - target:
-      kind: Deployment
-      name: vep-service
-    patch: |-
-      - op: replace
-        path: /spec/template/spec/containers/0/resources/requests/memory
-        value: "512Mi"
-      - op: replace
-        path: /spec/template/spec/containers/0/resources/limits/memory
-        value: "1Gi"
-      - op: replace
-        path: /spec/template/spec/containers/0/resources/requests/cpu
-        value: "200m"
-      - op: replace
-        path: /spec/template/spec/containers/0/resources/limits/cpu
-        value: "1000m"
+# ADR-001: Resource configuration moved to Knative service spec
+# No patches needed - resources configured directly in knative-service.yaml

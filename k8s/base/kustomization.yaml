@@ -40,14 +40,14 @@ resources:
   - infrastructure/kafka
   
   # Phase 3: Application Deployments (depends on infrastructure)
-  - applications/quarkus-websocket
+  - applications/quarkus-websocket  # ADR-001: WebSocket service as Deployment
+  - applications/vep-service        # ADR-001: VEP service as Knative
   - applications/frontend
   - applications/ml-inference
   
   # Phase 4: Eventing Configuration (depends on applications and infrastructure)
   - eventing/kafka-source
   - eventing/keda-scaler
-  - eventing/vep-keda-scaler.yaml
 
 # Components for reusable configurations
 components:
@@ -58,6 +58,9 @@ components:
 images:
   - name: quarkus-websocket-service
     newName: quay.io/healthcare-ml/genetic-risk-predictor-ws
+    newTag: latest
+  - name: vep-service
+    newName: quay.io/healthcare-ml/vep-annotation-service
     newTag: latest
   - name: ml-inference-service
     newName: quay.io/healthcare-ml/ml-inference-service

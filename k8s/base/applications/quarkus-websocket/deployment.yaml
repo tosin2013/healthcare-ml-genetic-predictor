@@ -17,7 +17,12 @@ metadata:
     deployment-method: "kustomize"
     app.openshift.io/connects-to: "genetic-data-cluster"
 spec:
-  replicas: 1
+  replicas: 2  # High availability for persistent WebSocket connections
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
   selector:
     matchLabels:
       app.kubernetes.io/name: quarkus-websocket-service

@@ -10,11 +10,13 @@ resources:
   - configmap.yaml
   - imagestream.yaml
   - buildconfig.yaml
-  # Choose one deployment method:
-  # - deployment.yaml          # Standard Kubernetes Deployment
+  # ADR-001: WebSocket Service uses Deployment for persistent connections
+  - deployment.yaml            # Standard Kubernetes Deployment (ADR-001)
+  - service.yaml              # Service for load balancing
+  - route.yaml                # OpenShift Route for external access
   # - deploymentconfig.yaml    # OpenShift DeploymentConfig (alternative)
-  - knative-service.yaml       # Knative Service for scale-to-zero
-  # Note: Knative Service includes built-in service and route functionality
+  # - knative-service.yaml     # Knative Service (moved to VEP service per ADR-001)
+  # Note: Deployment + Service + Route provides persistent WebSocket connections
 
 # Common labels for all Quarkus WebSocket service resources
 labels:
@@ -27,7 +29,8 @@ labels:
 commonAnnotations:
   cost-center: "genomics-research"
   project: "risk-predictor-v1"
-  deployment-method: "kustomize"
+  deployment-method: "deployment"  # ADR-001: Changed from knative to deployment
+  adr-decision: "ADR-001"          # Track architectural decision
 
 # Image management for OpenShift BuildConfig integration
 # Note: When using BuildConfig, the image is managed by the ImageStream
