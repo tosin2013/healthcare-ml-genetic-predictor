@@ -1,0 +1,81 @@
+# KEDA ScaledObject for Knative Service - Kafka-based autoscaling
+# Alternative ScaledObject for Knative Service (using Knative PA)
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: quarkus-websocket-knative-scaler
+  namespace: healthcare-ml-demo
+  labels:
+    app.kubernetes.io/name: quarkus-websocket-service
+    app.kubernetes.io/part-of: healthcare-ml-genetic-predictor
+    app.kubernetes.io/component: knative-autoscaler
+  annotations:
+    # Cost management annotations for Red Hat Insights
+    insights.openshift.io/cost-center: "genomics-research"
+    insights.openshift.io/project: "risk-predictor-v1"
+    insights.openshift.io/billing-model: "chargeback"
+    # Knative integration
+    autoscaling.knative.dev/class: "keda.autoscaling.knative.dev"
+spec:
+  # Target the Knative Service directly
+  scaleTargetRef:
+    apiVersion: serving.knative.dev/v1
+    kind: Service
+    name: quarkus-websocket-knative
+  # Scaling configuration optimized for Knative
+  minReplicaCount: 0
+  maxReplicaCount: 10
+  pollingInterval: 30
+  cooldownPeriod: 180        # Shorter cooldown for Knative (3 minutes)
+  idleReplicaCount: 0
+  # Kafka-based scaling triggers
+  triggers:
+  - type: kafka
+    metadata:
+      # Kafka cluster connection
+      bootstrapServers: genetic-data-cluster-kafka-bootstrap.healthcare-ml-demo.svc:9092
+      consumerGroup: genetic-risk-predictor-websocket
+      topic: genetic-data-raw
+      lagThreshold: '3'        # More sensitive scaling for real-time processing
+      offsetResetPolicy: latest
+      # Kafka consumer configuration
+      allowIdleConsumers: "false"
+      excludePersistentLag: "true"
+  - type: kafka
+    metadata:
+      # Secondary trigger for processed data
+      bootstrapServers: genetic-data-cluster-kafka-bootstrap.healthcare-ml-demo.svc:9092
+      consumerGroup: genetic-risk-predictor-websocket
+      topic: genetic-data-processed
+      lagThreshold: '5'
+      offsetResetPolicy: latest
+  # Fallback trigger based on CPU utilization
+  - type: cpu
+    metadata:
+      type: Utilization
+      value: "70"
+---
+# ServiceMonitor for KEDA metrics
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: keda-scaler-metrics
+  namespace: healthcare-ml-demo
+  labels:
+    app.kubernetes.io/name: keda-scaler
+    app.kubernetes.io/part-of: healthcare-ml-genetic-predictor
+  annotations:
+    insights.openshift.io/cost-center: "genomics-research"
+    insights.openshift.io/project: "risk-predictor-v1"
+spec:
+  selector:
+    matchLabels:
+      app: keda-operator-metrics-apiserver
+  endpoints:
+  - port: metrics
+    path: /metrics
+    interval: 30s
+    scrapeTimeout: 10s
+  namespaceSelector:
+    matchNames:
+    - keda

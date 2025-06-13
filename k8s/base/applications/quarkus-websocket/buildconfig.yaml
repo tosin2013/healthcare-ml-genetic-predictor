@@ -18,7 +18,7 @@ spec:
   source:
     type: Git
     git:
-      uri: "https://github.com/your-org/healthcare-ml-demo.git"
+      uri: "https://github.com/tosin2013/healthcare-ml-genetic-predictor.git"
       ref: "main"
     contextDir: "quarkus-websocket-service"
   strategy:
@@ -26,7 +26,7 @@ spec:
     sourceStrategy:
       from:
         kind: ImageStreamTag
-        name: "ubi9-openjdk-17:1.21"
+        name: "java:openjdk-17-ubi8"
         namespace: openshift
       env:
       - name: MAVEN_ARGS
@@ -43,7 +43,7 @@ spec:
     imageChange:
       from:
         kind: ImageStreamTag
-        name: "ubi9-openjdk-17:1.21"
+        name: "java:openjdk-17-ubi8"
         namespace: openshift
   resources:
     requests:

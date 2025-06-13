@@ -144,7 +144,7 @@
         
         <div class="form-group">
             <label for="wsUrl">WebSocket URL:</label>
-            <input type="text" id="wsUrl" value="ws://localhost:8080/genetics" />
+            <input type="text" id="wsUrl" value="" />
         </div>
         
         <div class="form-group">
@@ -281,7 +281,13 @@
 
         // Auto-connect on page load
         window.onload = function() {
+            // Set WebSocket URL based on current location
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}/genetics`;
+            document.getElementById('wsUrl').value = wsUrl;
+
             addMessage('🧬 Genetic Risk Predictor Client Ready', 'system');
+            addMessage(`🔗 WebSocket URL: ${wsUrl}`, 'system');
             addMessage('💡 Click "Connect" to start analyzing genetic sequences', 'system');
         };
     </script>

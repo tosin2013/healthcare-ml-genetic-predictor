@@ -11,10 +11,10 @@ resources:
   - imagestream.yaml
   - buildconfig.yaml
   # Choose one deployment method:
-  - deployment.yaml          # Standard Kubernetes Deployment
-  # - deploymentconfig.yaml  # OpenShift DeploymentConfig (alternative)
-  - service.yaml
-  - route.yaml
+  # - deployment.yaml          # Standard Kubernetes Deployment
+  # - deploymentconfig.yaml    # OpenShift DeploymentConfig (alternative)
+  - knative-service.yaml       # Knative Service for scale-to-zero
+  # Note: Knative Service includes built-in service and route functionality
 
 # Common labels for all Quarkus WebSocket service resources
 labels:

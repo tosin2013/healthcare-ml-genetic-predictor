@@ -7,7 +7,18 @@ metadata:
     config.kubernetes.io/local-config: "true"
 
 resources:
-  # Will contain:
-  # - scaledobject.yaml
+  - scaledobject.yaml
 
-# Placeholder - resources will be added in Task 6
+# Common labels for all KEDA scaler resources
+labels:
+  - pairs:
+      app.kubernetes.io/name: keda-scaler
+      app.kubernetes.io/part-of: healthcare-ml-genetic-predictor
+      app.kubernetes.io/component: autoscaler
+
+# Common annotations for cost management
+commonAnnotations:
+  insights.openshift.io/cost-center: "genomics-research"
+  insights.openshift.io/project: "risk-predictor-v1"
+  insights.openshift.io/billing-model: "chargeback"
+  deployment-method: "kustomize"
