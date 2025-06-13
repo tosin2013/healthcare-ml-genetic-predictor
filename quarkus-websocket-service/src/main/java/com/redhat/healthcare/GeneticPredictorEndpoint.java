@@ -19,6 +19,7 @@ import org.slf4j.LoggerFactory;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.fasterxml.jackson.databind.JsonNode;
 
 import io.cloudevents.CloudEvent;
 import io.cloudevents.core.builder.CloudEventBuilder;
@@ -44,7 +45,7 @@ public class GeneticPredictorEndpoint {
         LOGGER.info("WebSocket opened: {}", session.getId());
         // Register session for receiving VEP results
         GeneticResultsService.registerSession(session.getId(), session);
-        session.getAsyncRemote().sendText("🧬 Connected to Genetic Analysis Service with VEP Integration");
+        session.getAsyncRemote().sendText("🧬 Connected to Healthcare ML Service with OpenShift AI Integration");
     }
 
     @OnClose
@@ -61,20 +62,61 @@ public class GeneticPredictorEndpoint {
 
     @OnMessage
     public void onMessage(String message, Session session) {
-        LOGGER.info("Received message: {} from session: {}", message, session.getId());
+        LOGGER.info("Received message from session {}: {}", session.getId(),
+                   message.length() > 100 ? message.substring(0, 100) + "..." : message);
         try {
-            // Create a JSON object for the data payload
+            // Parse message to determine if it's JSON (new format) or plain text (legacy)
+            String geneticSequence;
+            String mode = "normal";
+            String resourceProfile = "normal";
+            long timestamp = System.currentTimeMillis();
+            String sessionIdFromMessage = null;
+
+            if (message.startsWith("{")) {
+                // New JSON format with mode information
+                JsonNode messageNode = objectMapper.readTree(message);
+                geneticSequence = messageNode.get("sequence").asText();
+                mode = messageNode.has("mode") ? messageNode.get("mode").asText() : "normal";
+                resourceProfile = messageNode.has("resourceProfile") ?
+                                messageNode.get("resourceProfile").asText() : "normal";
+                timestamp = messageNode.has("timestamp") ?
+                           messageNode.get("timestamp").asLong() : System.currentTimeMillis();
+                sessionIdFromMessage = messageNode.has("sessionId") ?
+                                     messageNode.get("sessionId").asText() : null;
+
+                LOGGER.info("Processing {} mode genetic sequence of length {} from session {}",
+                           mode, geneticSequence.length(), session.getId());
+            } else {
+                // Legacy plain text format
+                geneticSequence = message;
+                LOGGER.info("Processing legacy format genetic sequence from session {}", session.getId());
+            }
+
+            // Create enhanced data payload with mode information
             ObjectNode data = objectMapper.createObjectNode();
             data.put("sessionId", session.getId());
-            data.put("userId", "user-123"); // Example user ID
-            data.put("genetic_sequence", message);
+            data.put("userId", "demo-user-" + session.getId().substring(0, 8));
+            data.put("genetic_sequence", geneticSequence);
+            data.put("processing_mode", mode);
+            data.put("resource_profile", resourceProfile);
+            data.put("sequence_length", geneticSequence.length());
+            data.put("timestamp", timestamp);
+            data.put("client_session_id", sessionIdFromMessage);
 
-            // Build the CloudEvent
+            // Determine CloudEvent type based on mode
+            String eventType = "big-data".equals(mode) ?
+                             "com.redhat.healthcare.genetic.sequence.bigdata" :
+                             "com.redhat.healthcare.genetic.sequence.raw";
+
+            // Build the CloudEvent with enhanced metadata
             CloudEvent event = CloudEventBuilder.v1()
                     .withId(UUID.randomUUID().toString())
-                    .withSource(URI.create("/genetic-simulator/frontend"))
-                    .withType("com.redhat.healthcare.genetic.sequence.raw")
-                    .withSubject("Genetic Sequence")
+                    .withSource(URI.create("/healthcare-ml/frontend"))
+                    .withType(eventType)
+                    .withSubject("Genetic Sequence Analysis - " + mode.toUpperCase() + " Mode")
+                    .withExtension("processing-mode", mode)
+                    .withExtension("resource-profile", resourceProfile)
+                    .withExtension("sequence-length", String.valueOf(geneticSequence.length()))
                     .withData("application/json", objectMapper.writeValueAsBytes(data))
                     .build();
 
@@ -84,12 +126,22 @@ public class GeneticPredictorEndpoint {
             String cloudEventJson = new String(cloudEventBytes);
             geneticDataEmitter.send(cloudEventJson);
 
-            LOGGER.info("Sent CloudEvent to Kafka: {}", cloudEventJson);
-            session.getAsyncRemote().sendText("Message processed as CloudEvent");
+            LOGGER.info("Sent {} CloudEvent to Kafka for {} mode processing", eventType, mode);
+
+            // Send appropriate acknowledgment based on mode
+            if ("big-data".equals(mode)) {
+                session.getAsyncRemote().sendText(
+                    String.format("🚀 Big data sequence (%d chars) queued for high-memory processing",
+                                geneticSequence.length()));
+            } else {
+                session.getAsyncRemote().sendText(
+                    String.format("🧬 Genetic sequence (%d chars) queued for VEP annotation and ML analysis",
+                                geneticSequence.length()));
+            }
 
         } catch (Exception e) {
             LOGGER.error("Failed to process message and send CloudEvent", e);
-            session.getAsyncRemote().sendText("Error processing message: " + e.getMessage());
+            session.getAsyncRemote().sendText("❌ Error processing message: " + e.getMessage());
         }
     }
 }
