@@ -10,8 +10,6 @@ import org.jboss.logging.Logger;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.time.Instant;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
 
 /**
  * VEP (Variant Effect Predictor) Annotation Service
@@ -46,38 +44,35 @@ public class VepAnnotationService {
      */
     @Incoming("genetic-data-raw")
     @Outgoing("genetic-data-annotated")
-    @Blocking
-    public CompletionStage<String> processGeneticSequence(String geneticData) {
+    public String processGeneticSequence(String geneticData) {
         LOG.infof("Processing genetic sequence: %s", 
                   geneticData.length() > 50 ? geneticData.substring(0, 50) + "..." : geneticData);
 
-        return CompletableFuture.supplyAsync(() -> {
-            try {
-                // Parse the incoming genetic data
-                GeneticSequenceData sequenceData = parseGeneticData(geneticData);
-                
-                // Annotate with VEP
-                VepAnnotationResult annotation = annotateWithVep(sequenceData);
-                
-                // Process and enrich the annotation
-                AnnotatedGeneticData annotatedData = annotationProcessor.processAnnotation(
-                    sequenceData, annotation);
-                
-                // Convert to JSON for downstream processing
-                String result = annotatedData.toJson();
-                
-                LOG.infof("Successfully annotated sequence with %d variants", 
-                         annotation.getVariantCount());
-                
-                return result;
-                
-            } catch (Exception e) {
-                LOG.errorf(e, "Error processing genetic sequence: %s", e.getMessage());
-                
-                // Return error result for downstream handling
-                return createErrorResult(geneticData, e.getMessage());
-            }
-        });
+        try {
+            // Parse the incoming genetic data
+            GeneticSequenceData sequenceData = parseGeneticData(geneticData);
+
+            // Annotate with VEP
+            VepAnnotationResult annotation = annotateWithVep(sequenceData);
+
+            // Process and enrich the annotation
+            AnnotatedGeneticData annotatedData = annotationProcessor.processAnnotation(
+                sequenceData, annotation);
+
+            // Convert to JSON for downstream processing
+            String result = annotatedData.toJson();
+
+            LOG.infof("Successfully annotated sequence with %d variants",
+                     annotation.getVariantCount());
+
+            return result;
+
+        } catch (Exception e) {
+            LOG.errorf(e, "Error processing genetic sequence: %s", e.getMessage());
+
+            // Return error result for downstream handling
+            return createErrorResult(geneticData, e.getMessage());
+        }
     }
 
     /**
