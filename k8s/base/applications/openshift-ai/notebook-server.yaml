@@ -23,7 +23,7 @@ spec:
       serviceAccountName: genetic-ml-pipeline
       containers:
         - name: genetic-analysis-workbench
-          image: quay.io/opendatahub/workbench-images:jupyter-datascience-c9s-py311_2023c_latest
+          image: image-registry.openshift-image-registry.svc:5000/redhat-ods-applications/s2i-generic-data-science-notebook:2025.1
           imagePullPolicy: Always
           workingDir: /opt/app-root/src
           env:
@@ -36,7 +36,7 @@ spec:
                 --ServerApp.quit_button=False
                 --ServerApp.tornado_settings={"user":"genetic-ml","hub_prefix":"/notebook/genetic-risk-prediction/genetic-analysis-workbench","hub_host":"","hub_api_url":""}
             - name: JUPYTER_IMAGE
-              value: quay.io/opendatahub/workbench-images:jupyter-datascience-c9s-py311_2023c_latest
+              value: image-registry.openshift-image-registry.svc:5000/redhat-ods-applications/s2i-generic-data-science-notebook:2025.1
             - name: KAFKA_BOOTSTRAP_SERVERS
               value: "genetic-data-cluster-kafka-bootstrap.healthcare-ml-demo.svc.cluster.local:9092"
             - name: VEP_API_URL
