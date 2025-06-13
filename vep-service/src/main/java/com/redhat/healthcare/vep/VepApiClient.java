@@ -21,14 +21,14 @@ public interface VepApiClient {
 
     /**
      * Annotate genetic variants using VEP
-     * 
+     *
      * @param sequence Genetic sequence to annotate
      * @param species Species (default: human)
      * @param assembly Genome assembly (default: GRCh38)
      * @return VEP annotation response
      */
     @POST
-    @Path("/{species}/hgvs")
+    @Path("/vep/{species}/hgvs")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     VepApiResponse annotateSequence(
@@ -41,7 +41,7 @@ public interface VepApiClient {
      * Asynchronous variant annotation
      */
     @POST
-    @Path("/{species}/hgvs")
+    @Path("/vep/{species}/hgvs")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     CompletionStage<VepApiResponse> annotateSequenceAsync(
@@ -54,7 +54,7 @@ public interface VepApiClient {
      * Get VEP service information
      */
     @GET
-    @Path("/info/{species}")
+    @Path("/info/species/{species}")
     @Produces(MediaType.APPLICATION_JSON)
     VepServiceInfo getServiceInfo(@PathParam("species") @DefaultValue("human") String species);
 
@@ -62,7 +62,7 @@ public interface VepApiClient {
      * Health check endpoint
      */
     @GET
-    @Path("/ping")
+    @Path("/info/ping")
     @Produces(MediaType.TEXT_PLAIN)
     String ping();
 }

@@ -35,13 +35,13 @@ public class VepHealthCheck {
                 // Try to ping the VEP API
                 String response = vepApiClient.ping();
                 boolean isReady = response != null;
-                
+
                 return HealthCheckResponse.named("vep-api-readiness")
                         .status(isReady)
                         .withData("vep_api_status", isReady ? "available" : "unavailable")
                         .withData("vep_api_response", response != null ? response : "no_response")
                         .build();
-                        
+
             } catch (Exception e) {
                 return HealthCheckResponse.named("vep-api-readiness")
                         .status(false)
