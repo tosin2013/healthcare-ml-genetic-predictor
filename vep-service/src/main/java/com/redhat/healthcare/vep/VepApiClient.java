@@ -63,6 +63,6 @@ public interface VepApiClient {
      */
     @GET
     @Path("/info/ping")
-    @Produces(MediaType.TEXT_PLAIN)
+    @Produces(MediaType.TEXT_HTML)
     String ping();
 }
