@@ -1,0 +1,75 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: vep-service-config
+  labels:
+    app.kubernetes.io/component: vep-service
+    app.kubernetes.io/name: vep-annotation-service
+    app.kubernetes.io/part-of: healthcare-ml-genetic-predictor
+    app.kubernetes.io/version: "1.0.0"
+  annotations:
+    insights.openshift.io/billing-model: chargeback
+    insights.openshift.io/cost-center: genomics-research
+    insights.openshift.io/project: vep-annotation-v1
+data:
+  # Kafka Configuration
+  kafka.bootstrap.servers: "genetic-data-cluster-kafka-bootstrap.healthcare-ml-demo.svc.cluster.local:9092"
+  
+  # VEP API Configuration
+  vep.api.url: "https://rest.ensembl.org/vep/human/hgvs"
+  vep.api.timeout: "30000"
+  vep.api.retry.attempts: "3"
+  vep.api.retry.delay: "1000"
+  
+  # Kafka Topics
+  kafka.topic.input: "genetic-data-raw"
+  kafka.topic.output: "genetic-data-annotated"
+  kafka.consumer.group: "vep-annotation-service-group"
+  
+  # Processing Configuration
+  vep.batch.size: "10"
+  vep.processing.timeout: "60000"
+  vep.cache.enabled: "true"
+  vep.cache.ttl: "3600"
+  
+  # Quarkus Configuration
+  quarkus.log.level: "INFO"
+  quarkus.log.category."com.redhat.healthcare".level: "DEBUG"
+  quarkus.http.port: "8080"
+  quarkus.http.host: "0.0.0.0"
+  
+  # Health Check Configuration
+  quarkus.smallrye-health.root-path: "/q/health"
+  quarkus.smallrye-health.liveness-path: "/q/health/live"
+  quarkus.smallrye-health.readiness-path: "/q/health/ready"
+  
+  # Metrics Configuration
+  quarkus.micrometer.enabled: "true"
+  quarkus.micrometer.registry-enabled-default: "false"
+  quarkus.micrometer.export.prometheus.enabled: "true"
+  quarkus.micrometer.export.prometheus.path: "/q/metrics"
+  
+  # Reactive Messaging Configuration
+  mp.messaging.incoming.genetic-data-raw.connector: "smallrye-kafka"
+  mp.messaging.incoming.genetic-data-raw.topic: "genetic-data-raw"
+  mp.messaging.incoming.genetic-data-raw.bootstrap.servers: "genetic-data-cluster-kafka-bootstrap.healthcare-ml-demo.svc.cluster.local:9092"
+  mp.messaging.incoming.genetic-data-raw.group.id: "vep-annotation-service-group"
+  mp.messaging.incoming.genetic-data-raw.auto.offset.reset: "latest"
+  mp.messaging.incoming.genetic-data-raw.enable.auto.commit: "true"
+  mp.messaging.incoming.genetic-data-raw.value.deserializer: "org.apache.kafka.common.serialization.StringDeserializer"
+  
+  mp.messaging.outgoing.genetic-data-annotated.connector: "smallrye-kafka"
+  mp.messaging.outgoing.genetic-data-annotated.topic: "genetic-data-annotated"
+  mp.messaging.outgoing.genetic-data-annotated.bootstrap.servers: "genetic-data-cluster-kafka-bootstrap.healthcare-ml-demo.svc.cluster.local:9092"
+  mp.messaging.outgoing.genetic-data-annotated.value.serializer: "org.apache.kafka.common.serialization.StringSerializer"
+  
+  # OpenShift AI Integration
+  openshift.ai.enabled: "true"
+  openshift.ai.model.endpoint: "http://genetic-risk-model-predictor.healthcare-ml-demo.svc.cluster.local:8080/v2/models/genetic-risk-model/infer"
+  openshift.ai.model.timeout: "30000"
+  
+  # Security Configuration
+  quarkus.http.cors: "true"
+  quarkus.http.cors.origins: "*"
+  quarkus.http.cors.methods: "GET,POST,PUT,DELETE,OPTIONS"
+  quarkus.http.cors.headers: "accept,authorization,content-type,x-requested-with"

@@ -1,0 +1,55 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+metadata:
+  name: vep-service
+  annotations:
+    config.kubernetes.io/local-config: "true"
+
+# VEP Service Resources
+resources:
+  - deployment.yaml
+  - service.yaml
+  - knative-service.yaml
+  - configmap.yaml
+  - buildconfig.yaml
+  - imagestream.yaml
+
+# VEP-specific labels
+commonLabels:
+  app.kubernetes.io/component: vep-service
+  app.kubernetes.io/name: vep-annotation-service
+  app.kubernetes.io/version: "1.0.0"
+
+# VEP-specific annotations
+commonAnnotations:
+  app.openshift.io/runtime: quarkus
+  app.openshift.io/runtime-version: "3.8"
+  insights.openshift.io/billing-model: chargeback
+  insights.openshift.io/cost-center: genomics-research
+  insights.openshift.io/project: vep-annotation-v1
+
+# VEP service image configuration
+images:
+  - name: vep-service
+    newName: image-registry.openshift-image-registry.svc:5000/healthcare-ml-demo/vep-service
+    newTag: latest
+
+# VEP-specific patches
+patches:
+  - target:
+      kind: Deployment
+      name: vep-service
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/requests/memory
+        value: "512Mi"
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/memory
+        value: "1Gi"
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/requests/cpu
+        value: "200m"
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/cpu
+        value: "1000m"

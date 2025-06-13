@@ -47,6 +47,7 @@ resources:
   # Phase 4: Eventing Configuration (depends on applications and infrastructure)
   - eventing/kafka-source
   - eventing/keda-scaler
+  - eventing/vep-keda-scaler.yaml
 
 # Components for reusable configurations
 components:

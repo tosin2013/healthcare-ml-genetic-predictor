@@ -1,0 +1,123 @@
+apiVersion: kubeflow.org/v1
+kind: Notebook
+metadata:
+  name: genetic-analysis-workbench
+  labels:
+    app.kubernetes.io/component: openshift-ai
+    app.kubernetes.io/name: genetic-risk-ml
+    app.kubernetes.io/part-of: healthcare-ml-genetic-predictor
+    app.kubernetes.io/version: "1.0.0"
+    opendatahub.io/component: "true"
+    opendatahub.io/notebook-name: genetic-analysis-workbench
+  annotations:
+    opendatahub.io/notebook-image-order: "1"
+    opendatahub.io/notebook-image-name: "Genetic Analysis Workbench"
+    insights.openshift.io/billing-model: chargeback
+    insights.openshift.io/cost-center: genomics-research
+    insights.openshift.io/project: genetic-ml-v1
+    openshift.io/display-name: "Genetic Analysis Jupyter Notebook"
+    openshift.io/description: "Jupyter notebook environment for genetic risk prediction model development"
+spec:
+  template:
+    spec:
+      serviceAccountName: genetic-ml-pipeline
+      containers:
+        - name: genetic-analysis-workbench
+          image: quay.io/opendatahub/workbench-images:jupyter-datascience-c9s-py311_2023c_latest
+          imagePullPolicy: Always
+          workingDir: /opt/app-root/src
+          env:
+            - name: NOTEBOOK_ARGS
+              value: |
+                --ServerApp.port=8888
+                --ServerApp.token=''
+                --ServerApp.password=''
+                --ServerApp.base_url=/notebook/genetic-risk-prediction/genetic-analysis-workbench
+                --ServerApp.quit_button=False
+                --ServerApp.tornado_settings={"user":"genetic-ml","hub_prefix":"/notebook/genetic-risk-prediction/genetic-analysis-workbench","hub_host":"","hub_api_url":""}
+            - name: JUPYTER_IMAGE
+              value: quay.io/opendatahub/workbench-images:jupyter-datascience-c9s-py311_2023c_latest
+            - name: KAFKA_BOOTSTRAP_SERVERS
+              value: "genetic-data-cluster-kafka-bootstrap.healthcare-ml-demo.svc.cluster.local:9092"
+            - name: VEP_API_URL
+              value: "https://rest.ensembl.org/vep/human/hgvs"
+            - name: MODEL_ENDPOINT
+              value: "http://genetic-risk-model-predictor.genetic-risk-prediction.svc.cluster.local:8080"
+          ports:
+            - containerPort: 8888
+              name: notebook-port
+              protocol: TCP
+          resources:
+            requests:
+              cpu: "1"
+              memory: "2Gi"
+            limits:
+              cpu: "2"
+              memory: "4Gi"
+          volumeMounts:
+            - mountPath: /opt/app-root/src
+              name: genetic-analysis-workspace
+            - mountPath: /opt/app-root/src/data
+              name: genetic-data-storage
+            - mountPath: /opt/app-root/src/models
+              name: genetic-models-storage
+            - mountPath: /dev/shm
+              name: shm
+          livenessProbe:
+            httpGet:
+              path: /notebook/genetic-risk-prediction/genetic-analysis-workbench/api
+              port: notebook-port
+              scheme: HTTP
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 1
+            successThreshold: 1
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /notebook/genetic-risk-prediction/genetic-analysis-workbench/api
+              port: notebook-port
+              scheme: HTTP
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 1
+            successThreshold: 1
+            failureThreshold: 3
+      volumes:
+        - name: genetic-analysis-workspace
+          persistentVolumeClaim:
+            claimName: genetic-analysis-workspace
+        - name: genetic-data-storage
+          persistentVolumeClaim:
+            claimName: genetic-data-storage
+        - name: genetic-models-storage
+          persistentVolumeClaim:
+            claimName: genetic-models-storage
+        - name: shm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 2Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: genetic-analysis-workbench
+  labels:
+    app.kubernetes.io/component: openshift-ai
+    app.kubernetes.io/name: genetic-risk-ml
+    app.kubernetes.io/part-of: healthcare-ml-genetic-predictor
+    app.kubernetes.io/version: "1.0.0"
+    opendatahub.io/component: "true"
+  annotations:
+    insights.openshift.io/billing-model: chargeback
+    insights.openshift.io/cost-center: genomics-research
+    insights.openshift.io/project: genetic-ml-v1
+spec:
+  type: ClusterIP
+  ports:
+    - name: notebook-port
+      port: 8888
+      protocol: TCP
+      targetPort: 8888
+  selector:
+    app.kubernetes.io/name: genetic-analysis-workbench

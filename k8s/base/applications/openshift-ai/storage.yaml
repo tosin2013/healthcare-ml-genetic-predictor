@@ -1,0 +1,154 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: genetic-analysis-workspace
+  labels:
+    app.kubernetes.io/component: openshift-ai
+    app.kubernetes.io/name: genetic-risk-ml
+    app.kubernetes.io/part-of: healthcare-ml-genetic-predictor
+    app.kubernetes.io/version: "1.0.0"
+    opendatahub.io/component: "true"
+  annotations:
+    insights.openshift.io/billing-model: chargeback
+    insights.openshift.io/cost-center: genomics-research
+    insights.openshift.io/project: genetic-ml-v1
+    openshift.io/display-name: "Genetic Analysis Workspace"
+    openshift.io/description: "Persistent storage for Jupyter notebook workspace"
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Gi
+  storageClassName: gp3-csi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: genetic-data-storage
+  labels:
+    app.kubernetes.io/component: openshift-ai
+    app.kubernetes.io/name: genetic-risk-ml
+    app.kubernetes.io/part-of: healthcare-ml-genetic-predictor
+    app.kubernetes.io/version: "1.0.0"
+    opendatahub.io/component: "true"
+  annotations:
+    insights.openshift.io/billing-model: chargeback
+    insights.openshift.io/cost-center: genomics-research
+    insights.openshift.io/project: genetic-ml-v1
+    openshift.io/display-name: "Genetic Data Storage"
+    openshift.io/description: "Persistent storage for genetic datasets and training data"
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 100Gi
+  storageClassName: ocs-storagecluster-cephfs
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: genetic-models-storage
+  labels:
+    app.kubernetes.io/component: openshift-ai
+    app.kubernetes.io/name: genetic-risk-ml
+    app.kubernetes.io/part-of: healthcare-ml-genetic-predictor
+    app.kubernetes.io/version: "1.0.0"
+    opendatahub.io/component: "true"
+  annotations:
+    insights.openshift.io/billing-model: chargeback
+    insights.openshift.io/cost-center: genomics-research
+    insights.openshift.io/project: genetic-ml-v1
+    openshift.io/display-name: "Genetic Models Storage"
+    openshift.io/description: "Persistent storage for trained ML models and artifacts"
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 50Gi
+  storageClassName: ocs-storagecluster-cephfs
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: genetic-ml-s3-credentials
+  labels:
+    app.kubernetes.io/component: openshift-ai
+    app.kubernetes.io/name: genetic-risk-ml
+    app.kubernetes.io/part-of: healthcare-ml-genetic-predictor
+    app.kubernetes.io/version: "1.0.0"
+    opendatahub.io/component: "true"
+  annotations:
+    insights.openshift.io/billing-model: chargeback
+    insights.openshift.io/cost-center: genomics-research
+    insights.openshift.io/project: genetic-ml-v1
+    openshift.io/display-name: "S3 Storage Credentials"
+    openshift.io/description: "Credentials for S3-compatible object storage"
+type: Opaque
+stringData:
+  AWS_ACCESS_KEY_ID: "minio-access-key"
+  AWS_SECRET_ACCESS_KEY: "minio-secret-key"
+  AWS_S3_ENDPOINT: "http://minio.healthcare-ml-demo.svc.cluster.local:9000"
+  AWS_DEFAULT_REGION: "us-east-1"
+  AWS_S3_BUCKET: "genetic-ml-models"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: genetic-ml-model-config
+  labels:
+    app.kubernetes.io/component: openshift-ai
+    app.kubernetes.io/name: genetic-risk-ml
+    app.kubernetes.io/part-of: healthcare-ml-genetic-predictor
+    app.kubernetes.io/version: "1.0.0"
+    opendatahub.io/component: "true"
+  annotations:
+    insights.openshift.io/billing-model: chargeback
+    insights.openshift.io/cost-center: genomics-research
+    insights.openshift.io/project: genetic-ml-v1
+data:
+  # Model configuration
+  model_name: "genetic-risk-predictor"
+  model_version: "1.0.0"
+  model_type: "sklearn"
+  model_framework: "scikit-learn"
+  
+  # Feature configuration
+  feature_names: |
+    [
+      "sequence_length",
+      "variant_count", 
+      "consequence_severity",
+      "gene_impact",
+      "clinical_significance",
+      "population_frequency"
+    ]
+  
+  # Model metadata
+  model_description: |
+    Genetic risk prediction model trained on VEP-annotated genetic variants.
+    
+    Features:
+    - Sequence length analysis
+    - Variant consequence prediction
+    - Gene impact assessment
+    - Clinical significance scoring
+    - Population frequency analysis
+    
+    Training Data:
+    - 10,000+ annotated genetic sequences
+    - VEP annotations from Ensembl
+    - Clinical significance from ClinVar
+    - Population frequencies from gnomAD
+  
+  # Inference configuration
+  batch_size: "32"
+  max_sequence_length: "10000"
+  prediction_threshold: "0.5"
+  
+  # Performance settings
+  enable_gpu: "false"
+  max_workers: "4"
+  timeout_seconds: "30"

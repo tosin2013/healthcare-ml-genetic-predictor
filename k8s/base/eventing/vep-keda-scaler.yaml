@@ -1,0 +1,191 @@
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: vep-service-scaler
+  labels:
+    app.kubernetes.io/component: vep-service
+    app.kubernetes.io/name: vep-annotation-service
+    app.kubernetes.io/part-of: healthcare-ml-genetic-predictor
+    app.kubernetes.io/version: "1.0.0"
+  annotations:
+    insights.openshift.io/billing-model: chargeback
+    insights.openshift.io/cost-center: genomics-research
+    insights.openshift.io/project: vep-annotation-v1
+spec:
+  scaleTargetRef:
+    name: vep-service
+  pollingInterval: 15
+  cooldownPeriod: 60
+  idleReplicaCount: 0
+  minReplicaCount: 0
+  maxReplicaCount: 20
+  fallback:
+    failureThreshold: 3
+    replicas: 1
+  advanced:
+    restoreToOriginalReplicaCount: false
+    horizontalPodAutoscalerConfig:
+      name: vep-service-hpa
+      behavior:
+        scaleDown:
+          stabilizationWindowSeconds: 60
+          policies:
+          - type: Percent
+            value: 50
+            periodSeconds: 60
+        scaleUp:
+          stabilizationWindowSeconds: 15
+          policies:
+          - type: Percent
+            value: 100
+            periodSeconds: 15
+          - type: Pods
+            value: 4
+            periodSeconds: 15
+          selectPolicy: Max
+  triggers:
+    # Primary trigger: Kafka topic lag for genetic-data-raw
+    - type: kafka
+      metadata:
+        bootstrapServers: genetic-data-cluster-kafka-bootstrap.healthcare-ml-demo.svc.cluster.local:9092
+        consumerGroup: vep-annotation-service-group
+        topic: genetic-data-raw
+        lagThreshold: '5'
+        offsetResetPolicy: latest
+        allowIdleConsumers: 'false'
+        scaleToZeroOnInvalidOffset: 'true'
+        excludePersistentLag: 'false'
+    
+    # Secondary trigger: CPU utilization for burst handling
+    - type: cpu
+      metricType: Utilization
+      metadata:
+        value: '70'
+    
+    # Tertiary trigger: Memory utilization for large sequence processing
+    - type: memory
+      metricType: Utilization
+      metadata:
+        value: '80'
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: genetic-risk-model-scaler
+  labels:
+    app.kubernetes.io/component: openshift-ai
+    app.kubernetes.io/name: genetic-risk-ml
+    app.kubernetes.io/part-of: healthcare-ml-genetic-predictor
+    app.kubernetes.io/version: "1.0.0"
+  annotations:
+    insights.openshift.io/billing-model: chargeback
+    insights.openshift.io/cost-center: genomics-research
+    insights.openshift.io/project: genetic-ml-v1
+spec:
+  scaleTargetRef:
+    apiVersion: serving.kserve.io/v1beta1
+    kind: InferenceService
+    name: genetic-risk-model
+  pollingInterval: 10
+  cooldownPeriod: 30
+  idleReplicaCount: 0
+  minReplicaCount: 0
+  maxReplicaCount: 10
+  fallback:
+    failureThreshold: 3
+    replicas: 1
+  advanced:
+    restoreToOriginalReplicaCount: false
+    horizontalPodAutoscalerConfig:
+      name: genetic-risk-model-hpa
+      behavior:
+        scaleDown:
+          stabilizationWindowSeconds: 30
+          policies:
+          - type: Percent
+            value: 50
+            periodSeconds: 30
+        scaleUp:
+          stabilizationWindowSeconds: 10
+          policies:
+          - type: Percent
+            value: 100
+            periodSeconds: 10
+          - type: Pods
+            value: 2
+            periodSeconds: 10
+          selectPolicy: Max
+  triggers:
+    # Primary trigger: Kafka topic lag for genetic-data-annotated
+    - type: kafka
+      metadata:
+        bootstrapServers: genetic-data-cluster-kafka-bootstrap.healthcare-ml-demo.svc.cluster.local:9092
+        consumerGroup: ml-inference-group
+        topic: genetic-data-annotated
+        lagThreshold: '3'
+        offsetResetPolicy: latest
+        allowIdleConsumers: 'false'
+        scaleToZeroOnInvalidOffset: 'true'
+        excludePersistentLag: 'false'
+    
+    # Secondary trigger: HTTP requests per second for inference load
+    - type: prometheus
+      metadata:
+        serverAddress: http://prometheus-operated.openshift-monitoring.svc.cluster.local:9090
+        metricName: http_requests_per_second
+        threshold: '10'
+        query: sum(rate(http_requests_total{job="genetic-risk-model"}[1m]))
+    
+    # Tertiary trigger: GPU utilization (if GPU nodes available)
+    - type: prometheus
+      metadata:
+        serverAddress: http://prometheus-operated.openshift-monitoring.svc.cluster.local:9090
+        metricName: gpu_utilization
+        threshold: '70'
+        query: avg(nvidia_gpu_duty_cycle{job="genetic-risk-model"})
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: keda-scaling-config
+  labels:
+    app.kubernetes.io/component: eventing
+    app.kubernetes.io/name: keda-scaling
+    app.kubernetes.io/part-of: healthcare-ml-genetic-predictor
+    app.kubernetes.io/version: "1.0.0"
+  annotations:
+    insights.openshift.io/billing-model: chargeback
+    insights.openshift.io/cost-center: genomics-research
+    insights.openshift.io/project: scaling-config-v1
+data:
+  # VEP Service Scaling Configuration
+  vep.scaling.enabled: "true"
+  vep.scaling.min.replicas: "0"
+  vep.scaling.max.replicas: "20"
+  vep.scaling.target.cpu: "70"
+  vep.scaling.target.memory: "80"
+  vep.scaling.kafka.lag.threshold: "5"
+  vep.scaling.cooldown.period: "60"
+  vep.scaling.polling.interval: "15"
+  
+  # ML Model Scaling Configuration
+  ml.scaling.enabled: "true"
+  ml.scaling.min.replicas: "0"
+  ml.scaling.max.replicas: "10"
+  ml.scaling.target.cpu: "60"
+  ml.scaling.target.memory: "70"
+  ml.scaling.kafka.lag.threshold: "3"
+  ml.scaling.cooldown.period: "30"
+  ml.scaling.polling.interval: "10"
+  
+  # Cost Optimization Settings
+  cost.optimization.enabled: "true"
+  cost.optimization.scale.to.zero: "true"
+  cost.optimization.idle.timeout: "300"
+  cost.optimization.burst.scaling: "true"
+  
+  # Monitoring and Alerting
+  monitoring.enabled: "true"
+  monitoring.prometheus.endpoint: "http://prometheus-operated.openshift-monitoring.svc.cluster.local:9090"
+  alerting.slack.webhook: ""
+  alerting.email.enabled: "false"

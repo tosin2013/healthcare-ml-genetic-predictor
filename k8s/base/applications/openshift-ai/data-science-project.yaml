@@ -1,0 +1,111 @@
+apiVersion: datasciencepipelinesapplications.opendatahub.io/v1alpha1
+kind: DataScienceProject
+metadata:
+  name: genetic-risk-prediction
+  labels:
+    app.kubernetes.io/component: openshift-ai
+    app.kubernetes.io/name: genetic-risk-ml
+    app.kubernetes.io/part-of: healthcare-ml-genetic-predictor
+    app.kubernetes.io/version: "1.0.0"
+    opendatahub.io/component: "true"
+  annotations:
+    opendatahub.io/notebook-image-order: "1"
+    opendatahub.io/notebook-image-name: "Genetic Analysis Workbench"
+    insights.openshift.io/billing-model: chargeback
+    insights.openshift.io/cost-center: genomics-research
+    insights.openshift.io/project: genetic-ml-v1
+    openshift.io/display-name: "Genetic Risk Prediction ML Project"
+    openshift.io/description: "Machine learning project for genetic risk prediction using VEP annotations and clinical data"
+spec:
+  displayName: "Genetic Risk Prediction"
+  description: |
+    This Data Science Project focuses on developing machine learning models for genetic risk prediction.
+    
+    Key Features:
+    - VEP (Variant Effect Predictor) integration for genetic variant annotation
+    - Multi-tier scaling with KEDA and Knative
+    - Real-time cost monitoring and chargeback
+    - Enterprise-grade security and compliance
+    
+    Components:
+    - Jupyter Notebook for model development
+    - Model serving with OpenShift AI ModelMesh
+    - Automated ML pipelines
+    - Integration with healthcare ML infrastructure
+  
+  # Project settings
+  managementState: Managed
+  
+  # Resource quotas for the project
+  resourceQuotas:
+    - metadata:
+        name: genetic-ml-compute-quota
+      spec:
+        hard:
+          requests.cpu: "10"
+          requests.memory: "20Gi"
+          limits.cpu: "20"
+          limits.memory: "40Gi"
+          persistentvolumeclaims: "10"
+          requests.storage: "100Gi"
+    
+    - metadata:
+        name: genetic-ml-object-quota
+      spec:
+        hard:
+          pods: "20"
+          services: "10"
+          secrets: "20"
+          configmaps: "20"
+          persistentvolumeclaims: "10"
+  
+  # Network policies for security
+  networkPolicies:
+    - metadata:
+        name: genetic-ml-network-policy
+      spec:
+        podSelector: {}
+        policyTypes:
+          - Ingress
+          - Egress
+        ingress:
+          - from:
+              - namespaceSelector:
+                  matchLabels:
+                    name: healthcare-ml-demo
+              - namespaceSelector:
+                  matchLabels:
+                    network.openshift.io/policy-group: ingress
+        egress:
+          - to:
+              - namespaceSelector:
+                  matchLabels:
+                    name: healthcare-ml-demo
+          - to: {}
+            ports:
+              - protocol: TCP
+                port: 53
+              - protocol: UDP
+                port: 53
+              - protocol: TCP
+                port: 443
+              - protocol: TCP
+                port: 80
+  
+  # RBAC settings
+  serviceAccountName: genetic-ml-pipeline
+  
+  # Monitoring and observability
+  monitoring:
+    enabled: true
+    namespace: openshift-monitoring
+  
+  # Cost management
+  billing:
+    enabled: true
+    costCenter: "genomics-research"
+    project: "genetic-ml-v1"
+    chargebackLabels:
+      - "insights.openshift.io/billing-model"
+      - "insights.openshift.io/cost-center"
+      - "insights.openshift.io/project"

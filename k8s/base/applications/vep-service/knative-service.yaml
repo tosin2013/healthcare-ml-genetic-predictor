@@ -1,0 +1,114 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: vep-service
+  labels:
+    app.kubernetes.io/component: vep-service
+    app.kubernetes.io/name: vep-annotation-service
+    app.kubernetes.io/part-of: healthcare-ml-genetic-predictor
+    app.kubernetes.io/version: "1.0.0"
+  annotations:
+    # Cost management annotations
+    insights.openshift.io/billing-model: chargeback
+    insights.openshift.io/cost-center: genomics-research
+    insights.openshift.io/project: vep-annotation-v1
+    # OpenShift annotations
+    app.openshift.io/runtime: quarkus
+    app.openshift.io/runtime-version: "3.8"
+spec:
+  template:
+    metadata:
+      annotations:
+        # Knative autoscaling configuration
+        autoscaling.knative.dev/class: kpa.autoscaling.knative.dev
+        autoscaling.knative.dev/metric: concurrency
+        autoscaling.knative.dev/target: "10"
+        autoscaling.knative.dev/targetUtilizationPercentage: "70"
+        autoscaling.knative.dev/minScale: "0"
+        autoscaling.knative.dev/maxScale: "20"
+        autoscaling.knative.dev/scaleToZeroGracePeriod: "30s"
+        autoscaling.knative.dev/scaleDownDelay: "0s"
+        autoscaling.knative.dev/stableWindow: "60s"
+        # Cost management annotations
+        insights.openshift.io/billing-model: chargeback
+        insights.openshift.io/cost-center: genomics-research
+        insights.openshift.io/project: vep-annotation-v1
+      labels:
+        app.kubernetes.io/component: vep-service
+        app.kubernetes.io/name: vep-annotation-service
+        app.kubernetes.io/part-of: healthcare-ml-genetic-predictor
+        app.kubernetes.io/version: "1.0.0"
+    spec:
+      serviceAccountName: vep-service
+      enableServiceLinks: false
+      timeoutSeconds: 300
+      containerConcurrency: 0
+      containers:
+        - name: vep-service
+          image: vep-service:latest
+          ports:
+            - containerPort: 8080
+              name: http1
+              protocol: TCP
+          env:
+            - name: KAFKA_BOOTSTRAP_SERVERS
+              valueFrom:
+                configMapKeyRef:
+                  name: vep-service-config
+                  key: kafka.bootstrap.servers
+            - name: VEP_API_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: vep-service-config
+                  key: vep.api.url
+            - name: QUARKUS_LOG_LEVEL
+              valueFrom:
+                configMapKeyRef:
+                  name: vep-service-config
+                  key: quarkus.log.level
+            - name: QUARKUS_HTTP_PORT
+              value: "8080"
+            - name: QUARKUS_HTTP_HOST
+              value: "0.0.0.0"
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "200m"
+            limits:
+              memory: "1Gi"
+              cpu: "1000m"
+          livenessProbe:
+            httpGet:
+              path: /q/health/live
+              port: 8080
+              scheme: HTTP
+            initialDelaySeconds: 30
+            timeoutSeconds: 5
+            periodSeconds: 10
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /q/health/ready
+              port: 8080
+              scheme: HTTP
+            initialDelaySeconds: 5
+            timeoutSeconds: 3
+            periodSeconds: 5
+            successThreshold: 1
+            failureThreshold: 3
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            seccompProfile:
+              type: RuntimeDefault
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: config-volume
+              mountPath: /deployments/config
+              readOnly: true
+      volumes:
+        - name: config-volume
+          configMap:
+            name: vep-service-config
