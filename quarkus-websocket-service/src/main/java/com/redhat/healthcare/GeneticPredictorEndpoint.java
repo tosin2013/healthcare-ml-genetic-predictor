@@ -109,14 +109,15 @@ public class GeneticPredictorEndpoint {
                              "com.redhat.healthcare.genetic.sequence.raw";
 
             // Build the CloudEvent with enhanced metadata
+            // Note: CloudEvent extension names must be lowercase and use only letters, numbers, and hyphens
             CloudEvent event = CloudEventBuilder.v1()
                     .withId(UUID.randomUUID().toString())
                     .withSource(URI.create("/healthcare-ml/frontend"))
                     .withType(eventType)
                     .withSubject("Genetic Sequence Analysis - " + mode.toUpperCase() + " Mode")
-                    .withExtension("processing-mode", mode)
-                    .withExtension("resource-profile", resourceProfile)
-                    .withExtension("sequence-length", String.valueOf(geneticSequence.length()))
+                    .withExtension("processingmode", mode)
+                    .withExtension("resourceprofile", resourceProfile)
+                    .withExtension("sequencelength", String.valueOf(geneticSequence.length()))
                     .withData("application/json", objectMapper.writeValueAsBytes(data))
                     .build();
 
