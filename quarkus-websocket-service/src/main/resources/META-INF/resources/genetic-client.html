@@ -105,6 +105,12 @@
             background-color: #f3e5f5;
             border-left: 4px solid #9c27b0;
         }
+        .message.vep-result {
+            background-color: #e8f5e8;
+            border-left: 4px solid #4caf50;
+            font-family: 'Courier New', monospace;
+            white-space: pre-line;
+        }
         .message.system {
             background-color: #fff3e0;
             border-left: 4px solid #ff9800;
@@ -137,9 +143,9 @@
 </head>
 <body>
     <div class="container">
-        <h1>🧬 Genetic Risk Predictor</h1>
+        <h1>🧬 Genetic Risk Predictor with VEP Integration</h1>
         <p style="text-align: center; color: #666; margin-bottom: 30px;">
-            Real-time genetic sequence analysis using WebSocket and Kafka integration
+            Real-time genetic sequence analysis with Ensembl VEP variant annotation using WebSocket and Kafka integration
         </p>
         
         <div class="form-group">
@@ -155,11 +161,15 @@
         <div id="status" class="status disconnected">Disconnected</div>
         
         <div class="sample-sequences">
-            <h3>Sample Genetic Sequences:</h3>
+            <h3>Sample Genetic Sequences for VEP Analysis:</h3>
             <button class="sample-btn" onclick="setSampleSequence('ATCGATCGATCG')">Basic DNA Sequence</button>
             <button class="sample-btn" onclick="setSampleSequence('AAGGTTCCAAGGTTCC')">Repeat Pattern</button>
             <button class="sample-btn" onclick="setSampleSequence('ATGCGTACGTAGCTAGCTA')">Complex Sequence</button>
             <button class="sample-btn" onclick="setSampleSequence('TTTTAAAACCCCGGGG')">Homopolymer</button>
+            <p style="font-size: 12px; color: #666; margin-top: 10px;">
+                💡 These sequences will be analyzed using Ensembl VEP for variant consequence prediction,
+                pathogenicity scoring, and clinical significance assessment.
+            </p>
         </div>
         
         <div class="form-group">
@@ -168,7 +178,7 @@
         </div>
         
         <div class="form-group">
-            <button id="sendBtn" onclick="sendMessage()" disabled>🧬 Analyze Genetic Sequence</button>
+            <button id="sendBtn" onclick="sendMessage()" disabled>🧬 Analyze with VEP Integration</button>
         </div>
         
         <div class="messages" id="messages">
@@ -219,7 +229,12 @@
                 };
                 
                 socket.onmessage = function(event) {
-                    addMessage(`📥 ${event.data}`, 'received');
+                    // Check if this is a VEP analysis result
+                    if (event.data.includes('🧬 **Genetic Analysis Complete**')) {
+                        addMessage(event.data, 'vep-result');
+                    } else {
+                        addMessage(`📥 ${event.data}`, 'received');
+                    }
                 };
                 
                 socket.onclose = function(event) {
@@ -262,7 +277,8 @@
             if (socket && connected) {
                 socket.send(sequence.toUpperCase());
                 addMessage(`📤 Sent genetic sequence: ${sequence.toUpperCase()}`, 'sent');
-                addMessage('🔬 Analyzing genetic sequence for risk factors...', 'system');
+                addMessage('🔬 Processing with VEP annotation pipeline...', 'system');
+                addMessage('⏳ Analyzing variants, consequences, and pathogenicity...', 'system');
             } else {
                 addMessage('❌ Not connected to service', 'system');
             }
@@ -286,9 +302,10 @@
             const wsUrl = `${protocol}//${window.location.host}/genetics`;
             document.getElementById('wsUrl').value = wsUrl;
 
-            addMessage('🧬 Genetic Risk Predictor Client Ready', 'system');
+            addMessage('🧬 Genetic Risk Predictor with VEP Integration Ready', 'system');
             addMessage(`🔗 WebSocket URL: ${wsUrl}`, 'system');
-            addMessage('💡 Click "Connect" to start analyzing genetic sequences', 'system');
+            addMessage('💡 Click "Connect" to start VEP-powered genetic analysis', 'system');
+            addMessage('🔬 VEP provides variant consequence prediction, pathogenicity scoring, and clinical significance', 'system');
         };
     </script>
 </body>
