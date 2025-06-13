@@ -62,7 +62,7 @@ public interface VepApiClient {
      * Health check endpoint
      */
     @GET
-    @Path("/info/ping")
+    @Path("/info/software")
     @Produces(MediaType.TEXT_HTML)
     String ping();
 }
