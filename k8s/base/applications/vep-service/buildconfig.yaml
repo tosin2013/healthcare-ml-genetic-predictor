@@ -33,7 +33,7 @@ spec:
         - name: MAVEN_OPTS
           value: "-Xmx1024m"
         - name: ARTIFACT_COPY_ARGS
-          value: "-p -r lib/ quarkus-app/"
+          value: "-p -r quarkus-app/"
   output:
     to:
       kind: ImageStreamTag
