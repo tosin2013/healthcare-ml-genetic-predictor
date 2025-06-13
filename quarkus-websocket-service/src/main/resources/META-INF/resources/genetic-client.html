@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Genetic Risk Predictor - WebSocket Client</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #34495e;
+        }
+        input[type="text"], textarea {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+        textarea {
+            height: 100px;
+            resize: vertical;
+        }
+        button {
+            background-color: #3498db;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-right: 10px;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        button:disabled {
+            background-color: #bdc3c7;
+            cursor: not-allowed;
+        }
+        .disconnect {
+            background-color: #e74c3c;
+        }
+        .disconnect:hover {
+            background-color: #c0392b;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            font-weight: bold;
+        }
+        .status.connected {
+            background-color: #d5f4e6;
+            color: #27ae60;
+            border: 1px solid #27ae60;
+        }
+        .status.disconnected {
+            background-color: #fadbd8;
+            color: #e74c3c;
+            border: 1px solid #e74c3c;
+        }
+        .messages {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 15px;
+            height: 300px;
+            overflow-y: auto;
+            margin-top: 20px;
+        }
+        .message {
+            margin-bottom: 10px;
+            padding: 8px;
+            border-radius: 3px;
+        }
+        .message.sent {
+            background-color: #e3f2fd;
+            border-left: 4px solid #2196f3;
+        }
+        .message.received {
+            background-color: #f3e5f5;
+            border-left: 4px solid #9c27b0;
+        }
+        .message.system {
+            background-color: #fff3e0;
+            border-left: 4px solid #ff9800;
+        }
+        .timestamp {
+            font-size: 12px;
+            color: #666;
+            margin-right: 10px;
+        }
+        .sample-sequences {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .sample-sequences h3 {
+            margin-top: 0;
+            color: #495057;
+        }
+        .sample-btn {
+            background-color: #6c757d;
+            font-size: 14px;
+            padding: 8px 16px;
+            margin: 5px;
+        }
+        .sample-btn:hover {
+            background-color: #5a6268;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧬 Genetic Risk Predictor</h1>
+        <p style="text-align: center; color: #666; margin-bottom: 30px;">
+            Real-time genetic sequence analysis using WebSocket and Kafka integration
+        </p>
+        
+        <div class="form-group">
+            <label for="wsUrl">WebSocket URL:</label>
+            <input type="text" id="wsUrl" value="ws://localhost:8080/genetics" />
+        </div>
+        
+        <div class="form-group">
+            <button id="connectBtn" onclick="connect()">Connect</button>
+            <button id="disconnectBtn" onclick="disconnect()" disabled class="disconnect">Disconnect</button>
+        </div>
+        
+        <div id="status" class="status disconnected">Disconnected</div>
+        
+        <div class="sample-sequences">
+            <h3>Sample Genetic Sequences:</h3>
+            <button class="sample-btn" onclick="setSampleSequence('ATCGATCGATCG')">Basic DNA Sequence</button>
+            <button class="sample-btn" onclick="setSampleSequence('AAGGTTCCAAGGTTCC')">Repeat Pattern</button>
+            <button class="sample-btn" onclick="setSampleSequence('ATGCGTACGTAGCTAGCTA')">Complex Sequence</button>
+            <button class="sample-btn" onclick="setSampleSequence('TTTTAAAACCCCGGGG')">Homopolymer</button>
+        </div>
+        
+        <div class="form-group">
+            <label for="geneticSequence">Genetic Sequence (DNA):</label>
+            <textarea id="geneticSequence" placeholder="Enter DNA sequence (e.g., ATCGATCGATCG)"></textarea>
+        </div>
+        
+        <div class="form-group">
+            <button id="sendBtn" onclick="sendMessage()" disabled>🧬 Analyze Genetic Sequence</button>
+        </div>
+        
+        <div class="messages" id="messages">
+            <div class="message system">
+                <span class="timestamp">[System]</span>
+                Ready to connect to genetic analysis service...
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let socket = null;
+        let connected = false;
+
+        function addMessage(content, type = 'system') {
+            const messages = document.getElementById('messages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}`;
+            
+            const timestamp = new Date().toLocaleTimeString();
+            messageDiv.innerHTML = `<span class="timestamp">[${timestamp}]</span>${content}`;
+            
+            messages.appendChild(messageDiv);
+            messages.scrollTop = messages.scrollHeight;
+        }
+
+        function updateStatus(status, isConnected) {
+            const statusDiv = document.getElementById('status');
+            statusDiv.textContent = status;
+            statusDiv.className = `status ${isConnected ? 'connected' : 'disconnected'}`;
+            
+            document.getElementById('connectBtn').disabled = isConnected;
+            document.getElementById('disconnectBtn').disabled = !isConnected;
+            document.getElementById('sendBtn').disabled = !isConnected;
+            
+            connected = isConnected;
+        }
+
+        function connect() {
+            const url = document.getElementById('wsUrl').value;
+            
+            try {
+                socket = new WebSocket(url);
+                
+                socket.onopen = function(event) {
+                    updateStatus('Connected to Genetic Analysis Service', true);
+                    addMessage('🟢 Connected to genetic analysis service', 'system');
+                };
+                
+                socket.onmessage = function(event) {
+                    addMessage(`📥 ${event.data}`, 'received');
+                };
+                
+                socket.onclose = function(event) {
+                    updateStatus('Disconnected', false);
+                    addMessage('🔴 Connection closed', 'system');
+                    socket = null;
+                };
+                
+                socket.onerror = function(error) {
+                    updateStatus('Connection Error', false);
+                    addMessage(`❌ Connection error: ${error}`, 'system');
+                };
+                
+            } catch (error) {
+                addMessage(`❌ Failed to connect: ${error.message}`, 'system');
+            }
+        }
+
+        function disconnect() {
+            if (socket) {
+                socket.close();
+            }
+        }
+
+        function sendMessage() {
+            const sequence = document.getElementById('geneticSequence').value.trim();
+            
+            if (!sequence) {
+                addMessage('⚠️ Please enter a genetic sequence', 'system');
+                return;
+            }
+            
+            // Basic validation for DNA sequence
+            const validDNA = /^[ATCG]+$/i.test(sequence);
+            if (!validDNA) {
+                addMessage('⚠️ Invalid DNA sequence. Please use only A, T, C, G characters', 'system');
+                return;
+            }
+            
+            if (socket && connected) {
+                socket.send(sequence.toUpperCase());
+                addMessage(`📤 Sent genetic sequence: ${sequence.toUpperCase()}`, 'sent');
+                addMessage('🔬 Analyzing genetic sequence for risk factors...', 'system');
+            } else {
+                addMessage('❌ Not connected to service', 'system');
+            }
+        }
+
+        function setSampleSequence(sequence) {
+            document.getElementById('geneticSequence').value = sequence;
+        }
+
+        // Allow Enter key to send message
+        document.getElementById('geneticSequence').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter' && e.ctrlKey) {
+                sendMessage();
+            }
+        });
+
+        // Auto-connect on page load
+        window.onload = function() {
+            addMessage('🧬 Genetic Risk Predictor Client Ready', 'system');
+            addMessage('💡 Click "Connect" to start analyzing genetic sequences', 'system');
+        };
+    </script>
+</body>
+</html>

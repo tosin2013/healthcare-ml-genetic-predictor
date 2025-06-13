@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>8-Bit Genetic Data Simulator</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>8-Bit Genetic Data Simulator</h1>
+        <div class="controls">
+            <button id="connectBtn">Connect</button>
+            <button id="sendBtn" disabled>Send Sequence</button>
+            <button id="autoStreamBtn" disabled>Start Auto-Stream</button>
+        </div>
+        <div class="status">
+            <span>Status:</span>
+            <span id="statusIndicator" class="disconnected"></span>
+            <span id="statusText">Disconnected</span>
+        </div>
+        <div class="log-container">
+            <h2>Log</h2>
+            <pre id="log"></pre>
+        </div>
+    </div>
+    <script src="app.js"></script>
+</body>
+</html>
