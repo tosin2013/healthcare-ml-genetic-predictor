@@ -42,12 +42,16 @@ public class GeneticPredictorEndpoint {
     @OnOpen
     public void onOpen(Session session) {
         LOGGER.info("WebSocket opened: {}", session.getId());
-        session.getAsyncRemote().sendText("Connection opened");
+        // Register session for receiving VEP results
+        GeneticResultsService.registerSession(session.getId(), session);
+        session.getAsyncRemote().sendText("🧬 Connected to Genetic Analysis Service with VEP Integration");
     }
 
     @OnClose
     public void onClose(Session session) {
         LOGGER.info("WebSocket closed: {}", session.getId());
+        // Unregister session
+        GeneticResultsService.unregisterSession(session.getId());
     }
 
     @OnError
