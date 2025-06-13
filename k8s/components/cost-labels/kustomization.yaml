@@ -1,0 +1,20 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Component
+
+metadata:
+  name: cost-labels
+  annotations:
+    config.kubernetes.io/local-config: "true"
+
+# Common labels for cost attribution and Red Hat Insights integration
+commonLabels:
+  cost-center: "genomics-research"
+  project: "risk-predictor-v1"
+  environment: "placeholder"  # Will be overridden in overlays
+
+commonAnnotations:
+  insights.openshift.io/cost-center: "genomics-research"
+  insights.openshift.io/project: "risk-predictor-v1"
+  insights.openshift.io/billing-model: "chargeback"
+
+# Placeholder - will be enhanced in Task 8

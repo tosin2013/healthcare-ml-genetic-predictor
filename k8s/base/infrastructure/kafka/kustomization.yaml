@@ -1,0 +1,12 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+metadata:
+  name: kafka-infrastructure
+  annotations:
+    config.kubernetes.io/local-config: "true"
+
+resources:
+  - kafka-metrics-config.yaml
+  - kafka-cluster.yaml
+  - kafka-topics.yaml

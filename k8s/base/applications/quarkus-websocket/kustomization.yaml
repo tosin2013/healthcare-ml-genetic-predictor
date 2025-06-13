@@ -1,0 +1,38 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+metadata:
+  name: quarkus-websocket-service
+  annotations:
+    config.kubernetes.io/local-config: "true"
+
+resources:
+  - configmap.yaml
+  - imagestream.yaml
+  - buildconfig.yaml
+  # Choose one deployment method:
+  - deployment.yaml          # Standard Kubernetes Deployment
+  # - deploymentconfig.yaml  # OpenShift DeploymentConfig (alternative)
+  - service.yaml
+  - route.yaml
+
+# Common labels for all Quarkus WebSocket service resources
+labels:
+  - pairs:
+      app.kubernetes.io/name: quarkus-websocket-service
+      app.kubernetes.io/part-of: healthcare-ml-demo
+      app.kubernetes.io/component: websocket-service
+
+# Common annotations for cost management
+commonAnnotations:
+  cost-center: "genomics-research"
+  project: "risk-predictor-v1"
+  deployment-method: "kustomize"
+
+# Image management for OpenShift BuildConfig integration
+# Note: When using BuildConfig, the image is managed by the ImageStream
+# For external registries, uncomment and modify the following:
+# images:
+#   - name: quarkus-websocket-service
+#     newName: quay.io/healthcare-ml/genetic-risk-predictor-ws
+#     newTag: latest

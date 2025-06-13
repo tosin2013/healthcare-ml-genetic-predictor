@@ -1,0 +1,79 @@
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: genetic-data-raw
+  namespace: healthcare-ml-demo
+  labels:
+    strimzi.io/cluster: genetic-data-cluster
+    app.kubernetes.io/name: genetic-data-raw
+    app.kubernetes.io/part-of: healthcare-ml-demo
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/component: kafka-topic
+    cost-center: "genomics-research"
+    project: "risk-predictor-v1"
+    topic-type: "input"
+    data-classification: "genetic-raw"
+  annotations:
+    cost-center: "genomics-research"
+    project: "risk-predictor-v1"
+    deployment-method: "kustomize"
+    topic-purpose: "Raw genetic data input from WebSocket frontend"
+spec:
+  partitions: 3
+  replicas: 1
+  config:
+    # Retention policy for raw genetic data
+    retention.ms: 604800000  # 7 days in milliseconds
+    retention.bytes: 1073741824  # 1GB per partition
+    # Segment configuration
+    segment.ms: 86400000  # 1 day
+    segment.bytes: 134217728  # 128MB
+    # Cleanup policy
+    cleanup.policy: delete
+    # Compression for genetic data
+    compression.type: snappy
+    # Performance tuning for ML workloads
+    min.insync.replicas: 1
+    unclean.leader.election.enable: false
+    # Message size limits for genetic sequences
+    max.message.bytes: 1048576  # 1MB
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: genetic-data-processed
+  namespace: healthcare-ml-demo
+  labels:
+    strimzi.io/cluster: genetic-data-cluster
+    app.kubernetes.io/name: genetic-data-processed
+    app.kubernetes.io/part-of: healthcare-ml-demo
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/component: kafka-topic
+    cost-center: "genomics-research"
+    project: "risk-predictor-v1"
+    topic-type: "output"
+    data-classification: "genetic-processed"
+  annotations:
+    cost-center: "genomics-research"
+    project: "risk-predictor-v1"
+    deployment-method: "kustomize"
+    topic-purpose: "Processed genetic data output from ML inference service"
+spec:
+  partitions: 3
+  replicas: 1
+  config:
+    # Retention policy for processed genetic data
+    retention.ms: 1209600000  # 14 days in milliseconds
+    retention.bytes: 2147483648  # 2GB per partition
+    # Segment configuration
+    segment.ms: 86400000  # 1 day
+    segment.bytes: 134217728  # 128MB
+    # Cleanup policy
+    cleanup.policy: delete
+    # Compression for processed data
+    compression.type: snappy
+    # Performance tuning for ML results
+    min.insync.replicas: 1
+    unclean.leader.election.enable: false
+    # Message size limits for ML results
+    max.message.bytes: 2097152  # 2MB (larger for ML results with metadata)

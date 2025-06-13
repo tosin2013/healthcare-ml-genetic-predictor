@@ -1,0 +1,29 @@
+apiVersion: dscinitialization.opendatahub.io/v1
+kind: DSCInitialization
+metadata:
+  name: default-dsci
+  labels:
+    app.kubernetes.io/name: dsci
+    app.kubernetes.io/part-of: healthcare-ml-demo
+    app.kubernetes.io/managed-by: kustomize
+  annotations:
+    cost-center: "genomics-research"
+    project: "risk-predictor-v1"
+spec:
+  # Applications namespace for OpenShift AI workloads
+  applicationsNamespace: redhat-ods-applications
+  
+  # Monitoring configuration
+  monitoring:
+    managementState: Managed
+    namespace: redhat-ods-monitoring
+  
+  # Service Mesh configuration - DISABLED for healthcare ML demo
+  # (Service Mesh not required for our use case)
+  serviceMesh:
+    managementState: Removed
+  
+  # Trusted CA Bundle configuration
+  trustedCABundle:
+    managementState: Managed
+    customCABundle: ""

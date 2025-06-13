@@ -1,0 +1,82 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+metadata:
+  name: healthcare-ml-base
+  annotations:
+    config.kubernetes.io/local-config: "true"
+
+# Namespace for all resources
+namespace: healthcare-ml-demo
+
+# Common labels applied to all resources
+commonLabels:
+  app.kubernetes.io/name: healthcare-ml-demo
+  app.kubernetes.io/part-of: genetic-risk-predictor
+  app.kubernetes.io/managed-by: kustomize
+
+# Common annotations for cost management
+commonAnnotations:
+  cost-center: "genomics-research"
+  project: "risk-predictor-v1"
+  deployment-method: "kustomize"
+  openshift.io/display-name: "Healthcare ML Demo"
+
+# Resource ordering - operators first, then infrastructure, then applications
+resources:
+  # Phase 1: Operator Subscriptions (must be installed first)
+  # Using actual operator names from cluster packagemanifests:
+  # - amq-streams (stable channel)
+  # - serverless-operator (stable channel)
+  # - openshift-custom-metrics-autoscaler-operator (stable channel)
+  # - rhods-operator (stable channel)
+  - operators/amq-streams
+  - operators/serverless
+  - operators/keda
+  - operators/openshift-ai
+  
+  # Phase 2: Infrastructure Components (depends on operators)
+  - infrastructure/namespace
+  - infrastructure/kafka
+  
+  # Phase 3: Application Deployments (depends on infrastructure)
+  - applications/quarkus-websocket
+  - applications/frontend
+  - applications/ml-inference
+  
+  # Phase 4: Eventing Configuration (depends on applications and infrastructure)
+  - eventing/kafka-source
+  - eventing/keda-scaler
+
+# Components for reusable configurations
+components:
+  - ../components/cost-labels
+  - ../components/security-context
+
+# Images to be managed (can be overridden in overlays)
+images:
+  - name: quarkus-websocket-service
+    newName: quay.io/healthcare-ml/genetic-risk-predictor-ws
+    newTag: latest
+  - name: ml-inference-service
+    newName: quay.io/healthcare-ml/ml-inference-service
+    newTag: latest
+  - name: frontend-nginx
+    newName: nginx
+    newTag: "1.25-alpine"
+
+# Configuration for generating ConfigMaps and Secrets
+configMapGenerator: []
+secretGenerator: []
+
+# Patches to be applied (can be extended in overlays)
+patches: []
+
+# Replacements for cross-resource field references
+replacements: []
+
+# Build metadata
+buildMetadata:
+  - originAnnotations
+  - transformerAnnotations
+  - managedByLabel

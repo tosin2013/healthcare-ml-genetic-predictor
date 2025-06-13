@@ -1,0 +1,51 @@
+apiVersion: operator.knative.dev/v1beta1
+kind: KnativeEventing
+metadata:
+  name: knative-eventing
+  namespace: knative-eventing
+  labels:
+    app.kubernetes.io/name: knative-eventing
+    app.kubernetes.io/part-of: healthcare-ml-demo
+    app.kubernetes.io/managed-by: kustomize
+  annotations:
+    cost-center: "genomics-research"
+    project: "risk-predictor-v1"
+spec:
+  # High availability configuration
+  high-availability:
+    replicas: 2
+  # Source configuration for Kafka integration
+  source:
+    kafka:
+      enabled: true
+  # Sink configuration
+  sink:
+    # Enable default broker for event routing
+    default:
+      enabled: true
+      # Broker configuration for healthcare ML events
+      config:
+        delivery:
+          retry: 3
+          backoffPolicy: "exponential"
+          backoffDelay: "PT1S"
+  # Configuration for healthcare ML event processing
+  config:
+    # Broker configuration
+    br-defaults:
+      default-br-config: |
+        clusterDefault:
+          brokerClass: MTChannelBasedBroker
+          apiVersion: v1
+          kind: ConfigMap
+          name: config-br-default-channel
+          namespace: knative-eventing
+    # Channel configuration for Kafka
+    default-ch-webhook:
+      default-ch-config: |
+        clusterDefault:
+          apiVersion: messaging.knative.dev/v1beta1
+          kind: KafkaChannel
+          spec:
+            numPartitions: 3
+            replicationFactor: 1

@@ -1,0 +1,29 @@
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: quarkus-websocket-service
+  namespace: healthcare-ml-demo
+  labels:
+    app.kubernetes.io/name: quarkus-websocket-service
+    app.kubernetes.io/part-of: healthcare-ml-demo
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/component: websocket-service
+    cost-center: "genomics-research"
+    project: "risk-predictor-v1"
+  annotations:
+    cost-center: "genomics-research"
+    project: "risk-predictor-v1"
+    deployment-method: "kustomize"
+    haproxy.router.openshift.io/timeout: "60s"
+    haproxy.router.openshift.io/balance: "roundrobin"
+spec:
+  to:
+    kind: Service
+    name: quarkus-websocket-service
+    weight: 100
+  port:
+    targetPort: http
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+  wildcardPolicy: None

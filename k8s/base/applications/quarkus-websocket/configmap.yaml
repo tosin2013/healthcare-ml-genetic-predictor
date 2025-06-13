@@ -1,0 +1,45 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: quarkus-websocket-config
+  namespace: healthcare-ml-demo
+  labels:
+    app.kubernetes.io/name: quarkus-websocket-service
+    app.kubernetes.io/part-of: healthcare-ml-demo
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/component: websocket-service
+    cost-center: "genomics-research"
+    project: "risk-predictor-v1"
+  annotations:
+    cost-center: "genomics-research"
+    project: "risk-predictor-v1"
+    deployment-method: "kustomize"
+data:
+  # Kafka configuration
+  kafka.bootstrap.servers: "genetic-data-cluster-kafka-bootstrap.healthcare-ml-demo.svc:9092"
+  kafka.topic.genetic-data-raw: "genetic-data-raw"
+  kafka.topic.genetic-data-processed: "genetic-data-processed"
+  
+  # Quarkus configuration
+  quarkus.http.host: "0.0.0.0"
+  quarkus.http.port: "8080"
+  quarkus.log.level: "INFO"
+  quarkus.log.category.com-redhat-healthcare.level: "DEBUG"
+  
+  # WebSocket configuration
+  websocket.endpoint.path: "/genetics"
+  websocket.max-connections: "100"
+  websocket.idle-timeout: "300"
+  
+  # Health check configuration
+  quarkus.health.enabled: "true"
+  quarkus.health.openapi.included: "true"
+  
+  # Metrics configuration
+  quarkus.micrometer.enabled: "true"
+  quarkus.micrometer.export.prometheus.enabled: "true"
+  
+  # Application metadata
+  application.name: "Healthcare ML Genetic Risk Predictor"
+  application.version: "1.0.0"
+  application.environment: "demo"

@@ -1,0 +1,61 @@
+apiVersion: keda.sh/v1alpha1
+kind: KedaController
+metadata:
+  name: keda
+  namespace: keda
+  labels:
+    app.kubernetes.io/name: keda-controller
+    app.kubernetes.io/part-of: healthcare-ml-demo
+    app.kubernetes.io/managed-by: kustomize
+  annotations:
+    cost-center: "genomics-research"
+    project: "risk-predictor-v1"
+spec:
+  # Operator configuration for healthcare ML workloads
+  operator:
+    # Logging configuration
+    logLevel: info
+    logEncoder: console
+  # Metrics server configuration
+  metricsServer:
+    # Enable metrics for monitoring
+    logLevel: "0"
+    # Audit configuration for healthcare compliance
+    auditConfig:
+      logFormat: "json"
+      logOutputVolumeClaim: ""
+      policy:
+        rules:
+          - level: "Request"
+            resources:
+              - group: "keda.sh"
+                resources: ["scaledobjects", "scaledjobs"]
+            namespaces: ["healthcare-ml-demo"]
+  # Admission webhooks configuration
+  admissionWebhooks:
+    # Enable validation webhooks
+    logLevel: info
+    logEncoder: console
+  # Resource configuration for healthcare ML environment
+  resources:
+    operator:
+      limits:
+        cpu: 1000m
+        memory: 1000Mi
+      requests:
+        cpu: 100m
+        memory: 20Mi
+    metricsServer:
+      limits:
+        cpu: 1000m
+        memory: 1000Mi
+      requests:
+        cpu: 100m
+        memory: 20Mi
+    webhooks:
+      limits:
+        cpu: 1000m
+        memory: 1000Mi
+      requests:
+        cpu: 100m
+        memory: 20Mi

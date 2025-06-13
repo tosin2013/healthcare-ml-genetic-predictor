@@ -1,0 +1,32 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: healthcare-ml-demo
+  labels:
+    app.kubernetes.io/name: healthcare-ml-demo
+    app.kubernetes.io/part-of: genetic-risk-predictor
+    app.kubernetes.io/managed-by: kustomize
+    cost-center: "genomics-research"
+    project: "risk-predictor-v1"
+    # OpenShift specific labels (moved to annotations due to character restrictions)
+    environment: "demo"
+    data-type: "genetic-research"
+  annotations:
+    # Red Hat Insights Cost Management integration
+    insights.openshift.io/cost-center: "genomics-research"
+    insights.openshift.io/project: "risk-predictor-v1"
+    insights.openshift.io/billing-model: "chargeback"
+    insights.openshift.io/environment: "demo"
+    # Additional metadata
+    cost-center: "genomics-research"
+    project: "risk-predictor-v1"
+    deployment-method: "kustomize"
+    application-type: "healthcare-ml"
+    data-classification: "genetic-research"
+    # OpenShift annotations (descriptive text moved here)
+    openshift.io/display-name: "Healthcare ML Demo"
+    openshift.io/description: "Event-driven healthcare ML application with genetic data processing"
+    openshift.io/node-selector: ""
+    openshift.io/sa.scc.mcs: "s0:c26,c0"
+    openshift.io/sa.scc.supplemental-groups: "1000700000/10000"
+    openshift.io/sa.scc.uid-range: "1000700000/10000"

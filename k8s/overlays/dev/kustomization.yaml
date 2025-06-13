@@ -1,0 +1,37 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+metadata:
+  name: healthcare-ml-dev
+  annotations:
+    config.kubernetes.io/local-config: "true"
+
+# Reference to base configuration
+resources:
+  - ../../base
+
+# Development-specific configurations
+namePrefix: dev-
+nameSuffix: ""
+
+# Development environment labels
+commonLabels:
+  environment: "development"
+  deployment-tier: "dev"
+
+# Development-specific patches
+patches:
+  # Will contain:
+  # - Minimal resource allocation
+  # - Ephemeral storage
+  # - Debug logging
+  # - Single replicas
+
+# Development-specific images (can use latest or dev tags)
+images:
+  - name: quarkus-websocket-service
+    newTag: dev-latest
+  - name: ml-inference-service
+    newTag: dev-latest
+
+# Placeholder - will be enhanced in Task 7

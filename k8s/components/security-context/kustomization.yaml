@@ -1,0 +1,16 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Component
+
+metadata:
+  name: security-context
+  annotations:
+    config.kubernetes.io/local-config: "true"
+
+# Security context patches for OpenShift SCC compliance
+patches:
+  # Will contain:
+  # - Security context constraints
+  # - Non-root user configurations
+  # - RBAC configurations
+
+# Placeholder - will be enhanced in Task 8

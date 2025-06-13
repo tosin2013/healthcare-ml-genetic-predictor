@@ -1,0 +1,81 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kafka-metrics
+  namespace: healthcare-ml-demo
+  labels:
+    app.kubernetes.io/name: kafka-metrics
+    app.kubernetes.io/part-of: healthcare-ml-demo
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/component: monitoring
+    cost-center: "genomics-research"
+    project: "risk-predictor-v1"
+  annotations:
+    cost-center: "genomics-research"
+    project: "risk-predictor-v1"
+    deployment-method: "kustomize"
+data:
+  kafka-metrics-config.yml: |
+    # Kafka JMX metrics configuration for healthcare ML monitoring
+    lowercaseOutputName: true
+    rules:
+    # Kafka broker metrics
+    - pattern: kafka.server<type=(.+), name=(.+)PerSec, topic=(.+)><>Count
+      name: kafka_server_$1_$2_total
+      type: COUNTER
+      labels:
+        topic: "$3"
+    - pattern: kafka.server<type=(.+), name=(.+)PerSec><>Count
+      name: kafka_server_$1_$2_total
+      type: COUNTER
+    # Kafka network metrics
+    - pattern: kafka.network<type=(.+), name=(.+)><>Value
+      name: kafka_network_$1_$2
+      type: GAUGE
+    # Kafka log metrics for genetic data topics
+    - pattern: kafka.log<type=(.+), name=(.+), topic=(.+), partition=(.+)><>Value
+      name: kafka_log_$1_$2
+      type: GAUGE
+      labels:
+        topic: "$3"
+        partition: "$4"
+    # Kafka controller metrics
+    - pattern: kafka.controller<type=(.+), name=(.+)><>Value
+      name: kafka_controller_$1_$2
+      type: GAUGE
+    # Healthcare ML specific metrics
+    - pattern: kafka.server<type=BrokerTopicMetrics, name=MessagesInPerSec, topic=(genetic-data-.+)><>Count
+      name: healthcare_ml_messages_in_total
+      type: COUNTER
+      labels:
+        topic: "$1"
+        data_type: "genetic"
+    - pattern: kafka.server<type=BrokerTopicMetrics, name=BytesInPerSec, topic=(genetic-data-.+)><>Count
+      name: healthcare_ml_bytes_in_total
+      type: COUNTER
+      labels:
+        topic: "$1"
+        data_type: "genetic"
+
+  zookeeper-metrics-config.yml: |
+    # ZooKeeper JMX metrics configuration
+    lowercaseOutputName: true
+    rules:
+    # ZooKeeper server metrics
+    - pattern: "org.apache.ZooKeeperService<name0=ReplicatedServer_id(\\d+)><>(\\w+)"
+      name: "zookeeper_$2"
+      type: GAUGE
+      labels:
+        replicaId: "$1"
+    # ZooKeeper connection metrics
+    - pattern: "org.apache.ZooKeeperService<name0=ReplicatedServer_id(\\d+), name1=replica.(\\d+)><>(\\w+)"
+      name: "zookeeper_$3"
+      type: GAUGE
+      labels:
+        replicaId: "$2"
+    # ZooKeeper data tree metrics
+    - pattern: "org.apache.ZooKeeperService<name0=ReplicatedServer_id(\\d+), name1=replica.(\\d+), name2=(\\w+)><>(\\w+)"
+      name: "zookeeper_$3_$4"
+      type: GAUGE
+      labels:
+        replicaId: "$2"

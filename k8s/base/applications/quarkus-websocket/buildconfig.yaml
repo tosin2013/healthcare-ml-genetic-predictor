@@ -1,0 +1,57 @@
+apiVersion: build.openshift.io/v1
+kind: BuildConfig
+metadata:
+  name: quarkus-websocket-service
+  namespace: healthcare-ml-demo
+  labels:
+    app.kubernetes.io/name: quarkus-websocket-service
+    app.kubernetes.io/part-of: healthcare-ml-demo
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/component: websocket-service
+    cost-center: "genomics-research"
+    project: "risk-predictor-v1"
+  annotations:
+    cost-center: "genomics-research"
+    project: "risk-predictor-v1"
+    deployment-method: "kustomize"
+spec:
+  source:
+    type: Git
+    git:
+      uri: "https://github.com/your-org/healthcare-ml-demo.git"
+      ref: "main"
+    contextDir: "quarkus-websocket-service"
+  strategy:
+    type: Source
+    sourceStrategy:
+      from:
+        kind: ImageStreamTag
+        name: "ubi9-openjdk-17:1.21"
+        namespace: openshift
+      env:
+      - name: MAVEN_ARGS
+        value: "clean package -DskipTests"
+      - name: MAVEN_OPTS
+        value: "-Xmx1024m"
+  output:
+    to:
+      kind: ImageStreamTag
+      name: "quarkus-websocket-service:latest"
+  triggers:
+  - type: ConfigChange
+  - type: ImageChange
+    imageChange:
+      from:
+        kind: ImageStreamTag
+        name: "ubi9-openjdk-17:1.21"
+        namespace: openshift
+  resources:
+    requests:
+      cpu: "500m"
+      memory: "1Gi"
+    limits:
+      cpu: "2000m"
+      memory: "2Gi"
+  runPolicy: Serial
+  successfulBuildsHistoryLimit: 3
+  failedBuildsHistoryLimit: 3

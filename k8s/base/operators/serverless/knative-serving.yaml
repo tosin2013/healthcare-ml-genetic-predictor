@@ -1,0 +1,37 @@
+apiVersion: operator.knative.dev/v1beta1
+kind: KnativeServing
+metadata:
+  name: knative-serving
+  namespace: knative-serving
+  labels:
+    app.kubernetes.io/name: knative-serving
+    app.kubernetes.io/part-of: healthcare-ml-demo
+    app.kubernetes.io/managed-by: kustomize
+  annotations:
+    cost-center: "genomics-research"
+    project: "risk-predictor-v1"
+spec:
+  # High availability configuration for production
+  high-availability:
+    replicas: 2
+  # Resource configuration
+  config:
+    # Enable scale-to-zero for cost optimization
+    autoscaler:
+      enable-scale-to-zero: "true"
+      scale-to-zero-grace-period: "30s"
+      stable-window: "60s"
+    # Network configuration
+    network:
+      ingress-class: "kourier.ingress.networking.knative.dev"
+    # Deployment configuration
+    deployment:
+      queueSidecarImage: "registry.redhat.io/openshift-serverless-1/serving-queue-rhel8:1.35.1"
+  # Workload configuration for healthcare ML
+  workloads:
+    - name: "ml-inference"
+      env:
+        - name: "ENABLE_PROFILING"
+          value: "false"
+        - name: "METRICS_DOMAIN"
+          value: "healthcare-ml-demo"

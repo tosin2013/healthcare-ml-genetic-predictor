@@ -1,0 +1,41 @@
+apiVersion: datasciencecluster.opendatahub.io/v1
+kind: DataScienceCluster
+metadata:
+  name: default-dsc
+  labels:
+    app.kubernetes.io/name: datasciencecluster
+    app.kubernetes.io/part-of: healthcare-ml-demo
+    app.kubernetes.io/managed-by: kustomize
+  annotations:
+    cost-center: "genomics-research"
+    project: "risk-predictor-v1"
+spec:
+  # Components configuration for healthcare ML workloads
+  components:
+    # Dashboard for ML model management
+    dashboard:
+      managementState: Managed
+    # Workbenches for data science development
+    workbenches:
+      managementState: Managed
+    # Model serving for ML inference
+    modelmeshserving:
+      managementState: Managed
+    # Data science pipelines
+    datasciencepipelines:
+      managementState: Managed
+    # Model registry for ML model lifecycle (disabled due to Service Mesh requirement)
+    modelregistry:
+      managementState: Removed
+    # Code server for development
+    codeflare:
+      managementState: Managed
+    # Ray for distributed computing (optional for ML workloads)
+    ray:
+      managementState: Removed
+    # Kueue for job queueing (optional)
+    kueue:
+      managementState: Removed
+    # Training operator (optional for this demo)
+    trainingoperator:
+      managementState: Removed

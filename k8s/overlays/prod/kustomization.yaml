@@ -1,0 +1,38 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+metadata:
+  name: healthcare-ml-prod
+  annotations:
+    config.kubernetes.io/local-config: "true"
+
+# Reference to base configuration
+resources:
+  - ../../base
+
+# Production-specific configurations
+namePrefix: ""
+nameSuffix: ""
+
+# Production environment labels
+commonLabels:
+  environment: "production"
+  deployment-tier: "prod"
+
+# Production-specific patches
+patches:
+  # Will contain:
+  # - High availability configuration
+  # - Persistent storage with backup
+  # - Strict resource limits
+  # - Production monitoring
+  # - Multiple replicas
+
+# Production-specific images (use stable releases)
+images:
+  - name: quarkus-websocket-service
+    newTag: v1.0.0
+  - name: ml-inference-service
+    newTag: v1.0.0
+
+# Placeholder - will be enhanced in Task 7

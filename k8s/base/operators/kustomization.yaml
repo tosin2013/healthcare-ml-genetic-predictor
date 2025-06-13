@@ -1,0 +1,25 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+metadata:
+  name: operators
+  annotations:
+    config.kubernetes.io/local-config: "true"
+
+# All operator subscriptions and configurations
+resources:
+  - amq-streams
+  - serverless
+  - keda
+  - openshift-ai
+
+# Common labels for all operators
+labels:
+  - pairs:
+      app.kubernetes.io/component: operator
+      app.kubernetes.io/part-of: healthcare-ml-demo
+
+# Common annotations for cost management
+commonAnnotations:
+  cost-center: "genomics-research"
+  project: "risk-predictor-v1"
