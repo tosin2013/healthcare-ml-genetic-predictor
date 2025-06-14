@@ -9,6 +9,7 @@ This directory contains Architecture Decision Records for the Healthcare ML plat
 | ADR | Title | Status | Priority | Dependencies |
 |-----|-------|--------|----------|--------------|
 | [ADR-001](./ADR-001-correct-deployment-strategy-websocket-vep-services.md) | Correct Deployment Strategy for WebSocket and VEP Services | ✅ **CRITICAL** | 🔥 HIGH | None |
+| [ADR-004](./ADR-004-api-testing-validation-openshift.md) | API Testing and Validation on OpenShift | ✅ **VALIDATED** | 🧪 HIGH | ADR-001 |
 
 ### 🔄 In Progress
 
@@ -21,9 +22,9 @@ This directory contains Architecture Decision Records for the Healthcare ML plat
 
 | ADR | Title | Status | Priority | Dependencies |
 |-----|-------|--------|----------|--------------|
-| ADR-004 | Cost Management and KEDA Integration | 📋 **PLANNED** | 💰 HIGH | ADR-001, ADR-002 |
 | ADR-005 | Security and Compliance Framework | 📋 **PLANNED** | 🔒 HIGH | ADR-003 |
 | ADR-006 | Data Lake and Research Platform | 📋 **PLANNED** | 🔬 MEDIUM | ADR-002, ADR-003 |
+| ADR-007 | Cost Management and KEDA Integration | 📋 **PLANNED** | 💰 HIGH | ADR-001, ADR-004 |
 
 ## Quick Navigation
 
@@ -59,6 +60,17 @@ This directory contains Architecture Decision Records for the Healthcare ML plat
 **Solution:** 5-layer architecture with presentation, application, integration, data, and infrastructure layers.
 
 **Impact:** Provides complete roadmap for enterprise-grade healthcare ML platform with cost management and compliance.
+
+---
+
+### 🧪 **API Testing and Validation**
+**[ADR-004: API Testing and Validation on OpenShift](./ADR-004-api-testing-validation-openshift.md)**
+
+**Problem:** Need comprehensive testing framework to validate API endpoints on live OpenShift cluster.
+
+**Solution:** Implemented 5 REST API endpoints with comprehensive testing suite and validation on live Azure Red Hat OpenShift cluster.
+
+**Impact:** Validated API reliability (100% success rate), scaling integration, input validation, and production readiness.
 
 ## Architecture Overview
 
