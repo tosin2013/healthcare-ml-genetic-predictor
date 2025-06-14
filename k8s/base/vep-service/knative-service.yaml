@@ -1,0 +1,64 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: vep-service
+  labels:
+    app: vep-service
+    component: vep-processor
+    tier: backend
+  annotations:
+    serving.knative.dev/creator: "healthcare-ml-demo"
+    serving.knative.dev/lastModifier: "healthcare-ml-demo"
+spec:
+  template:
+    metadata:
+      labels:
+        app: vep-service
+        component: vep-processor
+        tier: backend
+      annotations:
+        # Scale to zero configuration
+        autoscaling.knative.dev/minScale: "0"
+        autoscaling.knative.dev/maxScale: "10"
+        autoscaling.knative.dev/target: "10"
+        # Standard Knative scaling
+        autoscaling.knative.dev/class: "kpa.autoscaling.knative.dev"
+        # Prometheus metrics
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: "/q/metrics"
+    spec:
+      containerConcurrency: 10
+      timeoutSeconds: 300
+      containers:
+      - name: vep-service
+        image: vep-service:latest
+        ports:
+        - containerPort: 8080
+          name: http1
+        env:
+        - name: KAFKA_BOOTSTRAP_SERVERS
+          value: "my-cluster-kafka-bootstrap:9092"
+        - name: QUARKUS_PROFILE
+          value: "openshift"
+        - name: VEP_API_URL
+          value: "https://rest.ensembl.org/vep/human/region"
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
+        livenessProbe:
+          httpGet:
+            path: /q/health/live
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /q/health/ready
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 5

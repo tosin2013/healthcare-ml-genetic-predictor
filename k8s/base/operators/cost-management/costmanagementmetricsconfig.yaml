@@ -1,0 +1,56 @@
+apiVersion: costmanagement-metrics-cfg.openshift.io/v1beta1
+kind: CostManagementMetricsConfig
+metadata:
+  name: healthcare-ml-demo-cost-config
+  namespace: costmanagement-metrics-operator
+  labels:
+    app.kubernetes.io/name: cost-management-operator
+    app.kubernetes.io/component: cost-management
+    app.kubernetes.io/part-of: healthcare-ml-demo
+  annotations:
+    description: "Cost management configuration for healthcare ML demo scaling and cost attribution"
+spec:
+  # Use token authentication (default and preferred method)
+  authentication:
+    type: token
+  
+  # Packaging configuration for cost reports
+  packaging:
+    max_reports_to_store: 30
+    max_size_MB: 100
+  
+  # Prometheus configuration for metrics collection
+  prometheus_config:
+    collect_previous_data: true
+    context_timeout: 120
+    disable_metrics_collection_cost_management: false
+    disable_metrics_collection_resource_optimization: false
+  
+  # Source configuration for integration
+  source:
+    check_cycle: 1440  # 24 hours
+    create_source: true
+    name: "healthcare-ml-demo-cluster"
+  
+  # Upload configuration
+  upload:
+    upload_cycle: 60   # 1 hour for demo purposes (minimum allowed)
+    upload_toggle: true
+    upload_wait: 10    # 10 seconds wait before upload
+  
+  # Storage configuration
+  volume_claim_template:
+    apiVersion: v1
+    kind: PersistentVolumeClaim
+    metadata:
+      name: healthcare-ml-cost-data
+      labels:
+        app.kubernetes.io/name: cost-management-operator
+        app.kubernetes.io/component: cost-management
+        app.kubernetes.io/part-of: healthcare-ml-demo
+    spec:
+      accessModes:
+        - ReadWriteOnce
+      resources:
+        requests:
+          storage: 10Gi

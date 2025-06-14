@@ -1,0 +1,47 @@
+apiVersion: build.openshift.io/v1
+kind: BuildConfig
+metadata:
+  name: quarkus-websocket-service
+  labels:
+    app: quarkus-websocket-service
+    component: websocket
+spec:
+  source:
+    type: Git
+    git:
+      uri: https://github.com/tosin2013/healthcare-ml-genetic-predictor.git
+      ref: main
+    contextDir: quarkus-websocket-service
+  strategy:
+    type: Source
+    sourceStrategy:
+      from:
+        kind: ImageStreamTag
+        name: ubi8-openjdk-17:1.15
+        namespace: openshift
+      env:
+      - name: MAVEN_ARGS
+        value: "-Dquarkus.package.type=uber-jar"
+  output:
+    to:
+      kind: ImageStreamTag
+      name: quarkus-websocket-service:latest
+  triggers:
+  - type: ConfigChange
+  - type: GitHub
+    github:
+      secret: github-webhook-secret
+  - type: Generic
+    generic:
+      secret: generic-webhook-secret
+---
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  name: quarkus-websocket-service
+  labels:
+    app: quarkus-websocket-service
+    component: websocket
+spec:
+  lookupPolicy:
+    local: false

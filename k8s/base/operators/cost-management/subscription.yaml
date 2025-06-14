@@ -1,0 +1,23 @@
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: costmanagement-metrics-operator
+  namespace: costmanagement-metrics-operator
+  labels:
+    app.kubernetes.io/name: cost-management-operator
+    app.kubernetes.io/component: cost-management
+    app.kubernetes.io/part-of: healthcare-ml-demo
+spec:
+  channel: stable
+  name: costmanagement-metrics-operator
+  source: redhat-operators
+  sourceNamespace: openshift-marketplace
+  installPlanApproval: Automatic
+  config:
+    env:
+    - name: LEADER_ELECTION_LEASE_DURATION
+      value: "60s"
+    - name: LEADER_ELECTION_RENEW_DEADLINE
+      value: "30s"
+    - name: LEADER_ELECTION_RETRY_PERIOD
+      value: "5s"

@@ -22,32 +22,16 @@ commonAnnotations:
   deployment-method: "kustomize"
   openshift.io/display-name: "Healthcare ML Demo"
 
-# Resource ordering - operators first, then infrastructure, then applications
+# ADR-001 Compliant Resources
 resources:
-  # Phase 1: Operator Subscriptions (must be installed first)
-  # Using actual operator names from cluster packagemanifests:
-  # - amq-streams (stable channel)
-  # - serverless-operator (stable channel)
-  # - openshift-custom-metrics-autoscaler-operator (stable channel)
-  # - rhods-operator (stable channel)
-  - operators/amq-streams
-  - operators/serverless
-  - operators/keda
-  - operators/openshift-ai
-  
-  # Phase 2: Infrastructure Components (depends on operators)
-  - infrastructure/namespace
-  - infrastructure/kafka
-  
-  # Phase 3: Application Deployments (depends on infrastructure)
-  - applications/quarkus-websocket  # ADR-001: WebSocket service as Deployment
-  - applications/vep-service        # ADR-001: VEP service as Knative
-  - applications/frontend
-  - applications/ml-inference
-  
-  # Phase 4: Eventing Configuration (depends on applications and infrastructure)
-  - eventing/kafka-source
-  - eventing/keda-scaler
+  # Build Configurations
+  - buildconfigs/websocket-service-bc.yaml
+  - buildconfigs/vep-service-bc.yaml
+  # Core Services (ADR-001 Architecture)
+  - websocket-service/deployment.yaml    # WebSocket as Deployment (persistent connections)
+  - vep-service/knative-service.yaml     # VEP as Knative Service (scale-to-zero)
+  - keda/scaledobject.yaml               # KEDA scaling for both services
+  - kafka/topics.yaml                    # Kafka topics for data flow
 
 # Components for reusable configurations
 components:

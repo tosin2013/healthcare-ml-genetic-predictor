@@ -1,0 +1,49 @@
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: vep-service-scaler
+  labels:
+    app: vep-service
+    component: vep-processor
+spec:
+  scaleTargetRef:
+    apiVersion: serving.knative.dev/v1
+    kind: Service
+    name: vep-service
+  pollingInterval: 10
+  cooldownPeriod: 60
+  minReplicaCount: 0
+  maxReplicaCount: 20
+  triggers:
+  - type: kafka
+    metadata:
+      bootstrapServers: my-cluster-kafka-bootstrap:9092
+      consumerGroup: vep-annotation-service-group
+      topic: genetic-data-raw
+      lagThreshold: "5"
+      offsetResetPolicy: latest
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: websocket-service-scaler
+  labels:
+    app: quarkus-websocket-service
+    component: websocket
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: quarkus-websocket-service
+  pollingInterval: 15
+  cooldownPeriod: 120
+  minReplicaCount: 2
+  maxReplicaCount: 10
+  triggers:
+  - type: kafka
+    metadata:
+      bootstrapServers: my-cluster-kafka-bootstrap:9092
+      consumerGroup: websocket-results-group
+      topic: genetic-data-annotated
+      lagThreshold: "10"
+      offsetResetPolicy: latest

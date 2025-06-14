@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: costmanagement-metrics-operator
+  labels:
+    app.kubernetes.io/name: cost-management-operator
+    app.kubernetes.io/component: cost-management
+    app.kubernetes.io/part-of: healthcare-ml-demo
+    openshift.io/cluster-monitoring: "true"
+  annotations:
+    openshift.io/description: "Cost Management Metrics Operator for healthcare ML demo cost tracking"
+    openshift.io/display-name: "Cost Management Metrics"

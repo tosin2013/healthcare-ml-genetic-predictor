@@ -1,0 +1,65 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+metadata:
+  name: healthcare-ml-mvp-demo
+
+# Base configuration
+bases:
+- ../../base
+
+# Namespace for MVP demo
+namespace: healthcare-ml-demo
+
+# MVP-specific labels
+commonLabels:
+  environment: mvp-demo
+  deployment-type: adr-001-compliant
+  cost-center: genomics-research
+
+# MVP-specific annotations for cost tracking
+commonAnnotations:
+  cost-management.openshift.io/project: "healthcare-ml-demo"
+  cost-management.openshift.io/environment: "mvp-demo"
+  openshift.io/display-name: "Healthcare ML MVP Demo"
+
+# Image overrides for MVP demo
+images:
+- name: quarkus-websocket-service
+  newName: image-registry.openshift-image-registry.svc:5000/healthcare-ml-demo/quarkus-websocket-service
+  newTag: latest
+- name: vep-service
+  newName: image-registry.openshift-image-registry.svc:5000/healthcare-ml-demo/vep-service
+  newTag: latest
+
+# MVP-specific patches
+patches:
+# Increase VEP service resources for demo
+- target:
+    kind: Service
+    name: vep-service
+    version: v1
+    group: serving.knative.dev
+  patch: |-
+    - op: replace
+      path: /spec/template/spec/containers/0/resources/limits/memory
+      value: "2Gi"
+    - op: replace
+      path: /spec/template/spec/containers/0/resources/limits/cpu
+      value: "2000m"
+
+# Add demo-specific environment variables
+- target:
+    kind: Deployment
+    name: quarkus-websocket-service
+  patch: |-
+    - op: add
+      path: /spec/template/spec/containers/0/env/-
+      value:
+        name: DEMO_MODE
+        value: "true"
+    - op: add
+      path: /spec/template/spec/containers/0/env/-
+      value:
+        name: COST_TRACKING_ENABLED
+        value: "true"

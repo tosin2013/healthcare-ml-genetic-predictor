@@ -1,0 +1,47 @@
+apiVersion: build.openshift.io/v1
+kind: BuildConfig
+metadata:
+  name: vep-service
+  labels:
+    app: vep-service
+    component: vep-processor
+spec:
+  source:
+    type: Git
+    git:
+      uri: https://github.com/tosin2013/healthcare-ml-genetic-predictor.git
+      ref: main
+    contextDir: vep-service
+  strategy:
+    type: Source
+    sourceStrategy:
+      from:
+        kind: ImageStreamTag
+        name: ubi8-openjdk-17:1.15
+        namespace: openshift
+      env:
+      - name: MAVEN_ARGS
+        value: "-Dquarkus.package.type=uber-jar"
+  output:
+    to:
+      kind: ImageStreamTag
+      name: vep-service:latest
+  triggers:
+  - type: ConfigChange
+  - type: GitHub
+    github:
+      secret: github-webhook-secret
+  - type: Generic
+    generic:
+      secret: generic-webhook-secret
+---
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  name: vep-service
+  labels:
+    app: vep-service
+    component: vep-processor
+spec:
+  lookupPolicy:
+    local: false

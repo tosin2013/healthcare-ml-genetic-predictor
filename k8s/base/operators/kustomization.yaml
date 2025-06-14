@@ -12,6 +12,7 @@ resources:
   - serverless
   - keda
   - openshift-ai
+  - cost-management
 
 # Common labels for all operators
 labels:

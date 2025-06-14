@@ -1,0 +1,25 @@
+# Research and development files
+research_deep.md
+research.md
+dev.spec.md
+DEPLOYMENT.md
+
+# Node modules
+node_modules/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.temp

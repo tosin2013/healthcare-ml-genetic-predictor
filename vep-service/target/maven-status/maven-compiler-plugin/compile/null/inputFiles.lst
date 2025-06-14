@@ -1,0 +1,12 @@
+/home/azure/edge-project/vep-service/src/main/java/com/redhat/healthcare/vep/TranscriptConsequence.java
+/home/azure/edge-project/vep-service/src/main/java/com/redhat/healthcare/vep/AnnotatedGeneticData.java
+/home/azure/edge-project/vep-service/src/main/java/com/redhat/healthcare/vep/VepAnnotationProcessor.java
+/home/azure/edge-project/vep-service/src/main/java/com/redhat/healthcare/vep/IntergenicConsequence.java
+/home/azure/edge-project/vep-service/src/main/java/com/redhat/healthcare/vep/VepAnnotationService.java
+/home/azure/edge-project/vep-service/src/main/java/com/redhat/healthcare/vep/VepHealthCheck.java
+/home/azure/edge-project/vep-service/src/main/java/com/redhat/healthcare/vep/GeneticSequenceData.java
+/home/azure/edge-project/vep-service/src/main/java/com/redhat/healthcare/vep/VepApiClient.java
+/home/azure/edge-project/vep-service/src/main/java/com/redhat/healthcare/vep/VepApiResponse.java
+/home/azure/edge-project/vep-service/src/main/java/com/redhat/healthcare/vep/VepServiceInfo.java
+/home/azure/edge-project/vep-service/src/main/java/com/redhat/healthcare/vep/VepAnnotationResult.java
+/home/azure/edge-project/vep-service/src/main/java/com/redhat/healthcare/vep/RegulatoryFeatureConsequence.java
