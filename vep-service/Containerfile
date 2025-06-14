@@ -1,0 +1,46 @@
+# Multi-stage build for VEP Annotation Service
+# Stage 1: Build the application
+FROM registry.access.redhat.com/ubi8/openjdk-17:1.18 AS builder
+
+# Set working directory and fix permissions
+USER root
+WORKDIR /app
+RUN chown -R 185:185 /app
+
+# Switch to non-root user for build
+USER 185
+
+# Copy Maven wrapper and pom.xml
+COPY --chown=185:185 mvnw mvnw.cmd pom.xml ./
+COPY --chown=185:185 .mvn .mvn
+
+# Copy source code
+COPY --chown=185:185 src ./src
+
+# Make mvnw executable and build the application
+RUN chmod +x ./mvnw && ./mvnw clean package -DskipTests
+
+# Stage 2: Runtime image
+FROM registry.access.redhat.com/ubi8/openjdk-17-runtime:1.18
+
+# Set environment variables
+ENV LANGUAGE='en_US:en'
+
+# Copy the built application
+COPY --from=builder --chown=185 /app/target/quarkus-app/lib/ /deployments/lib/
+COPY --from=builder --chown=185 /app/target/quarkus-app/*.jar /deployments/
+COPY --from=builder --chown=185 /app/target/quarkus-app/app/ /deployments/app/
+COPY --from=builder --chown=185 /app/target/quarkus-app/quarkus/ /deployments/quarkus/
+
+# Expose port
+EXPOSE 8080
+
+# Set user
+USER 185
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD curl -f http://localhost:8080/q/health || exit 1
+
+# Run the application
+ENTRYPOINT ["java", "-jar", "/deployments/quarkus-run.jar"]
