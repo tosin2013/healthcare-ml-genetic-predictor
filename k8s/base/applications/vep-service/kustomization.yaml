@@ -11,6 +11,7 @@ resources:
   # - deployment.yaml        # Removed per ADR-001: VEP uses Knative for event-driven scaling
   # - service.yaml          # Not needed: Knative service includes built-in service
   - knative-service.yaml    # ADR-001: VEP service uses Knative for cost-efficient scaling
+  - serviceaccount.yaml     # Service account for image pull permissions
   - configmap.yaml
   - buildconfig.yaml
   - imagestream.yaml

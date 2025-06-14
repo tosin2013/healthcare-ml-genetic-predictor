@@ -39,35 +39,33 @@ This project implements a healthcare ML application that processes genetic data 
 
 ### Deploy to OpenShift
 
-1. **Clone the repository**:
-   ```bash
-   git clone https://github.com/your-org/healthcare-ml-genetic-predictor.git
-   cd healthcare-ml-genetic-predictor
-   ```
+**📖 For complete deployment instructions, see [DEPLOYMENT.md](DEPLOYMENT.md)**
 
-2. **Deploy operators** (if not already installed):
-   ```bash
-   oc apply -k k8s/base/operators
-   ```
+**Quick Start:**
+```bash
+# 1. Clone repository
+git clone https://github.com/tosin2013/healthcare-ml-genetic-predictor.git
+cd healthcare-ml-genetic-predictor
 
-3. **Deploy infrastructure**:
-   ```bash
-   oc apply -k k8s/base/infrastructure
-   ```
+# 2. Deploy operators
+oc apply -k k8s/base/operators
 
-4. **Deploy Quarkus WebSocket service**:
-   ```bash
-   ./k8s/deploy-with-buildconfig.sh
-   ```
+# 3. Deploy infrastructure
+oc apply -k k8s/base/infrastructure
 
-5. **Access the application**:
-   ```bash
-   # Get the route URL
-   oc get route quarkus-websocket-service -n healthcare-ml-demo
-   
-   # Open the genetic analysis client
-   https://<route-url>/genetic-client.html
-   ```
+# 4. Deploy applications
+oc apply -k k8s/base/applications/quarkus-websocket -n healthcare-ml-demo
+oc apply -k k8s/base/applications/vep-service -n healthcare-ml-demo
+
+# 5. Grant permissions and start builds
+oc policy add-role-to-user system:image-puller system:serviceaccount:healthcare-ml-demo:vep-service -n healthcare-ml-demo
+oc start-build quarkus-websocket-service -n healthcare-ml-demo
+oc start-build vep-service -n healthcare-ml-demo
+
+# 6. Access application
+oc get route quarkus-websocket-service -n healthcare-ml-demo
+# Open: https://<route-url>/genetic-client.html
+```
 
 ## 📁 Project Structure
 
