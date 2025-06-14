@@ -93,7 +93,6 @@ spec:
         securityContext:
           allowPrivilegeEscalation: false
           runAsNonRoot: true
-          runAsUser: 185
           capabilities:
             drop:
             - ALL
