@@ -4,22 +4,55 @@ research.md
 dev.spec.md
 DEPLOYMENT.md
 
-# Node modules
+# Node modules and package files
 node_modules/
+package-lock.json
+package.json
+
+# Build and target directories
+target/
+build/
+dist/
+out/
 
 # IDE files
 .vscode/
 .idea/
 *.swp
 *.swo
+*.iml
+.project
+.classpath
+.settings/
 
 # OS files
 .DS_Store
 Thumbs.db
+*.tmp
+*.temp
 
 # Logs
 *.log
+logs/
 
-# Temporary files
-*.tmp
-*.temp
+# Maven
+.mvn/wrapper/maven-wrapper.jar
+.mvn/wrapper/maven-wrapper.properties
+
+# Gradle
+.gradle/
+gradle/wrapper/gradle-wrapper.jar
+
+# Documentation and research files
+*.md
+!README.md
+!k8s/README.md
+!docs/README.md
+
+# Windsurf and AI assistant files
+.windsurf/
+
+# Test and temporary files
+test-*.md
+*-issue.md
+*-prd.md
