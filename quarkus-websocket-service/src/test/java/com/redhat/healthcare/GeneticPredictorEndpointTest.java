@@ -20,7 +20,7 @@ public class GeneticPredictorEndpointTest {
     @Test
     public void testWebSocketEndpoint() throws Exception {
         try (Session session = ContainerProvider.getWebSocketContainer().connectToServer(Client.class, uri)) {
-            assertEquals("🧬 Connected to Genetic Analysis Service with VEP Integration", Client.MESSAGES.poll(10, TimeUnit.SECONDS));
+            assertEquals("🧬 Connected to Healthcare ML Service with OpenShift AI Integration", Client.MESSAGES.poll(10, TimeUnit.SECONDS));
             session.getAsyncRemote().sendText("ATCGATCGATCG");
             String response = Client.MESSAGES.poll(10, TimeUnit.SECONDS);
             assertNotNull(response);
