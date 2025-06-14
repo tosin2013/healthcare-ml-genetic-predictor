@@ -41,7 +41,19 @@ This project implements a healthcare ML application that processes genetic data 
 
 **📖 For complete deployment instructions, see [DEPLOYMENT.md](DEPLOYMENT.md)**
 
-**Quick Start:**
+**✅ Automated Deployment (Recommended):**
+```bash
+# Clone repository
+git clone https://github.com/tosin2013/healthcare-ml-genetic-predictor.git
+cd healthcare-ml-genetic-predictor
+
+# Run validated deployment script
+./scripts/deploy-clean.sh
+
+# Access application (get URL from script output)
+```
+
+**Manual Quick Start:**
 ```bash
 # 1. Clone repository
 git clone https://github.com/tosin2013/healthcare-ml-genetic-predictor.git
