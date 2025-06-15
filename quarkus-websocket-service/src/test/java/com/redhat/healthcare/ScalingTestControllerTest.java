@@ -16,6 +16,9 @@ import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.*;
 import static org.junit.jupiter.api.Assertions.*;
 
+import java.util.HashMap;
+import java.util.Map;
+
 /**
  * Comprehensive test class for ScalingTestController threading validation.
  * 
@@ -245,8 +248,8 @@ public class ScalingTestControllerTest {
     public void testGeneticAnalysisWithDefaultMode_InheritCurrentMode() {
         // Test that request inherits current mode when not specified
 
-        // First set the mode to big-data
-        ScalingModeRequest modeRequest = createScalingModeRequest("big-data", "Test mode inheritance");
+        // First set the mode to bigdata (note: API uses "bigdata" not "big-data")
+        ScalingModeRequest modeRequest = createScalingModeRequest("bigdata", "Test mode inheritance");
         given()
             .contentType(ContentType.JSON)
             .body(modeRequest)
@@ -256,19 +259,22 @@ public class ScalingTestControllerTest {
             .statusCode(200);
 
         // Now send genetic analysis request without mode specified (will inherit current mode)
-        GeneticAnalysisRequest request = createGeneticAnalysisRequest("ATCGATCGATCG", "normal");
-        request.setMode(null); // Explicitly set to null to test inheritance
+        // Create request without mode to test inheritance
+        Map<String, Object> requestBody = new HashMap<>();
+        requestBody.put("sequence", "ATCGATCGATCGATCGATCGATCGATCGATCGATCG"); // Use longer sequence for bigdata
+        requestBody.put("resourceProfile", "high-memory");
+        // Note: mode field is omitted to test inheritance
 
         given()
             .contentType(ContentType.JSON)
-            .body(request)
+            .body(requestBody)
             .when()
             .post("/api/genetic/analyze")
             .then()
             .statusCode(200)
             .contentType(ContentType.JSON)
             .body("status", equalTo("success"))
-            .body("data.processingMode", equalTo("big-data")) // Should inherit big-data mode
+            .body("data.processingMode", equalTo("bigdata")) // Should inherit bigdata mode
             .body("metadata.eventType", equalTo("com.redhat.healthcare.genetic.sequence.bigdata"));
 
         // Reset mode to normal for other tests
