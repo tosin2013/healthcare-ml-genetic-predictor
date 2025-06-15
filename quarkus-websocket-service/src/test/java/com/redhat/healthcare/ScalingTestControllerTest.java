@@ -175,7 +175,7 @@ public class ScalingTestControllerTest {
     public void testGeneticAnalysisBigDataMode_ThreadingValidation() {
         // Test big-data mode genetic analysis with different CloudEvent type
 
-        GeneticAnalysisRequest request = createGeneticAnalysisRequest("ATCGATCGATCGATCGATCGATCGATCGATCGATCG", "big-data");
+        GeneticAnalysisRequest request = createGeneticAnalysisRequest("ATCGATCGATCGATCGATCGATCGATCGATCGATCG", "bigdata");
         request.setResourceProfile("high-memory");
 
         Response response = given()
@@ -187,7 +187,7 @@ public class ScalingTestControllerTest {
             .statusCode(200)
             .contentType(ContentType.JSON)
             .body("status", equalTo("success"))
-            .body("data.processingMode", equalTo("big-data"))
+            .body("data.processingMode", equalTo("bigdata"))
             .body("data.sequenceLength", equalTo(36))
             .body("data.sequencesSubmitted", equalTo(1))
             .body("data.sessionId", notNullValue())
@@ -199,9 +199,9 @@ public class ScalingTestControllerTest {
         // Verify response structure
         verifySuccessfulProcessing(response);
 
-        // Verify big-data mode specific behavior
+        // Verify bigdata mode specific behavior
         String responseBody = response.getBody().asString();
-        assertTrue(responseBody.contains("big-data"), "Response should indicate big-data mode processing");
+        assertTrue(responseBody.contains("bigdata"), "Response should indicate bigdata mode processing");
         assertTrue(responseBody.contains("bigdata"), "CloudEvent type should be bigdata variant");
     }
 
@@ -323,7 +323,7 @@ public class ScalingTestControllerTest {
     public void testGeneticAnalysisCloudEventStructure_BigDataMode() {
         // Test CloudEvent structure and metadata for big-data mode
 
-        GeneticAnalysisRequest request = createGeneticAnalysisRequest("ATCGATCGATCGATCGATCGATCGATCGATCGATCG", "big-data");
+        GeneticAnalysisRequest request = createGeneticAnalysisRequest("ATCGATCGATCGATCGATCGATCGATCGATCGATCG", "bigdata");
         request.setResourceProfile("high-memory");
 
         Response response = given()
