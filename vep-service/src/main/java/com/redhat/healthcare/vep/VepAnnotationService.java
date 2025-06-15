@@ -58,7 +58,7 @@ public class VepAnnotationService {
      */
     @Incoming("genetic-data-raw")
     @Outgoing("genetic-data-annotated")
-    @Blocking(value = "vep-worker-pool", ordered = false)
+    @Blocking(ordered = false)
     public String processGeneticSequence(String cloudEventJson) {
         LOG.infof("Processing genetic sequence: %s",
                   cloudEventJson.length() > 50 ? cloudEventJson.substring(0, 50) + "..." : cloudEventJson);
