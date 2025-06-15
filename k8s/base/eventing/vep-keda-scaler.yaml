@@ -13,11 +13,13 @@ metadata:
     insights.openshift.io/project: vep-annotation-v1
 spec:
   scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
     name: vep-service
   pollingInterval: 15
   cooldownPeriod: 60
-  idleReplicaCount: 0
-  minReplicaCount: 0
+  idleReplicaCount: 1
+  minReplicaCount: 1
   maxReplicaCount: 20
   fallback:
     failureThreshold: 3
@@ -48,7 +50,7 @@ spec:
     - type: kafka
       metadata:
         bootstrapServers: genetic-data-cluster-kafka-bootstrap.healthcare-ml-demo.svc.cluster.local:9092
-        consumerGroup: vep-annotation-service-group
+        consumerGroup: vep-service-group
         topic: genetic-data-raw
         lagThreshold: '5'
         offsetResetPolicy: latest
@@ -160,7 +162,7 @@ metadata:
 data:
   # VEP Service Scaling Configuration
   vep.scaling.enabled: "true"
-  vep.scaling.min.replicas: "0"
+  vep.scaling.min.replicas: "1"
   vep.scaling.max.replicas: "20"
   vep.scaling.target.cpu: "70"
   vep.scaling.target.memory: "80"

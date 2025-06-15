@@ -84,8 +84,8 @@ public class ScalingTestController {
             
             ApiResponse<Map<String, Object>> response = ApiResponse.success(modeMessage, responseData)
                 .addMetadata("scalingMode", request.getMode())
-                .addMetadata("expectedScaling", request.isBigDataMode() ? 
-                    "0→10+ pods, 2→5+ nodes" : "0→1→0 pods");
+                .addMetadata("expectedScaling", request.isBigDataMode() ?
+                    "1→10+ pods, 6→7+ nodes" : "1→2+ pods");
             
             return Response.ok(response).build();
             
@@ -163,8 +163,8 @@ public class ScalingTestController {
             responseData.put("sessionId", request.getSessionId());
             responseData.put("trackingId", event.getId());
             
-            String expectedScaling = "big-data".equals(processingMode) ? 
-                "0→10+ pods, 2→5+ nodes" : "0→1→0 pods";
+            String expectedScaling = "big-data".equals(processingMode) ?
+                "1→10+ pods, 6→7+ nodes" : "1→2+ pods";
             
             ApiResponse<Map<String, Object>> response = ApiResponse.success(
                 String.format("🧬 Genetic sequence (%d chars) queued for %s processing", 
@@ -230,7 +230,7 @@ public class ScalingTestController {
             responseData.put("demoSessionId", demoSessionId);
 
             String expectedScaling = request.isNodeScalingDemo() ?
-                "0→10+ pods, 2→5+ nodes" : "0→5+ pods";
+                "1→10+ pods, 6→7+ nodes" : "1→5+ pods";
 
             ApiResponse<Map<String, Object>> response = ApiResponse.success(
                 String.format("⚡ %s demo triggered with %d sequences (%s each)",
@@ -271,11 +271,11 @@ public class ScalingTestController {
             // Simulate scaling metrics (in real implementation, query actual metrics)
             if ("big-data".equals(currentMode)) {
                 statusData.put("currentPods", ThreadLocalRandom.current().nextInt(5, 15));
-                statusData.put("currentNodes", ThreadLocalRandom.current().nextInt(3, 8));
+                statusData.put("currentNodes", ThreadLocalRandom.current().nextInt(6, 8));
                 statusData.put("kafkaLag", ThreadLocalRandom.current().nextInt(10, 50));
             } else {
-                statusData.put("currentPods", ThreadLocalRandom.current().nextInt(0, 3));
-                statusData.put("currentNodes", 2);
+                statusData.put("currentPods", ThreadLocalRandom.current().nextInt(1, 3));
+                statusData.put("currentNodes", 6);
                 statusData.put("kafkaLag", ThreadLocalRandom.current().nextInt(0, 10));
             }
 

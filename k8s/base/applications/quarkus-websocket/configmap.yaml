@@ -16,7 +16,7 @@ metadata:
     deployment-method: "kustomize"
 data:
   # Kafka configuration
-  kafka.bootstrap.servers: "genetic-data-cluster-kafka-bootstrap.healthcare-ml-demo.svc:9092"
+  kafka.bootstrap.servers: "genetic-data-cluster-kafka-bootstrap.healthcare-ml-demo.svc.cluster.local:9092"
   kafka.topic.genetic-data-raw: "genetic-data-raw"
   kafka.topic.genetic-data-processed: "genetic-data-processed"
   
