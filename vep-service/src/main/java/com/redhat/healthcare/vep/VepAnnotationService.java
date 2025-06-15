@@ -62,11 +62,11 @@ public class VepAnnotationService {
         // Option 2: Ultra-Simple Reactive Approach - No blocking operations at all
         LOG.infof("Processing genetic sequence reactively on thread: %s", Thread.currentThread().getName());
 
-        // Create immediate success response without any complex operations
-        String sessionId = "reactive-" + System.currentTimeMillis();
+        // Extract sessionId from CloudEvent to maintain communication flow
+        String sessionId = extractSessionIdSafely(cloudEventJson);
 
         return Uni.createFrom().item(() -> {
-            // Ultra-simple response creation
+            // Ultra-simple response creation with preserved sessionId
             return String.format("""
                 {
                     "sessionId": "%s",
@@ -120,25 +120,47 @@ public class VepAnnotationService {
      */
     private String extractSessionIdSafely(String cloudEventJson) {
         try {
-            // Simple string parsing to avoid blocking JSON operations
-            if (cloudEventJson.contains("sessionId")) {
-                // Extract sessionId using simple string operations
+            // Try multiple patterns to extract sessionId from CloudEvent
+            String sessionId = null;
+
+            // Pattern 1: Look for sessionId in data payload
+            if (cloudEventJson.contains("\"sessionId\":")) {
                 int start = cloudEventJson.indexOf("\"sessionId\":");
                 if (start != -1) {
                     start = cloudEventJson.indexOf("\"", start + 12);
                     int end = cloudEventJson.indexOf("\"", start + 1);
                     if (start != -1 && end != -1) {
-                        return cloudEventJson.substring(start + 1, end);
+                        sessionId = cloudEventJson.substring(start + 1, end);
                     }
                 }
             }
 
-            // Generate session ID if not found
-            return "reactive-session-" + System.currentTimeMillis();
+            // Pattern 2: Look for sessionid extension in CloudEvent
+            if (sessionId == null && cloudEventJson.contains("\"sessionid\":")) {
+                int start = cloudEventJson.indexOf("\"sessionid\":");
+                if (start != -1) {
+                    start = cloudEventJson.indexOf("\"", start + 12);
+                    int end = cloudEventJson.indexOf("\"", start + 1);
+                    if (start != -1 && end != -1) {
+                        sessionId = cloudEventJson.substring(start + 1, end);
+                    }
+                }
+            }
+
+            // Return extracted sessionId or generate fallback
+            if (sessionId != null && !sessionId.isEmpty()) {
+                LOG.debugf("Extracted sessionId: %s", sessionId);
+                return sessionId;
+            } else {
+                String fallbackId = "reactive-session-" + System.currentTimeMillis();
+                LOG.debugf("No sessionId found, using fallback: %s", fallbackId);
+                return fallbackId;
+            }
 
         } catch (Exception e) {
-            LOG.debugf("Could not extract sessionId, generating new one: %s", e.getMessage());
-            return "reactive-session-" + System.currentTimeMillis();
+            String fallbackId = "reactive-session-" + System.currentTimeMillis();
+            LOG.debugf("Could not extract sessionId, using fallback %s: %s", fallbackId, e.getMessage());
+            return fallbackId;
         }
     }
 

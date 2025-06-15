@@ -32,6 +32,36 @@ public class VepAnnotationServiceTest {
     }
 
     @Test
+    public void testSessionIdExtraction() {
+        // Test sessionId extraction from CloudEvent JSON
+        String cloudEventWithSessionId = """
+            {
+                "specversion": "1.0",
+                "type": "com.redhat.healthcare.genetic.sequence.raw",
+                "source": "/genetic-simulator/websocket",
+                "id": "test-123",
+                "data": {
+                    "sessionId": "websocket-session-12345",
+                    "genetic_sequence": "ATCGATCG",
+                    "processing_mode": "normal"
+                }
+            }
+            """;
+
+        // Use reflection to test the private method
+        try {
+            java.lang.reflect.Method method = VepAnnotationService.class.getDeclaredMethod("extractSessionIdSafely", String.class);
+            method.setAccessible(true);
+            String extractedSessionId = (String) method.invoke(vepAnnotationService, cloudEventWithSessionId);
+
+            assertEquals("websocket-session-12345", extractedSessionId);
+            System.out.println("Successfully extracted sessionId: " + extractedSessionId);
+        } catch (Exception e) {
+            fail("Failed to test sessionId extraction: " + e.getMessage());
+        }
+    }
+
+    @Test
     public void testGeneticSequenceDataParsing() {
         // Test plain sequence parsing
         GeneticSequenceData data = GeneticSequenceData.fromPlainSequence("ATCGATCGATCG");
