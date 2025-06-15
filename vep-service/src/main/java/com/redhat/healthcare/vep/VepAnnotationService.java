@@ -58,31 +58,32 @@ public class VepAnnotationService {
      */
     @Incoming("genetic-data-raw")
     @Outgoing("genetic-data-annotated")
-    @Blocking
+    @Blocking(value = "vep-worker-pool", ordered = false)
     public String processGeneticSequence(String cloudEventJson) {
         LOG.infof("Processing genetic sequence: %s",
                   cloudEventJson.length() > 50 ? cloudEventJson.substring(0, 50) + "..." : cloudEventJson);
 
         try {
-            // For demo purposes, create a simple successful response
-            // This bypasses the complex CloudEvent parsing and VEP API calls
-            String sessionId = "demo-" + System.currentTimeMillis();
+            // RQ1.1 Solution: CloudEvent processing on dedicated worker thread pool
+            LOG.infof("Processing CloudEvent on Worker Thread: %s", Thread.currentThread().getName());
 
-            LOG.infof("Successfully processed genetic sequence for session: %s", sessionId);
+            // Parse CloudEvent and extract genetic data (now safe to block on Virtual Thread)
+            GeneticSequenceData sequenceData = parseCloudEventData(cloudEventJson);
 
-            // Create simple success response
-            return String.format("""
-                {
-                    "sessionId": "%s",
-                    "status": "success",
-                    "message": "VEP annotation completed successfully",
-                    "timestamp": "%s",
-                    "source": "vep-annotation-service",
-                    "variantCount": 5,
-                    "sequenceLength": 20,
-                    "processingMode": "demo"
-                }
-                """, sessionId, Instant.now().toString());
+            // Process genetic sequence with VEP annotation (blocking operations now safe)
+            VepAnnotationResult annotation = annotateWithVep(sequenceData);
+
+            // Process and enrich the annotation
+            AnnotatedGeneticData annotatedData = annotationProcessor.processAnnotation(
+                sequenceData, annotation);
+
+            // Create CloudEvent for downstream processing
+            String result = createAnnotatedCloudEvent(annotatedData, sequenceData);
+
+            LOG.infof("Successfully annotated sequence with %d variants on Worker Thread",
+                     annotation.getVariantCount());
+
+            return result;
 
         } catch (Exception e) {
             LOG.errorf(e, "Error processing genetic sequence: %s", e.getMessage());
@@ -93,26 +94,28 @@ public class VepAnnotationService {
     }
 
     /**
-     * Annotates genetic sequence using VEP API
+     * Annotates genetic sequence using VEP API (Worker Thread safe)
+     * RQ1.1 Solution: Can safely block on dedicated worker threads
      */
     public VepAnnotationResult annotateWithVep(GeneticSequenceData sequenceData) {
         try {
-            LOG.debugf("Calling VEP API for sequence: %s", sequenceData.getSequenceId());
-            
-            // Call VEP API
+            LOG.debugf("Calling VEP API for sequence: %s on worker thread: %s",
+                      sequenceData.getSequenceId(), Thread.currentThread().getName());
+
+            // Call VEP API (blocking operation now safe on Virtual Thread)
             VepApiResponse response = vepApiClient.annotateSequence(
                 sequenceData.getSequence(),
                 sequenceData.getSpecies(),
                 sequenceData.getAssembly()
             );
-            
+
             // Convert API response to internal format
             return VepAnnotationResult.fromApiResponse(response, sequenceData);
-            
+
         } catch (Exception e) {
-            LOG.warnf(e, "VEP API call failed for sequence %s: %s", 
+            LOG.warnf(e, "VEP API call failed for sequence %s: %s",
                      sequenceData.getSequenceId(), e.getMessage());
-            
+
             // Return empty annotation result for graceful degradation
             return VepAnnotationResult.empty(sequenceData);
         }
