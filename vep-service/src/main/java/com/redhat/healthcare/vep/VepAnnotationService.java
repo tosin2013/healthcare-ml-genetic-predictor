@@ -1,6 +1,6 @@
 package com.redhat.healthcare.vep;
 
-import io.quarkus.cache.CacheResult;
+
 import io.smallrye.reactive.messaging.annotations.Blocking;
 import org.eclipse.microprofile.reactive.messaging.Incoming;
 import org.eclipse.microprofile.reactive.messaging.Outgoing;
@@ -91,9 +91,8 @@ public class VepAnnotationService {
     }
 
     /**
-     * Annotates genetic sequence using VEP API with caching
+     * Annotates genetic sequence using VEP API
      */
-    @CacheResult(cacheName = "vep-annotations")
     public VepAnnotationResult annotateWithVep(GeneticSequenceData sequenceData) {
         try {
             LOG.debugf("Calling VEP API for sequence: %s", sequenceData.getSequenceId());
