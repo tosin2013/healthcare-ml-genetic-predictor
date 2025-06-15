@@ -85,6 +85,17 @@ public class VepAnnotationService {
 
             return result;
 
+        } catch (IllegalStateException e) {
+            // KEDA Scaling Solution: Handle threading errors gracefully
+            if (e.getMessage().contains("cannot be blocked")) {
+                LOG.warnf("Threading issue detected - creating error CloudEvent to maintain Kafka flow: %s", e.getMessage());
+
+                // Create error CloudEvent that flows to genetic-data-annotated
+                // This keeps the Kafka stream flowing and KEDA scaling working
+                return createThreadingErrorCloudEvent(cloudEventJson, e.getMessage());
+            }
+            throw e;
+
         } catch (Exception e) {
             LOG.errorf(e, "Error processing genetic sequence: %s", e.getMessage());
 
@@ -215,6 +226,86 @@ public class VepAnnotationService {
             LOG.errorf(e, "Failed to create CloudEvent, falling back to simple JSON");
             return annotatedData.toJson();
         }
+    }
+
+    /**
+     * Creates threading error CloudEvent to maintain Kafka flow for KEDA scaling
+     * This ensures messages continue flowing even when threading issues occur
+     */
+    private String createThreadingErrorCloudEvent(String originalEvent, String errorMessage) {
+        try {
+            // Create error data payload
+            ObjectNode data = objectMapper.createObjectNode();
+            data.put("error", true);
+            data.put("errorType", "THREADING_ERROR");
+            data.put("errorMessage", errorMessage);
+            data.put("processingStatus", "failed");
+            data.put("retryable", false);
+            data.put("timestamp", System.currentTimeMillis());
+            data.put("threadName", Thread.currentThread().getName());
+
+            // Try to extract session ID from original event
+            String sessionId = "error-" + System.currentTimeMillis();
+            try {
+                if (originalEvent.contains("sessionId")) {
+                    JsonNode originalNode = objectMapper.readTree(originalEvent);
+                    if (originalNode.has("data") && originalNode.get("data").has("sessionId")) {
+                        sessionId = originalNode.get("data").get("sessionId").asText();
+                    }
+                }
+            } catch (Exception e) {
+                LOG.debugf("Could not extract sessionId from original event: %s", e.getMessage());
+            }
+            data.put("sessionId", sessionId);
+
+            // Create CloudEvent for threading error
+            CloudEvent event = CloudEventBuilder.v1()
+                    .withId(UUID.randomUUID().toString())
+                    .withSource(URI.create("/vep-annotation-service"))
+                    .withType("com.redhat.healthcare.genetic.error.threading")
+                    .withSubject("Threading Error - Kafka Flow Maintained")
+                    .withExtension("errortype", "threading")
+                    .withExtension("sessionid", sessionId)
+                    .withExtension("retryable", "false")
+                    .withData("application/json", objectMapper.writeValueAsBytes(data))
+                    .build();
+
+            // Serialize CloudEvent
+            EventFormat format = EventFormatProvider.getInstance().resolveFormat(JsonFormat.CONTENT_TYPE);
+            byte[] cloudEventBytes = format.serialize(event);
+            String result = new String(cloudEventBytes);
+
+            LOG.infof("Created threading error CloudEvent for session %s - Kafka flow maintained", sessionId);
+            return result;
+
+        } catch (Exception e) {
+            LOG.errorf(e, "Failed to create threading error CloudEvent, using simple error format");
+            return createSimpleThreadingError(originalEvent, errorMessage);
+        }
+    }
+
+    /**
+     * Creates simple threading error response as fallback
+     */
+    private String createSimpleThreadingError(String originalEvent, String errorMessage) {
+        return String.format("""
+            {
+                "error": true,
+                "errorType": "THREADING_ERROR",
+                "errorMessage": "%s",
+                "processingStatus": "failed",
+                "retryable": false,
+                "timestamp": "%s",
+                "threadName": "%s",
+                "sessionId": "error-%d",
+                "source": "vep-annotation-service"
+            }
+            """,
+            errorMessage.replace("\"", "\\\""),
+            Instant.now().toString(),
+            Thread.currentThread().getName(),
+            System.currentTimeMillis()
+        );
     }
 
     /**
