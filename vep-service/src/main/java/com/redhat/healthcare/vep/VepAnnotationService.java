@@ -97,6 +97,24 @@ public class VepAnnotationService {
             throw e;
 
         } catch (Exception e) {
+            // KEDA Scaling Solution: Check if this is a threading error (even if wrapped)
+            if (e.getMessage() != null && e.getMessage().contains("cannot be blocked")) {
+                LOG.warnf("Threading issue detected in wrapped exception - creating error CloudEvent to maintain Kafka flow: %s", e.getMessage());
+                return createThreadingErrorCloudEvent(cloudEventJson, e.getMessage());
+            }
+
+            // Check if the cause is a threading error
+            Throwable cause = e.getCause();
+            while (cause != null) {
+                if (cause instanceof IllegalStateException &&
+                    cause.getMessage() != null &&
+                    cause.getMessage().contains("cannot be blocked")) {
+                    LOG.warnf("Threading issue detected in exception cause - creating error CloudEvent to maintain Kafka flow: %s", cause.getMessage());
+                    return createThreadingErrorCloudEvent(cloudEventJson, cause.getMessage());
+                }
+                cause = cause.getCause();
+            }
+
             LOG.errorf(e, "Error processing genetic sequence: %s", e.getMessage());
 
             // Return error result for downstream handling
