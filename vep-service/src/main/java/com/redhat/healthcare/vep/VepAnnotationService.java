@@ -11,6 +11,17 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.time.Instant;
 
+import io.cloudevents.CloudEvent;
+import io.cloudevents.core.builder.CloudEventBuilder;
+import io.cloudevents.core.format.EventFormat;
+import io.cloudevents.core.provider.EventFormatProvider;
+import io.cloudevents.jackson.JsonFormat;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.net.URI;
+import java.util.UUID;
+
 /**
  * VEP (Variant Effect Predictor) Annotation Service
  * 
@@ -36,21 +47,25 @@ public class VepAnnotationService {
     @Inject
     VepAnnotationProcessor annotationProcessor;
 
+    @Inject
+    ObjectMapper objectMapper;
+
     /**
      * Processes genetic sequences from the raw data topic
-     * 
+     *
      * @param geneticData Raw genetic sequence data from Kafka
      * @return Annotated genetic data for downstream processing
      */
     @Incoming("genetic-data-raw")
     @Outgoing("genetic-data-annotated")
-    public String processGeneticSequence(String geneticData) {
-        LOG.infof("Processing genetic sequence: %s", 
-                  geneticData.length() > 50 ? geneticData.substring(0, 50) + "..." : geneticData);
+    @Blocking
+    public String processGeneticSequence(String cloudEventJson) {
+        LOG.infof("Processing genetic sequence: %s",
+                  cloudEventJson.length() > 50 ? cloudEventJson.substring(0, 50) + "..." : cloudEventJson);
 
         try {
-            // Parse the incoming genetic data
-            GeneticSequenceData sequenceData = parseGeneticData(geneticData);
+            // Parse CloudEvent and extract genetic data
+            GeneticSequenceData sequenceData = parseCloudEventData(cloudEventJson);
 
             // Annotate with VEP
             VepAnnotationResult annotation = annotateWithVep(sequenceData);
@@ -59,8 +74,8 @@ public class VepAnnotationService {
             AnnotatedGeneticData annotatedData = annotationProcessor.processAnnotation(
                 sequenceData, annotation);
 
-            // Convert to JSON for downstream processing
-            String result = annotatedData.toJson();
+            // Create CloudEvent for downstream processing
+            String result = createAnnotatedCloudEvent(annotatedData, sequenceData);
 
             LOG.infof("Successfully annotated sequence with %d variants",
                      annotation.getVariantCount());
@@ -103,9 +118,45 @@ public class VepAnnotationService {
     }
 
     /**
-     * Parses incoming genetic data from JSON or plain text
+     * Parses CloudEvent and extracts genetic sequence data
      */
-    private GeneticSequenceData parseGeneticData(String geneticData) {
+    private GeneticSequenceData parseCloudEventData(String cloudEventJson) {
+        try {
+            // Parse CloudEvent
+            EventFormat format = EventFormatProvider.getInstance().resolveFormat(JsonFormat.CONTENT_TYPE);
+            CloudEvent cloudEvent = format.deserialize(cloudEventJson.getBytes());
+
+            // Extract data payload
+            byte[] data = cloudEvent.getData().toBytes();
+            JsonNode dataNode = objectMapper.readTree(data);
+
+            // Extract genetic sequence information
+            String sequence = dataNode.get("genetic_sequence").asText();
+            String sessionId = dataNode.has("sessionId") ? dataNode.get("sessionId").asText() : "unknown";
+            String processingMode = dataNode.has("processing_mode") ? dataNode.get("processing_mode").asText() : "normal";
+
+            // Create GeneticSequenceData object
+            GeneticSequenceData sequenceData = GeneticSequenceData.fromPlainSequence(sequence);
+            sequenceData.setSequenceId(sessionId);
+            sequenceData.setProcessingMode(processingMode);
+            sequenceData.setSource("cloudevent");
+
+            LOG.infof("Parsed CloudEvent: sessionId=%s, sequence length=%d, mode=%s",
+                     sessionId, sequence.length(), processingMode);
+
+            return sequenceData;
+
+        } catch (Exception e) {
+            LOG.warnf(e, "Failed to parse CloudEvent, attempting fallback parsing: %s", e.getMessage());
+            // Fallback to old parsing method
+            return parseGeneticDataFallback(cloudEventJson);
+        }
+    }
+
+    /**
+     * Fallback method for parsing genetic data from JSON or plain text
+     */
+    private GeneticSequenceData parseGeneticDataFallback(String geneticData) {
         try {
             // Try to parse as JSON first
             if (geneticData.trim().startsWith("{")) {
@@ -117,6 +168,48 @@ public class VepAnnotationService {
         } catch (Exception e) {
             LOG.warnf("Failed to parse genetic data, using fallback: %s", e.getMessage());
             return GeneticSequenceData.fromPlainSequence(geneticData);
+        }
+    }
+
+    /**
+     * Creates CloudEvent for annotated genetic data
+     */
+    private String createAnnotatedCloudEvent(AnnotatedGeneticData annotatedData, GeneticSequenceData originalData) {
+        try {
+            // Create data payload
+            ObjectNode data = objectMapper.createObjectNode();
+            data.put("sessionId", originalData.getSequenceId());
+            data.put("genetic_sequence", originalData.getSequence());
+            data.put("processing_mode", originalData.getProcessingMode());
+            data.put("annotation_timestamp", System.currentTimeMillis());
+            data.put("annotation_source", "vep-annotation-service");
+            data.put("status", annotatedData.getStatus());
+            data.put("variant_count", annotatedData.getVariantCount());
+            data.put("sequence_length", annotatedData.getSequenceLength());
+
+            // Add VEP annotations (simplified for now)
+            data.set("vep_annotations", objectMapper.createArrayNode());
+
+            // Create CloudEvent
+            CloudEvent event = CloudEventBuilder.v1()
+                    .withId(UUID.randomUUID().toString())
+                    .withSource(URI.create("/vep-annotation-service"))
+                    .withType("com.redhat.healthcare.genetic.sequence.annotated")
+                    .withSubject("VEP Annotation Complete")
+                    .withExtension("sessionid", originalData.getSequenceId())
+                    .withExtension("processingmode", originalData.getProcessingMode())
+                    .withExtension("variantcount", String.valueOf(annotatedData.getVariantCount()))
+                    .withData("application/json", objectMapper.writeValueAsBytes(data))
+                    .build();
+
+            // Serialize CloudEvent
+            EventFormat format = EventFormatProvider.getInstance().resolveFormat(JsonFormat.CONTENT_TYPE);
+            byte[] cloudEventBytes = format.serialize(event);
+            return new String(cloudEventBytes);
+
+        } catch (Exception e) {
+            LOG.errorf(e, "Failed to create CloudEvent, falling back to simple JSON");
+            return annotatedData.toJson();
         }
     }
 
@@ -134,7 +227,7 @@ public class VepAnnotationService {
                 "source": "vep-annotation-service",
                 "annotations": []
             }
-            """, 
+            """,
             System.currentTimeMillis(),
             originalData.length() > 100 ? originalData.substring(0, 100) + "..." : originalData,
             errorMessage.replace("\"", "\\\""),

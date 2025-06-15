@@ -49,51 +49,6 @@ services:
     networks:
       - healthcare-ml-test
 
-  # WebSocket Service (ADR-001: Deployment strategy - always-on)
-  websocket-service:
-    build:
-      context: ./quarkus-websocket-service
-      dockerfile: Containerfile
-    container_name: test-websocket-service
-    depends_on:
-      - kafka
-    ports:
-      - "8080:8080"
-    environment:
-      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
-      QUARKUS_PROFILE: local
-    networks:
-      - healthcare-ml-test
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/q/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-
-  # VEP Service (ADR-001: Knative strategy - event-driven)
-  vep-service:
-    build:
-      context: ./vep-service
-      dockerfile: Containerfile
-    container_name: test-vep-service
-    depends_on:
-      - kafka
-    ports:
-      - "8081:8080"
-    environment:
-      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
-      QUARKUS_PROFILE: local
-      QUARKUS_HTTP_PORT: 8080
-    networks:
-      - healthcare-ml-test
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/q/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-
 networks:
   healthcare-ml-test:
     driver: bridge
