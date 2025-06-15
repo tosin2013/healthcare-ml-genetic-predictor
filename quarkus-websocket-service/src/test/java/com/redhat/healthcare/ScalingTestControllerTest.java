@@ -258,16 +258,14 @@ public class ScalingTestControllerTest {
             .then()
             .statusCode(200);
 
-        // Now send genetic analysis request without mode specified (will inherit current mode)
-        // Create request without mode to test inheritance
-        Map<String, Object> requestBody = new HashMap<>();
-        requestBody.put("sequence", "ATCGATCGATCGATCGATCGATCGATCGATCGATCG"); // Use longer sequence for bigdata
-        requestBody.put("resourceProfile", "high-memory");
-        // Note: mode field is omitted to test inheritance
+        // Now send genetic analysis request with explicit null mode to test inheritance
+        GeneticAnalysisRequest inheritanceRequest = createGeneticAnalysisRequest("ATCGATCGATCGATCGATCGATCGATCGATCGATCG", "bigdata");
+        inheritanceRequest.setMode(null); // Explicitly set to null to test inheritance
+        inheritanceRequest.setResourceProfile("high-memory");
 
         given()
             .contentType(ContentType.JSON)
-            .body(requestBody)
+            .body(inheritanceRequest)
             .when()
             .post("/api/genetic/analyze")
             .then()
