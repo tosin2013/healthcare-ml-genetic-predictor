@@ -220,6 +220,9 @@ public class VepAnnotationService {
     /**
      * Annotates genetic sequence using VEP API (Worker Thread safe)
      * RQ1.1 Solution: Can safely block on dedicated worker threads
+     *
+     * REMOVED @CacheResult annotation to fix threading issues
+     * Cache was causing blocking operations on event loop threads
      */
     public VepAnnotationResult annotateWithVep(GeneticSequenceData sequenceData) {
         try {
