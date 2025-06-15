@@ -56,7 +56,7 @@ jobs:
     - name: Compile project
       run: |
         cd quarkus-websocket-service
-        ./mvnw clean compile test-compile -B
+        ./mvnw clean compile test-compile -B -q
         
     - name: Run Threading Validation Tests
       id: threading-tests
@@ -64,10 +64,11 @@ jobs:
         cd quarkus-websocket-service
         echo "🧵 Running Threading Validation Tests..."
         
-        # Run specific threading tests
-        ./mvnw test -Dtest=ScalingTestControllerTest -B \
+        # Run specific threading tests with optimized settings
+        ./mvnw test -Dtest=ScalingTestControllerTest -B -q \
           -Dquarkus.log.level=INFO \
           -Dquarkus.log.category."com.redhat.healthcare".level=DEBUG \
+          -Dmaven.test.failure.ignore=false \
           > threading-test-output.log 2>&1
         
         TEST_EXIT_CODE=$?
@@ -115,7 +116,7 @@ jobs:
         echo "- **Big Data Events**: $BIGDATA_EVENTS" >> threading-report.md
         
         echo "" >> threading-report.md
-        echo "### Test Summary" >> threading-test-output.log
+        echo "### Test Summary" >> threading-report.md
         tail -20 threading-test-output.log >> threading-report.md
         
         # Set outputs for later steps
@@ -189,33 +190,39 @@ jobs:
       if: always()
       run: |
         echo "🔍 Validating Threading Requirements..."
-        
-        WORKER_THREADS="${{ steps.threading-tests.outputs.worker_threads }}"
-        EVENT_LOOP_BLOCKS="${{ steps.threading-tests.outputs.event_loop_blocks }}"
-        TEST_EXIT_CODE="${{ steps.threading-tests.outputs.test_exit_code }}"
-        
-        echo "Worker Threads: $WORKER_THREADS"
-        echo "Event Loop Blocks: $EVENT_LOOP_BLOCKS"
-        echo "Test Exit Code: $TEST_EXIT_CODE"
-        
-        # Quality gates for threading validation
-        if [ "$EVENT_LOOP_BLOCKS" -gt 0 ]; then
+
+        # Get outputs with proper quoting and default values
+        WORKER_THREADS="${{ steps.threading-tests.outputs.worker_threads || '0' }}"
+        EVENT_LOOP_BLOCKS="${{ steps.threading-tests.outputs.event_loop_blocks || '0' }}"
+        TEST_EXIT_CODE="${{ steps.threading-tests.outputs.test_exit_code || '1' }}"
+
+        # Clean variables (remove any whitespace)
+        WORKER_THREADS=$(echo "$WORKER_THREADS" | tr -d ' ')
+        EVENT_LOOP_BLOCKS=$(echo "$EVENT_LOOP_BLOCKS" | tr -d ' ')
+        TEST_EXIT_CODE=$(echo "$TEST_EXIT_CODE" | tr -d ' ')
+
+        echo "Worker Threads: '$WORKER_THREADS'"
+        echo "Event Loop Blocks: '$EVENT_LOOP_BLOCKS'"
+        echo "Test Exit Code: '$TEST_EXIT_CODE'"
+
+        # Quality gates for threading validation with safer comparisons
+        if [ "${EVENT_LOOP_BLOCKS:-0}" -gt 0 ] 2>/dev/null; then
           echo "❌ FAIL: Event loop blocking detected ($EVENT_LOOP_BLOCKS occurrences)"
           echo "This violates ADR-004 threading requirements."
           exit 1
         fi
-        
-        if [ "$WORKER_THREADS" -eq 0 ]; then
+
+        if [ "${WORKER_THREADS:-0}" -eq 0 ] 2>/dev/null; then
           echo "❌ FAIL: No worker thread execution detected"
           echo "@Blocking annotations may not be working correctly."
           exit 1
         fi
-        
-        if [ "$TEST_EXIT_CODE" -ne 0 ]; then
+
+        if [ "${TEST_EXIT_CODE:-1}" -ne 0 ] 2>/dev/null; then
           echo "❌ FAIL: Threading tests failed (exit code: $TEST_EXIT_CODE)"
           exit 1
         fi
-        
+
         echo "✅ SUCCESS: All threading requirements validated"
         echo "- Worker threads: $WORKER_THREADS executions"
         echo "- Event loop blocking: $EVENT_LOOP_BLOCKS (target: 0)"
