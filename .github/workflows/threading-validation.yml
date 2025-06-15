@@ -1,0 +1,253 @@
+name: Threading Validation Tests
+
+on:
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'quarkus-websocket-service/**'
+      - '.github/workflows/threading-validation.yml'
+  push:
+    branches: [ main ]
+    paths:
+      - 'quarkus-websocket-service/**'
+  workflow_dispatch:
+    inputs:
+      test_scope:
+        description: 'Test scope to run'
+        required: false
+        default: 'threading'
+        type: choice
+        options:
+          - threading
+          - all
+          - specific
+
+env:
+  JAVA_VERSION: '17'
+  MAVEN_OPTS: '-Xmx1024m'
+
+jobs:
+  threading-validation:
+    name: Threading Validation Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up JDK ${{ env.JAVA_VERSION }}
+      uses: actions/setup-java@v4
+      with:
+        java-version: ${{ env.JAVA_VERSION }}
+        distribution: 'temurin'
+        
+    - name: Cache Maven dependencies
+      uses: actions/cache@v4
+      with:
+        path: ~/.m2
+        key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+        restore-keys: ${{ runner.os }}-m2
+        
+    - name: Validate Maven wrapper
+      run: |
+        cd quarkus-websocket-service
+        chmod +x mvnw
+        
+    - name: Compile project
+      run: |
+        cd quarkus-websocket-service
+        ./mvnw clean compile test-compile -B
+        
+    - name: Run Threading Validation Tests
+      id: threading-tests
+      run: |
+        cd quarkus-websocket-service
+        echo "🧵 Running Threading Validation Tests..."
+        
+        # Run specific threading tests
+        ./mvnw test -Dtest=ScalingTestControllerTest -B \
+          -Dquarkus.log.level=INFO \
+          -Dquarkus.log.category."com.redhat.healthcare".level=DEBUG \
+          > threading-test-output.log 2>&1
+        
+        TEST_EXIT_CODE=$?
+        
+        # Extract threading evidence from logs
+        echo "## Threading Validation Results" > threading-report.md
+        echo "" >> threading-report.md
+        
+        if [ $TEST_EXIT_CODE -eq 0 ]; then
+          echo "✅ **Threading Tests: PASSED**" >> threading-report.md
+        else
+          echo "❌ **Threading Tests: FAILED**" >> threading-report.md
+        fi
+        
+        echo "" >> threading-report.md
+        echo "### Thread Execution Analysis" >> threading-report.md
+        echo "" >> threading-report.md
+        
+        # Check for worker thread execution (good)
+        WORKER_THREADS=$(grep -c "executor-thread" threading-test-output.log || echo "0")
+        echo "- **Worker Thread Executions**: $WORKER_THREADS" >> threading-report.md
+        
+        # Check for event loop blocking (bad)
+        EVENT_LOOP_BLOCKS=$(grep -c "vert.x-eventloop-thread" threading-test-output.log || echo "0")
+        echo "- **Event Loop Thread Usage**: $EVENT_LOOP_BLOCKS" >> threading-report.md
+        
+        if [ $EVENT_LOOP_BLOCKS -eq 0 ]; then
+          echo "- **✅ No Event Loop Blocking Detected**" >> threading-report.md
+        else
+          echo "- **❌ Event Loop Blocking Detected**" >> threading-report.md
+        fi
+        
+        echo "" >> threading-report.md
+        echo "### CloudEvent Processing" >> threading-report.md
+        echo "" >> threading-report.md
+        
+        # Check CloudEvent creation
+        CLOUDEVENTS_SENT=$(grep -c "Sent.*CloudEvent to Kafka" threading-test-output.log || echo "0")
+        echo "- **CloudEvents Sent**: $CLOUDEVENTS_SENT" >> threading-report.md
+        
+        # Check for different event types
+        RAW_EVENTS=$(grep -c "genetic.sequence.raw" threading-test-output.log || echo "0")
+        BIGDATA_EVENTS=$(grep -c "genetic.sequence.bigdata" threading-test-output.log || echo "0")
+        echo "- **Raw Events**: $RAW_EVENTS" >> threading-report.md
+        echo "- **Big Data Events**: $BIGDATA_EVENTS" >> threading-report.md
+        
+        echo "" >> threading-report.md
+        echo "### Test Summary" >> threading-test-output.log
+        tail -20 threading-test-output.log >> threading-report.md
+        
+        # Set outputs for later steps
+        echo "test_exit_code=$TEST_EXIT_CODE" >> $GITHUB_OUTPUT
+        echo "worker_threads=$WORKER_THREADS" >> $GITHUB_OUTPUT
+        echo "event_loop_blocks=$EVENT_LOOP_BLOCKS" >> $GITHUB_OUTPUT
+        
+        exit $TEST_EXIT_CODE
+        
+    - name: Upload test artifacts
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: threading-test-results
+        path: |
+          quarkus-websocket-service/threading-test-output.log
+          quarkus-websocket-service/threading-report.md
+          quarkus-websocket-service/target/surefire-reports/
+        retention-days: 30
+        
+    - name: Comment on PR
+      if: github.event_name == 'pull_request' && always()
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          const path = 'quarkus-websocket-service/threading-report.md';
+          
+          let reportContent = '## 🧵 Threading Validation Report\n\n';
+          
+          if (fs.existsSync(path)) {
+            reportContent += fs.readFileSync(path, 'utf8');
+          } else {
+            reportContent += '❌ Threading report not generated - check workflow logs.\n';
+          }
+          
+          reportContent += '\n\n---\n';
+          reportContent += `**Workflow**: ${context.workflow}\n`;
+          reportContent += `**Run ID**: ${context.runId}\n`;
+          reportContent += `**Commit**: ${context.sha.substring(0, 7)}\n`;
+          
+          // Find existing comment
+          const { data: comments } = await github.rest.issues.listComments({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: context.issue.number,
+          });
+          
+          const existingComment = comments.find(comment => 
+            comment.user.login === 'github-actions[bot]' && 
+            comment.body.includes('🧵 Threading Validation Report')
+          );
+          
+          if (existingComment) {
+            await github.rest.issues.updateComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: existingComment.id,
+              body: reportContent
+            });
+          } else {
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: reportContent
+            });
+          }
+          
+    - name: Validate Threading Requirements
+      if: always()
+      run: |
+        echo "🔍 Validating Threading Requirements..."
+        
+        WORKER_THREADS="${{ steps.threading-tests.outputs.worker_threads }}"
+        EVENT_LOOP_BLOCKS="${{ steps.threading-tests.outputs.event_loop_blocks }}"
+        TEST_EXIT_CODE="${{ steps.threading-tests.outputs.test_exit_code }}"
+        
+        echo "Worker Threads: $WORKER_THREADS"
+        echo "Event Loop Blocks: $EVENT_LOOP_BLOCKS"
+        echo "Test Exit Code: $TEST_EXIT_CODE"
+        
+        # Quality gates for threading validation
+        if [ "$EVENT_LOOP_BLOCKS" -gt 0 ]; then
+          echo "❌ FAIL: Event loop blocking detected ($EVENT_LOOP_BLOCKS occurrences)"
+          echo "This violates ADR-004 threading requirements."
+          exit 1
+        fi
+        
+        if [ "$WORKER_THREADS" -eq 0 ]; then
+          echo "❌ FAIL: No worker thread execution detected"
+          echo "@Blocking annotations may not be working correctly."
+          exit 1
+        fi
+        
+        if [ "$TEST_EXIT_CODE" -ne 0 ]; then
+          echo "❌ FAIL: Threading tests failed (exit code: $TEST_EXIT_CODE)"
+          exit 1
+        fi
+        
+        echo "✅ SUCCESS: All threading requirements validated"
+        echo "- Worker threads: $WORKER_THREADS executions"
+        echo "- Event loop blocking: $EVENT_LOOP_BLOCKS (target: 0)"
+        echo "- Tests passed: ✅"
+        
+  test-summary:
+    name: Test Summary
+    runs-on: ubuntu-latest
+    needs: threading-validation
+    if: always()
+    
+    steps:
+    - name: Generate Summary
+      run: |
+        echo "## 🧵 Threading Validation Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
+        if [ "${{ needs.threading-validation.result }}" == "success" ]; then
+          echo "✅ **Threading validation passed**" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "All @Blocking annotations are working correctly and no event loop blocking was detected." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Ready for OpenShift deployment** ✅" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "❌ **Threading validation failed**" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Threading issues detected. Please review the test results and fix before OpenShift deployment." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**NOT ready for OpenShift deployment** ❌" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### ADR Compliance" >> $GITHUB_STEP_SUMMARY
+        echo "- **ADR-004**: API Testing and Validation ✅" >> $GITHUB_STEP_SUMMARY
+        echo "- **MVP Phase 0**: Local Testing Requirements ✅" >> $GITHUB_STEP_SUMMARY

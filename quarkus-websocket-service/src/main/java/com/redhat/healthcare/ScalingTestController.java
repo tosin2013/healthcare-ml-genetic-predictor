@@ -9,6 +9,7 @@ import io.cloudevents.core.builder.CloudEventBuilder;
 import io.cloudevents.core.format.EventFormat;
 import io.cloudevents.core.provider.EventFormatProvider;
 import io.cloudevents.jackson.JsonFormat;
+import io.smallrye.common.annotation.Blocking;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.validation.Valid;
@@ -99,12 +100,13 @@ public class ScalingTestController {
     
     /**
      * Process genetic sequence with specified mode and batch size.
-     * 
+     *
      * @param request Genetic analysis request
      * @return API response with processing confirmation
      */
     @POST
     @Path("/genetic/analyze")
+    @Blocking  // Ensure this runs on worker thread to avoid event loop blocking
     public Response analyzeGeneticSequence(@Valid GeneticAnalysisRequest request) {
         try {
             // Use current mode if not specified in request
@@ -191,6 +193,7 @@ public class ScalingTestController {
      */
     @POST
     @Path("/scaling/trigger-demo")
+    @Blocking  // Ensure this runs on worker thread due to Thread.sleep()
     public Response triggerScalingDemo(@Valid ScalingDemoRequest request) {
         try {
             LOGGER.info("Triggering {} demo with {} sequences of size {}",
@@ -217,7 +220,13 @@ public class ScalingTestController {
 
                 // Add delay between sequences to simulate realistic load
                 if (i < sequenceCount - 1) {
-                    Thread.sleep(2000); // 2 second delay
+                    try {
+                        Thread.sleep(2000); // 2 second delay - TODO: Replace with reactive delay
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                        LOGGER.warn("Demo sequence delay interrupted");
+                        break;
+                    }
                 }
             }
 
