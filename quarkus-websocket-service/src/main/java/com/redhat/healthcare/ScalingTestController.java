@@ -136,7 +136,7 @@ public class ScalingTestController {
             data.put("api_request", true);
             
             // Determine CloudEvent type based on mode
-            String eventType = "big-data".equals(processingMode) ?
+            String eventType = "bigdata".equals(processingMode) ?
                 "com.redhat.healthcare.genetic.sequence.bigdata" :
                 "com.redhat.healthcare.genetic.sequence.raw";
             
@@ -165,7 +165,7 @@ public class ScalingTestController {
             responseData.put("sessionId", request.getSessionId());
             responseData.put("trackingId", event.getId());
             
-            String expectedScaling = "big-data".equals(processingMode) ?
+            String expectedScaling = "bigdata".equals(processingMode) ?
                 "1→10+ pods, 6→7+ nodes" : "1→2+ pods";
             
             ApiResponse<Map<String, Object>> response = ApiResponse.success(
@@ -210,7 +210,7 @@ public class ScalingTestController {
                 // Create genetic analysis request for each sequence
                 GeneticAnalysisRequest analysisRequest = new GeneticAnalysisRequest();
                 analysisRequest.setSequence(largeSequence);
-                analysisRequest.setMode("big-data");
+                analysisRequest.setMode("bigdata");
                 analysisRequest.setResourceProfile("high-memory");
                 analysisRequest.setTimestamp(System.currentTimeMillis());
                 analysisRequest.setSessionId(demoSessionId + "-seq-" + (i + 1));
@@ -278,7 +278,7 @@ public class ScalingTestController {
             statusData.put("currentMode", currentMode);
 
             // Simulate scaling metrics (in real implementation, query actual metrics)
-            if ("big-data".equals(currentMode)) {
+            if ("bigdata".equals(currentMode)) {
                 statusData.put("currentPods", ThreadLocalRandom.current().nextInt(5, 15));
                 statusData.put("currentNodes", ThreadLocalRandom.current().nextInt(6, 8));
                 statusData.put("kafkaLag", ThreadLocalRandom.current().nextInt(10, 50));

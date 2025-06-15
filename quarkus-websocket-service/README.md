@@ -99,7 +99,7 @@ curl -X POST http://localhost:8080/api/genetic/analyze \
   -H "Content-Type: application/json" \
   -d '{
     "sequence": "ATCGATCGATCGATCGATCGATCGATCGATCGATCG",
-    "mode": "big-data",
+    "mode": "bigdata",
     "resourceProfile": "high-memory"
   }'
 ```

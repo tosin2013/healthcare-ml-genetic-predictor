@@ -9,7 +9,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 public class GeneticAnalysisRequest {
     
     @JsonProperty("mode")
-    private String mode = "normal"; // "normal" or "big-data"
+    private String mode = "normal"; // "normal" or "bigdata"
     
     @JsonProperty("sequence")
     private String sequence;
@@ -90,7 +90,7 @@ public class GeneticAnalysisRequest {
     
     // Utility methods
     public boolean isBigDataMode() {
-        return "big-data".equals(mode);
+        return "bigdata".equals(mode);
     }
     
     public boolean isHighMemoryProfile() {
