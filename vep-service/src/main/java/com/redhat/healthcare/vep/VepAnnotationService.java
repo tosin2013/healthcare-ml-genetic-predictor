@@ -86,7 +86,7 @@ public class VepAnnotationService {
             LOG.errorf(e, "Error processing genetic sequence: %s", e.getMessage());
 
             // Return error result for downstream handling
-            return createErrorResult(geneticData, e.getMessage());
+            return createErrorResult(cloudEventJson, e.getMessage());
         }
     }
 
