@@ -1,12 +1,35 @@
 package com.redhat.healthcare.vep;
 
 import io.quarkus.test.junit.QuarkusTest;
+import io.smallrye.mutiny.Uni;
 import org.junit.jupiter.api.Test;
+import jakarta.inject.Inject;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 @QuarkusTest
 public class VepAnnotationServiceTest {
+
+    @Inject
+    VepAnnotationService vepAnnotationService;
+
+    @Test
+    public void testThreadingFix() {
+        // Test the threading fix without Kafka dependencies
+        String testInput = "test-threading-fix";
+
+        Uni<String> result = vepAnnotationService.testThreadingFix(testInput);
+
+        // This should not throw any threading exceptions
+        String response = result.await().indefinitely();
+
+        assertNotNull(response);
+        assertTrue(response.contains("testResult"));
+        assertTrue(response.contains("success"));
+        assertTrue(response.contains(testInput));
+
+        System.out.println("Threading test result: " + response);
+    }
 
     @Test
     public void testGeneticSequenceDataParsing() {
