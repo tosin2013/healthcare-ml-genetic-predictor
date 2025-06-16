@@ -7,8 +7,8 @@ metadata:
     component: vep-processor
 spec:
   scaleTargetRef:
-    apiVersion: serving.knative.dev/v1
-    kind: Service
+    apiVersion: apps/v1
+    kind: Deployment
     name: vep-service
   pollingInterval: 10
   cooldownPeriod: 60
@@ -17,7 +17,7 @@ spec:
   triggers:
   - type: kafka
     metadata:
-      bootstrapServers: my-cluster-kafka-bootstrap:9092
+      bootstrapServers: genetic-data-cluster-kafka-bootstrap.healthcare-ml-demo.svc.cluster.local:9092
       consumerGroup: vep-annotation-service-group
       topic: genetic-data-raw
       lagThreshold: "5"
@@ -42,7 +42,7 @@ spec:
   triggers:
   - type: kafka
     metadata:
-      bootstrapServers: my-cluster-kafka-bootstrap:9092
+      bootstrapServers: genetic-data-cluster-kafka-bootstrap.healthcare-ml-demo.svc.cluster.local:9092
       consumerGroup: websocket-results-group
       topic: genetic-data-annotated
       lagThreshold: "10"

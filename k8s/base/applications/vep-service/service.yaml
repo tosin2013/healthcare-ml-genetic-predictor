@@ -27,18 +27,4 @@ spec:
   selector:
     app.kubernetes.io/component: vep-service
     app.kubernetes.io/name: vep-annotation-service
----
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: vep-service
-  labels:
-    app.kubernetes.io/component: vep-service
-    app.kubernetes.io/name: vep-annotation-service
-    app.kubernetes.io/part-of: healthcare-ml-genetic-predictor
-    app.kubernetes.io/version: "1.0.0"
-  annotations:
-    insights.openshift.io/billing-model: chargeback
-    insights.openshift.io/cost-center: genomics-research
-    insights.openshift.io/project: vep-annotation-v1
-automountServiceAccountToken: false
+

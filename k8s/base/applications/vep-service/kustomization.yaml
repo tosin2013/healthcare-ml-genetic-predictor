@@ -6,11 +6,10 @@ metadata:
   annotations:
     config.kubernetes.io/local-config: "true"
 
-# VEP Service Resources - ADR-001: Event-driven Knative service for auto-scaling
+# VEP Service Resources - Updated: Regular Deployment + KEDA for Kafka-based scaling
 resources:
-  # - deployment.yaml        # Removed per ADR-001: VEP uses Knative for event-driven scaling
-  # - service.yaml          # Not needed: Knative service includes built-in service
-  - knative-service.yaml    # ADR-001: VEP service uses Knative for cost-efficient scaling
+  - deployment.yaml         # Regular deployment for KEDA scaling
+  - service.yaml            # Service for deployment
   - serviceaccount.yaml     # Service account for image pull permissions
   - configmap.yaml
   - buildconfig.yaml
@@ -29,8 +28,8 @@ commonAnnotations:
   insights.openshift.io/billing-model: chargeback
   insights.openshift.io/cost-center: genomics-research
   insights.openshift.io/project: vep-annotation-v1
-  deployment-method: "knative"     # ADR-001: Changed from deployment to knative
-  adr-decision: "ADR-001"          # Track architectural decision
+  deployment-method: "deployment"  # Updated: Using regular deployment + KEDA
+  adr-decision: "ADR-001-UPDATED"  # Track architectural decision update
 
 # VEP service image configuration
 images:
@@ -38,5 +37,5 @@ images:
     newName: image-registry.openshift-image-registry.svc:5000/healthcare-ml-demo/vep-service
     newTag: latest
 
-# ADR-001: Resource configuration moved to Knative service spec
-# No patches needed - resources configured directly in knative-service.yaml
+# Updated: Resource configuration in deployment.yaml for KEDA scaling
+# KEDA will manage replica scaling based on Kafka lag
