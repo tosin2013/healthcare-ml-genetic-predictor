@@ -18,7 +18,7 @@ spec:
   - type: kafka
     metadata:
       bootstrapServers: genetic-data-cluster-kafka-bootstrap.healthcare-ml-demo.svc.cluster.local:9092
-      consumerGroup: vep-annotation-service-group
+      consumerGroup: vep-service-group
       topic: genetic-data-raw
       lagThreshold: "5"
       offsetResetPolicy: latest
@@ -43,7 +43,7 @@ spec:
   - type: kafka
     metadata:
       bootstrapServers: genetic-data-cluster-kafka-bootstrap.healthcare-ml-demo.svc.cluster.local:9092
-      consumerGroup: websocket-results-group
+      consumerGroup: websocket-results-service-group
       topic: genetic-data-annotated
       lagThreshold: "10"
       offsetResetPolicy: latest
