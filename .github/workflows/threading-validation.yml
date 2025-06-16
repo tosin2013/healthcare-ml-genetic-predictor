@@ -5,11 +5,13 @@ on:
     branches: [ main, develop ]
     paths:
       - 'quarkus-websocket-service/**'
+      - 'vep-service/**'
       - '.github/workflows/threading-validation.yml'
   push:
     branches: [ main ]
     paths:
       - 'quarkus-websocket-service/**'
+      - 'vep-service/**'
   workflow_dispatch:
     inputs:
       test_scope:
