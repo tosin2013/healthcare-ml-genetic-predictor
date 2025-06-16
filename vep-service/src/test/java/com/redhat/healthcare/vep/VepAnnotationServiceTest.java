@@ -90,11 +90,92 @@ public class VepAnnotationServiceTest {
     public void testVepAnnotationResult() {
         GeneticSequenceData sequenceData = GeneticSequenceData.fromPlainSequence("ATCG");
         VepAnnotationResult result = VepAnnotationResult.empty(sequenceData);
-        
+
         assertNotNull(result);
         assertEquals(sequenceData.getSequenceId(), result.getSequenceId());
         assertEquals(0, result.getVariantCount());
         assertEquals("no_annotations", result.getStatus());
         assertFalse(result.hasAnnotations());
+    }
+
+    @Test
+    public void testMultiTopicProcessing() {
+        // Test normal mode CloudEvent
+        String normalModeCloudEvent = """
+            {
+                "specversion": "1.0",
+                "type": "com.redhat.healthcare.genetic.sequence.raw",
+                "source": "/healthcare-ml/frontend",
+                "id": "test-normal-123",
+                "data": {
+                    "sessionId": "api-session-normal",
+                    "genetic_sequence": "ATCGATCGATCG",
+                    "processing_mode": "normal"
+                }
+            }
+            """;
+
+        // Test big data mode CloudEvent
+        String bigDataModeCloudEvent = """
+            {
+                "specversion": "1.0",
+                "type": "com.redhat.healthcare.genetic.sequence.bigdata",
+                "source": "/healthcare-ml/frontend",
+                "id": "test-bigdata-123",
+                "data": {
+                    "sessionId": "api-session-bigdata",
+                    "genetic_sequence": "ATCGATCGATCGATCGATCGATCGATCGATCGATCG",
+                    "processing_mode": "big-data"
+                }
+            }
+            """;
+
+        // Test node scale mode CloudEvent
+        String nodeScaleModeCloudEvent = """
+            {
+                "specversion": "1.0",
+                "type": "com.redhat.healthcare.genetic.sequence.nodescale",
+                "source": "/healthcare-ml/frontend",
+                "id": "test-nodescale-123",
+                "data": {
+                    "sessionId": "api-session-nodescale",
+                    "genetic_sequence": "ATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCG",
+                    "processing_mode": "node-scale"
+                }
+            }
+            """;
+
+        // Test processing each mode (these would normally be called by Kafka)
+        // We'll test the internal processing method directly
+        try {
+            java.lang.reflect.Method method = VepAnnotationService.class.getDeclaredMethod("processGeneticSequenceInternal", String.class, String.class);
+            method.setAccessible(true);
+
+            // Test normal mode
+            Uni<String> normalResult = (Uni<String>) method.invoke(vepAnnotationService, normalModeCloudEvent, "normal");
+            String normalResponse = normalResult.await().indefinitely();
+            assertNotNull(normalResponse);
+            assertTrue(normalResponse.contains("api-session-normal"));
+            assertTrue(normalResponse.contains("normal"));
+
+            // Test big data mode
+            Uni<String> bigDataResult = (Uni<String>) method.invoke(vepAnnotationService, bigDataModeCloudEvent, "big-data");
+            String bigDataResponse = bigDataResult.await().indefinitely();
+            assertNotNull(bigDataResponse);
+            assertTrue(bigDataResponse.contains("api-session-bigdata"));
+            assertTrue(bigDataResponse.contains("big-data"));
+
+            // Test node scale mode
+            Uni<String> nodeScaleResult = (Uni<String>) method.invoke(vepAnnotationService, nodeScaleModeCloudEvent, "node-scale");
+            String nodeScaleResponse = nodeScaleResult.await().indefinitely();
+            assertNotNull(nodeScaleResponse);
+            assertTrue(nodeScaleResponse.contains("api-session-nodescale"));
+            assertTrue(nodeScaleResponse.contains("node-scale"));
+
+            System.out.println("Multi-topic processing test completed successfully");
+
+        } catch (Exception e) {
+            fail("Failed to test multi-topic processing: " + e.getMessage());
+        }
     }
 }

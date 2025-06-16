@@ -246,10 +246,13 @@
                 📊 Normal Mode (Pod Scaling)
             </button>
             <button id="bigDataModeBtn" onclick="setBigDataMode()" class="mode-btn bigdata">
-                🚀 Big Data Mode (Node Scaling)
+                🚀 Big Data Mode (Memory Scaling)
+            </button>
+            <button id="nodeScaleModeBtn" onclick="setNodeScaleMode()" class="mode-btn bigdata">
+                ⚡ Node Scale Mode (Cluster Autoscaler)
             </button>
             <button id="triggerScalingBtn" onclick="triggerBigDataScaling()" class="mode-btn bigdata" disabled>
-                ⚡ Trigger Node Scaling Demo
+                🔥 Trigger Multi-Node Demo
             </button>
         </div>
 
@@ -456,6 +459,9 @@
                 if (currentMode === 'big-data') {
                     addMessage('🚀 Processing with high-memory big data pipeline...', 'system');
                     addMessage('⏳ Triggering OpenShift AI inference with memory-intensive processing...', 'system');
+                } else if (currentMode === 'node-scale') {
+                    addMessage('⚡ Processing with cluster autoscaler pipeline...', 'system');
+                    addMessage('⏳ Triggering node scaling and distributed processing...', 'system');
                 } else {
                     addMessage('🔬 Processing with VEP annotation → OpenShift AI pipeline...', 'system');
                     addMessage('⏳ Analyzing variants and generating ML predictions...', 'system');
@@ -486,12 +492,26 @@
             currentMode = 'big-data';
             document.getElementById('normalModeBtn').classList.remove('active');
             document.getElementById('bigDataModeBtn').classList.add('active');
+            document.getElementById('nodeScaleModeBtn').classList.remove('active');
             document.getElementById('triggerScalingBtn').disabled = false;
             document.getElementById('scaling-mode').textContent = 'Big Data';
             document.getElementById('normal-samples').style.display = 'none';
             document.getElementById('bigdata-samples').style.display = 'block';
-            updateScalingStatus('🟡 Big Data Mode - Node Scaling Enabled', 'status-scaling');
-            addMessage('🚀 Big Data Mode activated - node scaling demonstration ready', 'system');
+            updateScalingStatus('🟡 Big Data Mode - Memory Scaling Enabled', 'status-scaling');
+            addMessage('🚀 Big Data Mode activated - high-memory processing ready', 'system');
+        }
+
+        function setNodeScaleMode() {
+            currentMode = 'node-scale';
+            document.getElementById('normalModeBtn').classList.remove('active');
+            document.getElementById('bigDataModeBtn').classList.remove('active');
+            document.getElementById('nodeScaleModeBtn').classList.add('active');
+            document.getElementById('triggerScalingBtn').disabled = false;
+            document.getElementById('scaling-mode').textContent = 'Node Scale';
+            document.getElementById('normal-samples').style.display = 'none';
+            document.getElementById('bigdata-samples').style.display = 'block';
+            updateScalingStatus('🔴 Node Scale Mode - Cluster Autoscaler Enabled', 'status-bigdata');
+            addMessage('⚡ Node Scale Mode activated - cluster autoscaler demonstration ready', 'system');
         }
 
         function updateScalingStatus(message, className) {

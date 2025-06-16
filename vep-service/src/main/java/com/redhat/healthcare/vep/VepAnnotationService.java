@@ -52,16 +52,51 @@ public class VepAnnotationService {
     ObjectMapper objectMapper;
 
     /**
-     * Processes genetic sequences from the raw data topic
+     * Processes genetic sequences from the normal mode topic (pod scaling only)
      *
-     * @param geneticData Raw genetic sequence data from Kafka
+     * @param cloudEventJson Raw genetic sequence data from Kafka
      * @return Annotated genetic data for downstream processing
      */
     @Incoming("genetic-data-raw")
     @Outgoing("genetic-data-annotated")
     public Uni<String> processGeneticSequence(String cloudEventJson) {
+        return processGeneticSequenceInternal(cloudEventJson, "normal");
+    }
+
+    /**
+     * Processes genetic sequences from the big data mode topic (memory scaling)
+     *
+     * @param cloudEventJson Big data genetic sequence data from Kafka
+     * @return Annotated genetic data for downstream processing
+     */
+    @Incoming("genetic-bigdata-raw")
+    @Outgoing("genetic-data-annotated")
+    public Uni<String> processBigDataGeneticSequence(String cloudEventJson) {
+        return processGeneticSequenceInternal(cloudEventJson, "big-data");
+    }
+
+    /**
+     * Processes genetic sequences from the node scale mode topic (cluster autoscaler)
+     *
+     * @param cloudEventJson Node scale genetic sequence data from Kafka
+     * @return Annotated genetic data for downstream processing
+     */
+    @Incoming("genetic-nodescale-raw")
+    @Outgoing("genetic-data-annotated")
+    public Uni<String> processNodeScaleGeneticSequence(String cloudEventJson) {
+        return processGeneticSequenceInternal(cloudEventJson, "node-scale");
+    }
+
+    /**
+     * Internal method to process genetic sequences with mode-specific handling
+     *
+     * @param cloudEventJson Raw genetic sequence data from Kafka
+     * @param processingMode The processing mode (normal, big-data, node-scale)
+     * @return Annotated genetic data for downstream processing
+     */
+    private Uni<String> processGeneticSequenceInternal(String cloudEventJson, String processingMode) {
         // Reactive approach with proper CloudEvent response
-        LOG.infof("Processing genetic sequence reactively on thread: %s", Thread.currentThread().getName());
+        LOG.infof("Processing genetic sequence in %s mode on thread: %s", processingMode, Thread.currentThread().getName());
 
         // Extract sessionId from CloudEvent to maintain communication flow
         String sessionId = extractSessionIdSafely(cloudEventJson);
@@ -75,7 +110,7 @@ public class VepAnnotationService {
                 ObjectNode data = objectMapper.createObjectNode();
                 data.put("sessionId", sessionId);
                 data.put("genetic_sequence", geneticSequence); // Add the genetic sequence
-                data.put("processing_mode", "reactive");
+                data.put("processing_mode", processingMode);
                 data.put("annotation_timestamp", System.currentTimeMillis());
                 data.put("annotation_source", "vep-annotation-service");
                 data.put("status", "success");
@@ -113,7 +148,7 @@ public class VepAnnotationService {
                         .withType("com.redhat.healthcare.genetic.sequence.annotated")
                         .withSubject("VEP Annotation Complete")
                         .withExtension("sessionid", sessionId)
-                        .withExtension("processingmode", "reactive")
+                        .withExtension("processingmode", processingMode)
                         .withExtension("variantcount", "5")
                         .withData("application/json", objectMapper.writeValueAsBytes(data))
                         .build();

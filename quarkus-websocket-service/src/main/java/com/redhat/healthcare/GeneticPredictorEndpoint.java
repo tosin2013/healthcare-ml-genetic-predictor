@@ -34,8 +34,15 @@ public class GeneticPredictorEndpoint {
     private static final Logger LOGGER = LoggerFactory.getLogger(GeneticPredictorEndpoint.class);
 
     @Inject
+    // Multi-topic emitters for different scaling modes
     @Channel("genetic-data-raw-out")
     Emitter<String> geneticDataEmitter;
+
+    @Channel("genetic-bigdata-raw-out")
+    Emitter<String> geneticBigDataEmitter;
+
+    @Channel("genetic-nodescale-raw-out")
+    Emitter<String> geneticNodeScaleEmitter;
 
     @Inject
     ObjectMapper objectMapper;
@@ -117,10 +124,24 @@ public class GeneticPredictorEndpoint {
             data.put("timestamp", timestamp);
             data.put("client_session_id", sessionIdFromMessage);
 
-            // Determine CloudEvent type based on mode
-            String eventType = "big-data".equals(mode) ?
-                             "com.redhat.healthcare.genetic.sequence.bigdata" :
-                             "com.redhat.healthcare.genetic.sequence.raw";
+            // Determine CloudEvent type and topic based on mode
+            String eventType;
+            String kafkaTopic;
+
+            switch (mode) {
+                case "big-data":
+                    eventType = "com.redhat.healthcare.genetic.sequence.bigdata";
+                    kafkaTopic = "genetic-bigdata-raw";
+                    break;
+                case "node-scale":
+                    eventType = "com.redhat.healthcare.genetic.sequence.nodescale";
+                    kafkaTopic = "genetic-nodescale-raw";
+                    break;
+                default: // "normal"
+                    eventType = "com.redhat.healthcare.genetic.sequence.raw";
+                    kafkaTopic = "genetic-data-raw";
+                    break;
+            }
 
             // Build the CloudEvent with enhanced metadata
             // Note: CloudEvent extension names must be lowercase and use only letters, numbers, and hyphens
@@ -135,23 +156,43 @@ public class GeneticPredictorEndpoint {
                     .withData("application/json", objectMapper.writeValueAsBytes(data))
                     .build();
 
-            // Serialize CloudEvent to JSON and send to Kafka
+            // Serialize CloudEvent to JSON and send to appropriate Kafka topic
             EventFormat format = EventFormatProvider.getInstance().resolveFormat(JsonFormat.CONTENT_TYPE);
             byte[] cloudEventBytes = format.serialize(event);
             String cloudEventJson = new String(cloudEventBytes);
-            geneticDataEmitter.send(cloudEventJson);
 
-            LOGGER.info("Sent {} CloudEvent to Kafka for {} mode processing", eventType, mode);
+            // Send to appropriate topic based on mode
+            switch (mode) {
+                case "big-data":
+                    geneticBigDataEmitter.send(cloudEventJson);
+                    break;
+                case "node-scale":
+                    geneticNodeScaleEmitter.send(cloudEventJson);
+                    break;
+                default: // "normal"
+                    geneticDataEmitter.send(cloudEventJson);
+                    break;
+            }
+
+            LOGGER.info("Sent {} CloudEvent to {} topic for {} mode processing", eventType, kafkaTopic, mode);
 
             // Send appropriate acknowledgment based on mode
-            if ("big-data".equals(mode)) {
-                session.getAsyncRemote().sendText(
-                    String.format("🚀 Big data sequence (%d chars) queued for high-memory processing",
-                                geneticSequence.length()));
-            } else {
-                session.getAsyncRemote().sendText(
-                    String.format("🧬 Genetic sequence (%d chars) queued for VEP annotation and ML analysis",
-                                geneticSequence.length()));
+            switch (mode) {
+                case "big-data":
+                    session.getAsyncRemote().sendText(
+                        String.format("🚀 Big data sequence (%d chars) queued for high-memory processing → %s",
+                                    geneticSequence.length(), kafkaTopic));
+                    break;
+                case "node-scale":
+                    session.getAsyncRemote().sendText(
+                        String.format("⚡ Node scaling sequence (%d chars) queued for cluster autoscaler → %s",
+                                    geneticSequence.length(), kafkaTopic));
+                    break;
+                default: // "normal"
+                    session.getAsyncRemote().sendText(
+                        String.format("🧬 Genetic sequence (%d chars) queued for VEP annotation and ML analysis → %s",
+                                    geneticSequence.length(), kafkaTopic));
+                    break;
             }
 
         } catch (Exception e) {
