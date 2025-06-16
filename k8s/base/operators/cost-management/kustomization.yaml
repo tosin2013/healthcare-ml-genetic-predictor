@@ -8,7 +8,7 @@ resources:
   - namespace.yaml
   - operatorgroup.yaml
   - subscription.yaml
-  # Note: costmanagementmetricsconfig.yaml is applied separately after operator is ready
+  - costmanagementmetricsconfig.yaml
 
 commonLabels:
   app.kubernetes.io/name: cost-management-operator

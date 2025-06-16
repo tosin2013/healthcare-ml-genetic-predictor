@@ -13,6 +13,7 @@ spec:
   source: redhat-operators
   sourceNamespace: openshift-marketplace
   installPlanApproval: Automatic
+  startingCSV: costmanagement-metrics-operator.3.3.2
   config:
     env:
     - name: LEADER_ELECTION_LEASE_DURATION
