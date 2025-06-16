@@ -43,16 +43,28 @@ public class GeneticPredictorEndpoint {
     @OnOpen
     public void onOpen(Session session) {
         LOGGER.info("WebSocket opened: {}", session.getId());
-        // Register session for receiving VEP results
-        GeneticResultsService.registerSession(session.getId(), session);
+        // Generate a consistent session ID format that matches API calls
+        String apiSessionId = "api-session-" + session.getId().substring(0, 8);
+        // Store the mapping between WebSocket session and API session ID
+        session.getUserProperties().put("apiSessionId", apiSessionId);
+        // Register session for receiving VEP results using the API session ID
+        GeneticResultsService.registerSession(apiSessionId, session);
         session.getAsyncRemote().sendText("🧬 Connected to Healthcare ML Service with OpenShift AI Integration");
+        LOGGER.info("Registered WebSocket session {} with API session ID: {}", session.getId(), apiSessionId);
     }
 
     @OnClose
     public void onClose(Session session) {
         LOGGER.info("WebSocket closed: {}", session.getId());
-        // Unregister session
-        GeneticResultsService.unregisterSession(session.getId());
+        // Get the API session ID and unregister it
+        String apiSessionId = (String) session.getUserProperties().get("apiSessionId");
+        if (apiSessionId != null) {
+            GeneticResultsService.unregisterSession(apiSessionId);
+            LOGGER.info("Unregistered API session ID: {}", apiSessionId);
+        } else {
+            // Fallback to original session ID
+            GeneticResultsService.unregisterSession(session.getId());
+        }
     }
 
     @OnError
@@ -93,8 +105,10 @@ public class GeneticPredictorEndpoint {
             }
 
             // Create enhanced data payload with mode information
+            // Use the API session ID for consistency with result delivery
+            String apiSessionId = (String) session.getUserProperties().get("apiSessionId");
             ObjectNode data = objectMapper.createObjectNode();
-            data.put("sessionId", session.getId());
+            data.put("sessionId", apiSessionId != null ? apiSessionId : session.getId());
             data.put("userId", "demo-user-" + session.getId().substring(0, 8));
             data.put("genetic_sequence", geneticSequence);
             data.put("processing_mode", mode);
