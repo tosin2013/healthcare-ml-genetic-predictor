@@ -88,18 +88,17 @@ jobs:
         echo "### Thread Execution Analysis" >> threading-report.md
         echo "" >> threading-report.md
         
-        # Check for worker thread execution (good) with safe error handling
+        # Check for worker thread execution (good) with safe error handling and cleanup
         WORKER_THREADS=$(grep -c "executor-thread" threading-test-output.log 2>/dev/null || echo "0")
+        WORKER_THREADS=$(echo "$WORKER_THREADS" | tr -d '\n\r ' | head -1)  # Clean newlines and whitespace
         echo "- **Worker Thread Executions**: $WORKER_THREADS" >> threading-report.md
 
-        # Check for event loop blocking (bad) with safe error handling
+        # Check for event loop blocking (bad) with safe error handling and cleanup
         EVENT_LOOP_BLOCKS=$(grep -c "vert.x-eventloop-thread" threading-test-output.log 2>/dev/null || echo "0")
+        EVENT_LOOP_BLOCKS=$(echo "$EVENT_LOOP_BLOCKS" | tr -d '\n\r ' | head -1)  # Clean newlines and whitespace
         echo "- **Event Loop Thread Usage**: $EVENT_LOOP_BLOCKS" >> threading-report.md
 
-        # Debug output to understand the issue
-        echo "DEBUG: EVENT_LOOP_BLOCKS='$EVENT_LOOP_BLOCKS'"
-
-        # Use robust numeric comparison with explicit logic
+        # Use robust numeric comparison with cleaned variable
         if [ "$EVENT_LOOP_BLOCKS" = "0" ]; then
           echo "- **✅ No Event Loop Blocking Detected**" >> threading-report.md
         else
@@ -110,13 +109,16 @@ jobs:
         echo "### CloudEvent Processing" >> threading-report.md
         echo "" >> threading-report.md
         
-        # Check CloudEvent creation with safe error handling
+        # Check CloudEvent creation with safe error handling and cleanup
         CLOUDEVENTS_SENT=$(grep -c "Sent.*CloudEvent to Kafka" threading-test-output.log 2>/dev/null || echo "0")
+        CLOUDEVENTS_SENT=$(echo "$CLOUDEVENTS_SENT" | tr -d '\n\r ' | head -1)  # Clean newlines and whitespace
         echo "- **CloudEvents Sent**: $CLOUDEVENTS_SENT" >> threading-report.md
 
-        # Check for different event types with safe error handling
+        # Check for different event types with safe error handling and cleanup
         RAW_EVENTS=$(grep -c "genetic.sequence.raw" threading-test-output.log 2>/dev/null || echo "0")
+        RAW_EVENTS=$(echo "$RAW_EVENTS" | tr -d '\n\r ' | head -1)  # Clean newlines and whitespace
         BIGDATA_EVENTS=$(grep -c "genetic.sequence.bigdata" threading-test-output.log 2>/dev/null || echo "0")
+        BIGDATA_EVENTS=$(echo "$BIGDATA_EVENTS" | tr -d '\n\r ' | head -1)  # Clean newlines and whitespace
         echo "- **Raw Events**: $RAW_EVENTS" >> threading-report.md
         echo "- **Big Data Events**: $BIGDATA_EVENTS" >> threading-report.md
         
