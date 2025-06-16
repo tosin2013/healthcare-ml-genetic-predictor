@@ -1,0 +1,116 @@
+---
+# Multi-Topic KEDA ScaledObjects for Different Scaling Behaviors
+# This configuration provides three distinct scaling patterns:
+# 1. Normal Mode: Pod scaling only (1-3 replicas)
+# 2. Big Data Mode: Memory-intensive pod scaling (1-8 replicas)  
+# 3. Node Scale Mode: Cluster autoscaler triggering (1-20 replicas)
+
+# Normal Mode VEP Service Scaler (Pod Scaling Only)
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: vep-service-normal-scaler
+  labels:
+    app: vep-service
+    component: normal-mode
+    scaling-type: pod-only
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: vep-service
+  pollingInterval: 10
+  cooldownPeriod: 60
+  minReplicaCount: 0
+  maxReplicaCount: 3
+  triggers:
+  - type: kafka
+    metadata:
+      bootstrapServers: genetic-data-cluster-kafka-bootstrap.healthcare-ml-demo.svc.cluster.local:9092
+      consumerGroup: vep-service-group
+      topic: genetic-data-raw
+      lagThreshold: "3"
+      offsetResetPolicy: latest
+
+---
+# Big Data Mode VEP Service Scaler (Memory-Intensive Pod Scaling)
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: vep-service-bigdata-scaler
+  labels:
+    app: vep-service
+    component: bigdata-mode
+    scaling-type: memory-intensive
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: vep-service-bigdata
+  pollingInterval: 5
+  cooldownPeriod: 120
+  minReplicaCount: 0
+  maxReplicaCount: 8
+  triggers:
+  - type: kafka
+    metadata:
+      bootstrapServers: genetic-data-cluster-kafka-bootstrap.healthcare-ml-demo.svc.cluster.local:9092
+      consumerGroup: vep-bigdata-service-group
+      topic: genetic-bigdata-raw
+      lagThreshold: "2"
+      offsetResetPolicy: latest
+
+---
+# Node Scale Mode VEP Service Scaler (Cluster Autoscaler Triggering)
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: vep-service-nodescale-scaler
+  labels:
+    app: vep-service
+    component: nodescale-mode
+    scaling-type: cluster-autoscaler
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: vep-service-nodescale
+  pollingInterval: 5
+  cooldownPeriod: 180
+  minReplicaCount: 0
+  maxReplicaCount: 20
+  triggers:
+  - type: kafka
+    metadata:
+      bootstrapServers: genetic-data-cluster-kafka-bootstrap.healthcare-ml-demo.svc.cluster.local:9092
+      consumerGroup: vep-nodescale-service-group
+      topic: genetic-nodescale-raw
+      lagThreshold: "1"
+      offsetResetPolicy: latest
+
+---
+# WebSocket Service Scaler (Handles all annotated results)
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: websocket-service-scaler
+  labels:
+    app: quarkus-websocket-service
+    component: websocket
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: quarkus-websocket-service
+  pollingInterval: 15
+  cooldownPeriod: 120
+  minReplicaCount: 2
+  maxReplicaCount: 10
+  triggers:
+  - type: kafka
+    metadata:
+      bootstrapServers: genetic-data-cluster-kafka-bootstrap.healthcare-ml-demo.svc.cluster.local:9092
+      consumerGroup: websocket-results-service-group
+      topic: genetic-data-annotated
+      lagThreshold: "10"
+      offsetResetPolicy: latest
