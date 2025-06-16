@@ -59,33 +59,49 @@ public class VepAnnotationService {
     @Incoming("genetic-data-raw")
     @Outgoing("genetic-data-annotated")
     public Uni<String> processGeneticSequence(String cloudEventJson) {
-        // Option 2: Ultra-Simple Reactive Approach - No blocking operations at all
+        // Reactive approach with proper CloudEvent response
         LOG.infof("Processing genetic sequence reactively on thread: %s", Thread.currentThread().getName());
 
         // Extract sessionId from CloudEvent to maintain communication flow
         String sessionId = extractSessionIdSafely(cloudEventJson);
 
         return Uni.createFrom().item(() -> {
-            // Ultra-simple response creation with preserved sessionId
-            return String.format("""
-                {
-                    "sessionId": "%s",
-                    "status": "success",
-                    "message": "VEP annotation completed reactively",
-                    "timestamp": %d,
-                    "source": "vep-annotation-service",
-                    "variantCount": 5,
-                    "sequenceLength": 20,
-                    "processingMode": "reactive",
-                    "threadName": "%s",
-                    "kedaScaling": "enabled",
-                    "approach": "ultra-simple-reactive"
-                }
-                """,
-                sessionId,
-                System.currentTimeMillis(),
-                Thread.currentThread().getName()
-            );
+            try {
+                // Create proper CloudEvent response
+                ObjectNode data = objectMapper.createObjectNode();
+                data.put("sessionId", sessionId);
+                data.put("status", "success");
+                data.put("message", "VEP annotation completed reactively");
+                data.put("timestamp", System.currentTimeMillis());
+                data.put("source", "vep-annotation-service");
+                data.put("variantCount", 5);
+                data.put("sequenceLength", 20);
+                data.put("processingMode", "reactive");
+                data.put("threadName", Thread.currentThread().getName());
+                data.put("kedaScaling", "enabled");
+                data.put("approach", "reactive-cloudevent");
+
+                // Create CloudEvent with proper structure
+                CloudEvent event = CloudEventBuilder.v1()
+                        .withId(UUID.randomUUID().toString())
+                        .withSource(URI.create("/vep-annotation-service"))
+                        .withType("com.redhat.healthcare.genetic.sequence.annotated")
+                        .withSubject("VEP Annotation Complete")
+                        .withExtension("sessionid", sessionId)
+                        .withExtension("processingmode", "reactive")
+                        .withExtension("variantcount", "5")
+                        .withData("application/json", objectMapper.writeValueAsBytes(data))
+                        .build();
+
+                // Serialize CloudEvent
+                EventFormat format = EventFormatProvider.getInstance().resolveFormat(JsonFormat.CONTENT_TYPE);
+                byte[] cloudEventBytes = format.serialize(event);
+                return new String(cloudEventBytes);
+
+            } catch (Exception e) {
+                LOG.errorf(e, "Failed to create CloudEvent, using error response");
+                return createThreadingErrorCloudEvent(cloudEventJson, "CloudEvent creation failed: " + e.getMessage());
+            }
         });
     }
 
