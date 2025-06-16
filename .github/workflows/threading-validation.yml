@@ -96,8 +96,8 @@ jobs:
         EVENT_LOOP_BLOCKS=$(grep -c "vert.x-eventloop-thread" threading-test-output.log 2>/dev/null || echo "0")
         echo "- **Event Loop Thread Usage**: $EVENT_LOOP_BLOCKS" >> threading-report.md
 
-        # Use safer numeric comparison
-        if [ "${EVENT_LOOP_BLOCKS:-0}" -eq 0 ] 2>/dev/null; then
+        # Use simple numeric comparison
+        if [ "$EVENT_LOOP_BLOCKS" -eq 0 ]; then
           echo "- **✅ No Event Loop Blocking Detected**" >> threading-report.md
         else
           echo "- **❌ Event Loop Blocking Detected**" >> threading-report.md
