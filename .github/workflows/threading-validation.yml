@@ -54,26 +54,62 @@ jobs:
       run: |
         cd quarkus-websocket-service
         chmod +x mvnw
-        
-    - name: Compile project
+        cd ../vep-service
+        chmod +x mvnw
+
+    - name: Compile projects
       run: |
+        echo "🔨 Compiling WebSocket Service..."
         cd quarkus-websocket-service
+        ./mvnw clean compile test-compile -B -q
+
+        echo "🔨 Compiling VEP Service..."
+        cd ../vep-service
         ./mvnw clean compile test-compile -B -q
         
     - name: Run Threading Validation Tests
       id: threading-tests
       run: |
-        cd quarkus-websocket-service
         echo "🧵 Running Threading Validation Tests..."
-        
-        # Run specific threading tests with optimized settings
+
+        # Initialize combined test output
+        echo "=== WebSocket Service Threading Tests ===" > threading-test-output.log
+
+        # Run WebSocket service tests
+        cd quarkus-websocket-service
+        echo "🧵 Testing WebSocket Service..."
         ./mvnw test -Dtest=ScalingTestControllerTest -B -q \
           -Dquarkus.log.level=INFO \
           -Dquarkus.log.category."com.redhat.healthcare".level=DEBUG \
           -Dmaven.test.failure.ignore=false \
-          > threading-test-output.log 2>&1
-        
-        TEST_EXIT_CODE=$?
+          >> ../threading-test-output.log 2>&1
+
+        WEBSOCKET_EXIT_CODE=$?
+
+        # Run VEP service tests
+        echo "" >> ../threading-test-output.log
+        echo "=== VEP Service Threading Tests ===" >> ../threading-test-output.log
+        cd ../vep-service
+        echo "🧬 Testing VEP Service..."
+        ./mvnw test -B -q \
+          -Dquarkus.log.level=INFO \
+          -Dquarkus.log.category."com.redhat.healthcare".level=DEBUG \
+          -Dmaven.test.failure.ignore=false \
+          >> ../threading-test-output.log 2>&1
+
+        VEP_EXIT_CODE=$?
+
+        # Move back to root and determine overall result
+        cd ..
+        if [ $WEBSOCKET_EXIT_CODE -eq 0 ] && [ $VEP_EXIT_CODE -eq 0 ]; then
+          TEST_EXIT_CODE=0
+        else
+          TEST_EXIT_CODE=1
+        fi
+
+        echo "WebSocket Service Tests: Exit Code $WEBSOCKET_EXIT_CODE"
+        echo "VEP Service Tests: Exit Code $VEP_EXIT_CODE"
+        echo "Overall Test Result: Exit Code $TEST_EXIT_CODE"
         
         # Extract threading evidence from logs
         echo "## Threading Validation Results" > threading-report.md
@@ -141,9 +177,10 @@ jobs:
       with:
         name: threading-test-results
         path: |
-          quarkus-websocket-service/threading-test-output.log
-          quarkus-websocket-service/threading-report.md
+          threading-test-output.log
+          threading-report.md
           quarkus-websocket-service/target/surefire-reports/
+          vep-service/target/surefire-reports/
         retention-days: 30
         
     - name: Comment on PR
@@ -152,7 +189,7 @@ jobs:
       with:
         script: |
           const fs = require('fs');
-          const path = 'quarkus-websocket-service/threading-report.md';
+          const path = 'threading-report.md';
           
           let reportContent = '## 🧵 Threading Validation Report\n\n';
           
