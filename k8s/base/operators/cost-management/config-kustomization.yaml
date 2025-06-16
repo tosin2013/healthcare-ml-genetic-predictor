@@ -2,13 +2,10 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 metadata:
-  name: cost-management-operator
+  name: cost-management-config
 
 resources:
-  - namespace.yaml
-  - operatorgroup.yaml
-  - subscription.yaml
-  # Note: costmanagementmetricsconfig.yaml is applied separately after operator is ready
+  - costmanagementmetricsconfig.yaml
 
 commonLabels:
   app.kubernetes.io/name: cost-management-operator
