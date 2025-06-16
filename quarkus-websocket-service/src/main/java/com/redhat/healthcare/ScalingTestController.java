@@ -51,8 +51,15 @@ public class ScalingTestController {
     private static final Logger LOGGER = LoggerFactory.getLogger(ScalingTestController.class);
     
     @Inject
+    // Multi-topic emitters for different scaling modes (same as WebSocket implementation)
     @Channel("genetic-data-raw-out")
     Emitter<String> geneticDataEmitter;
+
+    @Channel("genetic-bigdata-raw-out")
+    Emitter<String> geneticBigDataEmitter;
+
+    @Channel("genetic-nodescale-raw-out")
+    Emitter<String> geneticNodeScaleEmitter;
     
     @Inject
     ObjectMapper objectMapper;
@@ -135,27 +142,60 @@ public class ScalingTestController {
             data.put("timestamp", request.getTimestamp());
             data.put("api_request", true);
             
-            // Determine CloudEvent type based on mode
-            String eventType = "bigdata".equals(processingMode) ?
-                "com.redhat.healthcare.genetic.sequence.bigdata" :
-                "com.redhat.healthcare.genetic.sequence.raw";
-            
+            // Determine CloudEvent type and topic based on mode (same logic as WebSocket)
+            String eventType;
+            String kafkaTopic;
+
+            switch (processingMode) {
+                case "bigdata":
+                case "big-data":
+                    eventType = "com.redhat.healthcare.genetic.sequence.bigdata";
+                    kafkaTopic = "genetic-bigdata-raw";
+                    break;
+                case "node-scale":
+                case "nodescale":
+                    eventType = "com.redhat.healthcare.genetic.sequence.nodescale";
+                    kafkaTopic = "genetic-nodescale-raw";
+                    break;
+                default: // "normal"
+                    eventType = "com.redhat.healthcare.genetic.sequence.raw";
+                    kafkaTopic = "genetic-data-raw";
+                    break;
+            }
+
             CloudEvent event = CloudEventBuilder.v1()
                 .withId(UUID.randomUUID().toString())
                 .withSource(URI.create("https://healthcare-ml-demo/api/genetic/analyze"))
                 .withType(eventType)
-                .withDataContentType("application/json")
-                .withData(data.toString().getBytes())
+                .withSubject("Genetic Sequence Analysis - " + processingMode.toUpperCase() + " Mode")
+                .withExtension("processingmode", processingMode)
+                .withExtension("resourceprofile", request.getResourceProfile())
+                .withExtension("sequencelength", String.valueOf(request.getSequence().length()))
+                .withData("application/json", data.toString().getBytes())
                 .withTime(OffsetDateTime.now())
                 .build();
-            
-            // Serialize and send to Kafka
+
+            // Serialize CloudEvent to JSON
             EventFormat format = EventFormatProvider.getInstance().resolveFormat(JsonFormat.CONTENT_TYPE);
             byte[] cloudEventBytes = format.serialize(event);
             String cloudEventJson = new String(cloudEventBytes);
-            geneticDataEmitter.send(cloudEventJson);
-            
-            LOGGER.info("Sent {} CloudEvent to Kafka for {} mode processing", eventType, processingMode);
+
+            // Send to appropriate topic based on mode (same logic as WebSocket)
+            switch (processingMode) {
+                case "bigdata":
+                case "big-data":
+                    geneticBigDataEmitter.send(cloudEventJson);
+                    break;
+                case "node-scale":
+                case "nodescale":
+                    geneticNodeScaleEmitter.send(cloudEventJson);
+                    break;
+                default: // "normal"
+                    geneticDataEmitter.send(cloudEventJson);
+                    break;
+            }
+
+            LOGGER.info("Sent {} CloudEvent to {} topic for {} mode processing", eventType, kafkaTopic, processingMode);
             
             // Prepare response
             Map<String, Object> responseData = new HashMap<>();
@@ -431,11 +471,25 @@ public class ScalingTestController {
                 .withTime(OffsetDateTime.now())
                 .build();
 
-            // Serialize and send to Kafka
+            // Serialize CloudEvent to JSON
             EventFormat format = EventFormatProvider.getInstance().resolveFormat(JsonFormat.CONTENT_TYPE);
             byte[] cloudEventBytes = format.serialize(event);
             String cloudEventJson = new String(cloudEventBytes);
-            geneticDataEmitter.send(cloudEventJson);
+
+            // Send to appropriate topic based on mode
+            switch (request.getMode()) {
+                case "bigdata":
+                case "big-data":
+                    geneticBigDataEmitter.send(cloudEventJson);
+                    break;
+                case "node-scale":
+                case "nodescale":
+                    geneticNodeScaleEmitter.send(cloudEventJson);
+                    break;
+                default: // "normal"
+                    geneticDataEmitter.send(cloudEventJson);
+                    break;
+            }
 
             LOGGER.info("Sent demo sequence {}/{} to Kafka: {} bytes",
                        sequenceNumber, totalSequences, request.getSequence().length());
