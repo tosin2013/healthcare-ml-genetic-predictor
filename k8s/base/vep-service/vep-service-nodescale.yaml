@@ -1,0 +1,192 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vep-service-nodescale
+  labels:
+    app: vep-service-nodescale
+    component: vep-processor
+    scaling-mode: nodescale
+    app.kubernetes.io/name: vep-annotation-service
+    app.kubernetes.io/component: genetic-processor
+    app.kubernetes.io/part-of: healthcare-ml-genetic-predictor
+    app.kubernetes.io/version: "1.0.0"
+  annotations:
+    description: "High-resource VEP service designed to trigger node scaling"
+    insights.openshift.io/billing-model: chargeback
+    insights.openshift.io/cost-center: genomics-research
+    insights.openshift.io/project: vep-nodescale-v1
+spec:
+  replicas: 0  # Start at 0, KEDA will scale up
+  selector:
+    matchLabels:
+      app: vep-service-nodescale
+  template:
+    metadata:
+      labels:
+        app: vep-service-nodescale
+        component: vep-processor
+        scaling-mode: nodescale
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: "/q/metrics"
+    spec:
+      containers:
+      - name: vep-service
+        image: image-registry.openshift-image-registry.svc:5000/healthcare-ml-demo/vep-service:latest
+        ports:
+        - containerPort: 8080
+          name: http
+          protocol: TCP
+        env:
+        - name: KAFKA_BOOTSTRAP_SERVERS
+          value: "genetic-data-cluster-kafka-bootstrap.healthcare-ml-demo.svc.cluster.local:9092"
+        - name: QUARKUS_PROFILE
+          value: "prod"
+        - name: SCALING_MODE
+          value: "nodescale"
+        - name: JAVA_OPTS
+          value: "-Xmx6g -Xms6g -XX:+UseG1GC -XX:MaxGCPauseMillis=200"
+        
+        # Very high resource requests to force node scaling
+        resources:
+          requests:
+            memory: "8Gi"      # 8GB memory request per pod
+            cpu: "4000m"       # 4 CPU cores per pod
+            ephemeral-storage: "10Gi"
+          limits:
+            memory: "12Gi"     # 12GB memory limit per pod
+            cpu: "6000m"       # 6 CPU cores per pod
+            ephemeral-storage: "20Gi"
+        
+        # Health checks
+        livenessProbe:
+          httpGet:
+            path: /q/health/live
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /q/health/ready
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        
+        # Startup probe for slower initialization
+        startupProbe:
+          httpGet:
+            path: /q/health/started
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 30
+      
+      # Node affinity to spread across different nodes
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - vep-service-nodescale
+              topologyKey: kubernetes.io/hostname
+      
+      # Tolerations for node scaling
+      tolerations:
+      - key: "node.kubernetes.io/not-ready"
+        operator: "Exists"
+        effect: "NoExecute"
+        tolerationSeconds: 300
+      - key: "node.kubernetes.io/unreachable"
+        operator: "Exists"
+        effect: "NoExecute"
+        tolerationSeconds: 300
+
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: vep-service-nodescale-scaler
+  labels:
+    app: vep-service-nodescale
+    component: vep-processor
+    scaling-mode: nodescale
+  annotations:
+    description: "KEDA scaler for node-scale VEP processing with aggressive scaling"
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: vep-service-nodescale
+  pollingInterval: 5   # Very aggressive polling
+  cooldownPeriod: 30   # Quick cooldown
+  idleReplicaCount: 0  # Scale to zero when idle
+  minReplicaCount: 0
+  maxReplicaCount: 20  # High max to force node scaling (20 pods * 8GB = 160GB)
+  fallback:
+    failureThreshold: 3
+    replicas: 2
+  advanced:
+    restoreToOriginalReplicaCount: false
+    horizontalPodAutoscalerConfig:
+      name: vep-service-nodescale-hpa
+      behavior:
+        scaleDown:
+          stabilizationWindowSeconds: 60
+          policies:
+          - type: Percent
+            value: 25
+            periodSeconds: 30
+        scaleUp:
+          stabilizationWindowSeconds: 0    # Immediate scale up
+          policies:
+          - type: Percent
+            value: 1000  # 1000% increase = 10x scaling
+            periodSeconds: 5
+          - type: Pods
+            value: 10    # Add 10 pods at once (10 * 8GB = 80GB)
+            periodSeconds: 5
+          selectPolicy: Max
+  triggers:
+  # Primary trigger: Kafka topic lag for genetic-nodescale-raw
+  - type: kafka
+    metadata:
+      bootstrapServers: genetic-data-cluster-kafka-bootstrap.healthcare-ml-demo.svc.cluster.local:9092
+      consumerGroup: vep-nodescale-service-group
+      topic: genetic-nodescale-raw
+      lagThreshold: '1'  # Scale immediately on any lag
+      offsetResetPolicy: latest
+      allowIdleConsumers: 'false'
+      scaleToZeroOnInvalidOffset: 'true'
+      excludePersistentLag: 'false'
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vep-service-nodescale
+  labels:
+    app: vep-service-nodescale
+    component: vep-processor
+    scaling-mode: nodescale
+  annotations:
+    description: "Service for high-resource VEP node scaling demo"
+spec:
+  selector:
+    app: vep-service-nodescale
+  ports:
+  - name: http
+    port: 8080
+    targetPort: 8080
+    protocol: TCP
+  type: ClusterIP

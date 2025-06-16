@@ -5,16 +5,44 @@ metadata:
   labels:
     app: vep-service
     component: vep-processor
+  annotations:
+    description: "Multi-topic KEDA scaler for VEP service supporting normal, big-data, and node-scale modes"
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
     name: vep-service
-  pollingInterval: 10
-  cooldownPeriod: 60
+  pollingInterval: 5   # More aggressive polling for multi-mode
+  cooldownPeriod: 30   # Faster cooldown for responsive scaling
+  idleReplicaCount: 0  # Scale to zero when no processing
   minReplicaCount: 0
-  maxReplicaCount: 20
+  maxReplicaCount: 50  # Higher max to support node scaling
+  fallback:
+    failureThreshold: 3
+    replicas: 1
+  advanced:
+    restoreToOriginalReplicaCount: false
+    horizontalPodAutoscalerConfig:
+      name: vep-service-multi-hpa
+      behavior:
+        scaleDown:
+          stabilizationWindowSeconds: 60
+          policies:
+          - type: Percent
+            value: 50
+            periodSeconds: 30
+        scaleUp:
+          stabilizationWindowSeconds: 5
+          policies:
+          - type: Percent
+            value: 200
+            periodSeconds: 5
+          - type: Pods
+            value: 10
+            periodSeconds: 5
+          selectPolicy: Max
   triggers:
+  # Normal Mode: Standard VEP processing
   - type: kafka
     metadata:
       bootstrapServers: genetic-data-cluster-kafka-bootstrap.healthcare-ml-demo.svc.cluster.local:9092
@@ -22,6 +50,22 @@ spec:
       topic: genetic-data-raw
       lagThreshold: "5"
       offsetResetPolicy: latest
+      allowIdleConsumers: 'false'
+      scaleToZeroOnInvalidOffset: 'true'
+
+  # Big Data Mode: Memory-intensive processing
+  - type: kafka
+    metadata:
+      bootstrapServers: genetic-data-cluster-kafka-bootstrap.healthcare-ml-demo.svc.cluster.local:9092
+      consumerGroup: vep-bigdata-service-group
+      topic: genetic-bigdata-raw
+      lagThreshold: "2"  # Lower threshold for faster big data scaling
+      offsetResetPolicy: latest
+      allowIdleConsumers: 'false'
+      scaleToZeroOnInvalidOffset: 'true'
+
+  # Note: Node Scale Mode removed - handled by dedicated vep-service-nodescale deployment
+  # This prevents both services from scaling simultaneously on genetic-nodescale-raw topic
 ---
 apiVersion: keda.sh/v1alpha1
 kind: ScaledObject

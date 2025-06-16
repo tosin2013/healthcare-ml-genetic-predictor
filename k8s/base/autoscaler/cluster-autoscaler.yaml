@@ -1,0 +1,92 @@
+apiVersion: autoscaling.openshift.io/v1
+kind: ClusterAutoscaler
+metadata:
+  name: default
+  annotations:
+    description: "Cluster autoscaler for healthcare ML node scaling demo"
+    insights.openshift.io/cost-center: "genomics-research"
+    insights.openshift.io/project: "node-scaling-demo"
+spec:
+  # Resource limits for autoscaling
+  resourceLimits:
+    maxNodesTotal: 20  # Maximum total nodes in cluster
+    cores:
+      min: 24          # Minimum total CPU cores (current: ~24)
+      max: 160         # Maximum total CPU cores (20 nodes * 8 cores)
+    memory:
+      min: 98304       # Minimum total memory in MiB (current: ~96GB)
+      max: 655360      # Maximum total memory in MiB (20 nodes * 32GB avg)
+
+  # Scaling behavior
+  scaleDown:
+    enabled: true
+    delayAfterAdd: 10m           # Wait 10 minutes after adding node before considering scale down
+    delayAfterDelete: 10s        # Wait 10 seconds after deleting node
+    delayAfterFailure: 3m        # Wait 3 minutes after failed scale down
+    unneededTime: 10m            # Node must be unneeded for 10 minutes before scale down
+    utilizationThreshold: "0.5"  # Scale down if node utilization < 50%
+  
+  # Pod disruption settings
+  podPriorityThreshold: -10      # Only consider pods with priority >= -10 for scaling decisions
+  skipNodesWithLocalStorage: true
+  skipNodesWithSystemPods: true
+  
+  # Balancing policy
+  balanceSimilarNodeGroups: false
+  ignoreDaemonSetsUtilization: false
+  maxPodGracePeriod: 600         # 10 minutes max for pod termination
+  maxNodeProvisionTime: 15m      # 15 minutes max for new node to become ready
+  
+  # Logging
+  logVerbosity: 1
+
+---
+apiVersion: autoscaling.openshift.io/v1beta1
+kind: MachineAutoscaler
+metadata:
+  name: worker-eastus1-autoscaler
+  namespace: openshift-machine-api
+  annotations:
+    description: "Machine autoscaler for eastus1 worker nodes"
+    insights.openshift.io/cost-center: "genomics-research"
+spec:
+  minReplicas: 1
+  maxReplicas: 8
+  scaleTargetRef:
+    apiVersion: machine.openshift.io/v1beta1
+    kind: MachineSet
+    name: aro-cluster-smrmt-xrbrh-worker-eastus1
+
+---
+apiVersion: autoscaling.openshift.io/v1beta1
+kind: MachineAutoscaler
+metadata:
+  name: worker-eastus2-autoscaler
+  namespace: openshift-machine-api
+  annotations:
+    description: "Machine autoscaler for eastus2 worker nodes"
+    insights.openshift.io/cost-center: "genomics-research"
+spec:
+  minReplicas: 1
+  maxReplicas: 8
+  scaleTargetRef:
+    apiVersion: machine.openshift.io/v1beta1
+    kind: MachineSet
+    name: aro-cluster-smrmt-xrbrh-worker-eastus2
+
+---
+apiVersion: autoscaling.openshift.io/v1beta1
+kind: MachineAutoscaler
+metadata:
+  name: worker-eastus3-autoscaler
+  namespace: openshift-machine-api
+  annotations:
+    description: "Machine autoscaler for eastus3 worker nodes"
+    insights.openshift.io/cost-center: "genomics-research"
+spec:
+  minReplicas: 1
+  maxReplicas: 8
+  scaleTargetRef:
+    apiVersion: machine.openshift.io/v1beta1
+    kind: MachineSet
+    name: aro-cluster-smrmt-xrbr3-worker-eastus3
