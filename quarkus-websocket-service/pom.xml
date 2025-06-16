@@ -114,6 +114,31 @@
         </executions>
       </plugin>
       <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-enforcer-plugin</artifactId>
+        <version>3.4.1</version>
+        <executions>
+          <execution>
+            <id>enforce-java-version</id>
+            <goals>
+              <goal>enforce</goal>
+            </goals>
+            <configuration>
+              <rules>
+                <requireJavaVersion>
+                  <version>[17,18)</version>
+                  <message>❌ Java 17 is required for this project. Current version: ${java.version}</message>
+                </requireJavaVersion>
+                <requireMavenVersion>
+                  <version>[3.8.0,)</version>
+                  <message>❌ Maven 3.8.0 or higher is required.</message>
+                </requireMavenVersion>
+              </rules>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
         <artifactId>maven-compiler-plugin</artifactId>
         <version>${compiler-plugin.version}</version>
         <configuration>
