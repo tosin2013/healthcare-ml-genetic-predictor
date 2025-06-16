@@ -564,28 +564,30 @@
 
         // Real-time scaling metrics monitoring
         function startScalingMetricsMonitor() {
-            scalingMetricsInterval = setInterval(updateScalingMetrics, 5000); // Update every 5 seconds
+            scalingMetricsInterval = setInterval(updateScalingMetrics, 2000); // Update every 2 seconds for real-time feedback
+            updateScalingMetrics(); // Initial update
         }
 
-        function updateScalingMetrics() {
+        async function updateScalingMetrics() {
             try {
-                // Simulate real-time metrics (in production, these would come from OpenShift API)
-                const baseActivity = Math.min(messageCount, 10);
+                // Fetch real VEP service status from our API
+                await updateVepServiceStatus();
 
-                // Simulate pod scaling based on mode and activity
-                let vepPods, mlPods, nodes, queueDepth;
+                // Keep some simulated metrics for ML pods and nodes (until we add real APIs)
+                const baseActivity = Math.min(messageCount, 10);
+                let mlPods, nodes;
 
                 if (currentMode === 'big-data') {
-                    vepPods = Math.min(Math.floor(baseActivity * 1.5) + 2, 8);
                     mlPods = Math.min(Math.floor(baseActivity * 1.2) + 1, 6);
-                    nodes = vepPods > 5 || mlPods > 3 ? 4 + Math.floor((vepPods + mlPods) / 6) : 3;
-                    queueDepth = Math.floor(Math.random() * 15) + baseActivity;
+                    nodes = baseActivity > 5 ? 4 + Math.floor(baseActivity / 6) : 3;
                 } else {
-                    vepPods = Math.min(Math.floor(baseActivity * 0.8), 3);
                     mlPods = Math.min(Math.floor(baseActivity * 0.6), 2);
                     nodes = 3; // No node scaling in normal mode
-                    queueDepth = Math.floor(Math.random() * 5) + Math.floor(baseActivity / 2);
                 }
+
+                // Update ML pods and nodes (VEP pods updated by updateVepServiceStatus)
+                document.getElementById('ml-pod-count').textContent = mlPods;
+                document.getElementById('node-count').textContent = nodes;
 
                 // Calculate cost based on resources
                 let costPerHour = 0.15; // Base cluster cost
@@ -626,7 +628,50 @@
                 }
 
             } catch (error) {
-                console.log('Metrics simulation error:', error);
+                console.log('Metrics update error:', error);
+            }
+        }
+
+        async function updateVepServiceStatus() {
+            try {
+                const response = await fetch('/api/scaling/vep-status');
+                const data = await response.json();
+
+                if (data.success && data.data.vepService) {
+                    const vepService = data.data.vepService;
+
+                    // Update VEP pod count with status indicator
+                    const vepPodElement = document.getElementById('vep-pod-count');
+                    const podStatus = vepService.currentPods > 0 ? '🟢' : '🔴';
+                    vepPodElement.innerHTML = `${podStatus} ${vepService.currentPods}/${vepService.maxPods}`;
+
+                    // Update queue depth (Kafka lag)
+                    const queueElement = document.getElementById('queue-depth');
+                    const queueStatus = vepService.kafkaLag > 5 ? '🟡' : '🟢';
+                    queueElement.innerHTML = `${queueStatus} ${vepService.kafkaLag}`;
+
+                    // Update scaling status with VEP-specific information
+                    if (vepService.currentPods === 0) {
+                        updateScalingStatus('🔴 VEP Service Scaled to Zero - Send sequence to trigger scaling', 'status-normal');
+                        // Only show startup message once when pods are scaling up
+                        if (vepService.kafkaLag > 0) {
+                            addMessage(`⏳ VEP service starting up... Estimated time: ${vepService.estimatedWaitTime}`, 'system');
+                        }
+                    } else if (vepService.kedaActive && vepService.kafkaLag > 5) {
+                        updateScalingStatus(`🟡 VEP Service Scaling - ${vepService.currentPods} pods processing ${vepService.kafkaLag} messages`, 'status-scaling');
+                    } else if (vepService.currentPods > 0) {
+                        updateScalingStatus(`🟢 VEP Service Active - ${vepService.currentPods} pods ready`, 'status-normal');
+                    }
+                }
+            } catch (error) {
+                console.warn('Failed to fetch VEP service status:', error);
+                // Fallback to simulated data if API is not available
+                const baseActivity = Math.min(messageCount, 10);
+                const vepPods = currentMode === 'big-data' ? Math.min(Math.floor(baseActivity * 1.5) + 2, 8) : Math.min(Math.floor(baseActivity * 0.8), 3);
+                const queueDepth = Math.floor(Math.random() * 5) + Math.floor(baseActivity / 2);
+
+                document.getElementById('vep-pod-count').innerHTML = `🟡 ${vepPods}/20`;
+                document.getElementById('queue-depth').innerHTML = `🟡 ${queueDepth}`;
             }
         }
 
