@@ -47,6 +47,9 @@ public class GeneticPredictorEndpoint {
     @Inject
     ObjectMapper objectMapper;
 
+    @Inject
+    ProcessingProgressService progressService;
+
     @OnOpen
     public void onOpen(Session session) {
         LOGGER.info("WebSocket opened: {}", session.getId());
@@ -193,6 +196,12 @@ public class GeneticPredictorEndpoint {
                         String.format("🧬 Genetic sequence (%d chars) queued for VEP annotation and ML analysis → %s",
                                     geneticSequence.length(), kafkaTopic));
                     break;
+            }
+
+            // Start progress updates to keep WebSocket alive during VEP processing
+            if (apiSessionId != null) {
+                progressService.startProcessingUpdates(apiSessionId, session, mode, geneticSequence.length());
+                LOGGER.info("Started progress updates for session {} ({} mode)", apiSessionId, mode);
             }
 
         } catch (Exception e) {

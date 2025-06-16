@@ -38,6 +38,9 @@ public class GeneticResultsService {
     @Inject
     ObjectMapper objectMapper;
 
+    @Inject
+    ProcessingProgressService progressService;
+
     // Registry to track active WebSocket sessions
     private static final Map<String, Session> activeSessions = new ConcurrentHashMap<>();
 
@@ -192,20 +195,26 @@ public class GeneticResultsService {
     private Uni<Void> sendResultsToClient(FormattedResults formattedResults) {
         return Uni.createFrom().item(() -> {
             Session session = activeSessions.get(formattedResults.sessionId);
-            
+
             if (session != null && session.isOpen()) {
                 try {
+                    // Stop progress updates before sending final results
+                    progressService.stopProcessingUpdates(formattedResults.sessionId);
+
+                    // Send final results
                     session.getAsyncRemote().sendText(formattedResults.message);
                     LOGGER.info("Sent VEP results to WebSocket session: {}", formattedResults.sessionId);
                 } catch (Exception e) {
-                    LOGGER.error("Failed to send results to WebSocket session {}: {}", 
+                    LOGGER.error("Failed to send results to WebSocket session {}: {}",
                         formattedResults.sessionId, e.getMessage());
                 }
             } else {
-                LOGGER.warn("WebSocket session {} not found or closed, cannot send results", 
+                LOGGER.warn("WebSocket session {} not found or closed, cannot send results",
                     formattedResults.sessionId);
+                // Stop progress updates even if session is closed
+                progressService.stopProcessingUpdates(formattedResults.sessionId);
             }
-            
+
             return null;
         });
     }

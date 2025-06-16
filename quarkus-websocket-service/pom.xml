@@ -78,6 +78,11 @@
       <groupId>io.quarkus</groupId>
       <artifactId>quarkus-hibernate-validator</artifactId>
     </dependency>
+    <!-- Scheduler for progress updates -->
+    <dependency>
+      <groupId>io.quarkus</groupId>
+      <artifactId>quarkus-scheduler</artifactId>
+    </dependency>
     <!-- VEP Integration Dependencies -->
     <dependency>
       <groupId>io.quarkus</groupId>
