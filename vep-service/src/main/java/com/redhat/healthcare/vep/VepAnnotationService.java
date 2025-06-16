@@ -18,6 +18,7 @@ import io.cloudevents.core.provider.EventFormatProvider;
 import io.cloudevents.jackson.JsonFormat;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.net.URI;
 import java.util.UUID;
@@ -67,16 +68,40 @@ public class VepAnnotationService {
 
         return Uni.createFrom().item(() -> {
             try {
-                // Create proper CloudEvent response
+                // Extract genetic sequence from the original CloudEvent
+                String geneticSequence = extractGeneticSequenceSafely(cloudEventJson);
+
+                // Create proper CloudEvent response with fields expected by WebSocket service
                 ObjectNode data = objectMapper.createObjectNode();
                 data.put("sessionId", sessionId);
+                data.put("genetic_sequence", geneticSequence); // Add the genetic sequence
+                data.put("processing_mode", "reactive");
+                data.put("annotation_timestamp", System.currentTimeMillis());
+                data.put("annotation_source", "vep-annotation-service");
                 data.put("status", "success");
-                data.put("message", "VEP annotation completed reactively");
-                data.put("timestamp", System.currentTimeMillis());
-                data.put("source", "vep-annotation-service");
-                data.put("variantCount", 5);
-                data.put("sequenceLength", 20);
-                data.put("processingMode", "reactive");
+                data.put("variant_count", 5);
+                data.put("sequence_length", geneticSequence.length());
+
+                // Add VEP annotations array (simplified for now, but structure expected by WebSocket service)
+                ArrayNode vepAnnotations = objectMapper.createArrayNode();
+                ObjectNode annotation = objectMapper.createObjectNode();
+                annotation.put("input", geneticSequence.substring(0, Math.min(20, geneticSequence.length())));
+                annotation.put("most_severe_consequence", "intergenic_variant");
+
+                // Add transcript consequences
+                ArrayNode transcriptConsequences = objectMapper.createArrayNode();
+                ObjectNode transcript = objectMapper.createObjectNode();
+                transcript.put("gene_symbol", "DEMO_GENE");
+                transcript.put("impact", "MODIFIER");
+                transcript.put("sift_prediction", "tolerated");
+                transcript.put("polyphen_prediction", "benign");
+                transcriptConsequences.add(transcript);
+                annotation.set("transcript_consequences", transcriptConsequences);
+
+                vepAnnotations.add(annotation);
+                data.set("vep_annotations", vepAnnotations);
+
+                // Add metadata for debugging
                 data.put("threadName", Thread.currentThread().getName());
                 data.put("kedaScaling", "enabled");
                 data.put("approach", "reactive-cloudevent");
@@ -129,6 +154,37 @@ public class VepAnnotationService {
                 System.currentTimeMillis()
             );
         });
+    }
+
+    /**
+     * Safely extracts genetic sequence from CloudEvent without blocking operations
+     */
+    private String extractGeneticSequenceSafely(String cloudEventJson) {
+        try {
+            // Try to extract genetic_sequence from CloudEvent data payload
+            if (cloudEventJson.contains("\"genetic_sequence\":")) {
+                int start = cloudEventJson.indexOf("\"genetic_sequence\":");
+                if (start != -1) {
+                    start = cloudEventJson.indexOf("\"", start + 19);
+                    int end = cloudEventJson.indexOf("\"", start + 1);
+                    if (start != -1 && end != -1) {
+                        String sequence = cloudEventJson.substring(start + 1, end);
+                        LOG.debugf("Extracted genetic sequence: %d chars", sequence.length());
+                        return sequence;
+                    }
+                }
+            }
+
+            // Fallback: return a demo sequence
+            String fallbackSequence = "ATCGATCGATCGATCGATCG";
+            LOG.debugf("No genetic sequence found, using fallback: %s", fallbackSequence);
+            return fallbackSequence;
+
+        } catch (Exception e) {
+            String fallbackSequence = "ATCGATCGATCGATCGATCG";
+            LOG.debugf("Could not extract genetic sequence, using fallback %s: %s", fallbackSequence, e.getMessage());
+            return fallbackSequence;
+        }
     }
 
     /**
