@@ -21,7 +21,7 @@
 const WebSocket = require('ws');
 
 // Configuration
-const WEBSOCKET_URL = process.env.WEBSOCKET_URL || 'wss://quarkus-websocket-knative-healthcare-ml-demo.apps.b9892ub1.eastus.aroapp.io/genetics';
+const WEBSOCKET_URL = process.env.WEBSOCKET_URL || 'wss://quarkus-websocket-service-healthcare-ml-demo.apps.b9892ub1.eastus.aroapp.io/genetics';
 const mode = process.argv[2] || 'normal';
 const sequence = process.argv[3] || 'ATCGATCGATCGATCGATCG';
 const timeoutSeconds = parseInt(process.argv[4]) || 120;

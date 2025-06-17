@@ -252,7 +252,7 @@
                 ⚡ Node Scale Mode (Cluster Autoscaler)
             </button>
             <button id="triggerScalingBtn" onclick="triggerBigDataScaling()" class="mode-btn bigdata" disabled>
-                🔥 Trigger Multi-Node Demo
+                🔥 Trigger Scaling Demo
             </button>
         </div>
 
@@ -512,6 +512,7 @@
             document.getElementById('bigdata-samples').style.display = 'block';
             updateScalingStatus('🔴 Node Scale Mode - Cluster Autoscaler Enabled', 'status-bigdata');
             addMessage('⚡ Node Scale Mode activated - cluster autoscaler demonstration ready', 'system');
+            addMessage('💡 Click "🔥 Trigger Scaling Demo" to create compute-intensive nodes', 'system');
         }
 
         function updateScalingStatus(message, className) {
@@ -531,41 +532,66 @@
             addMessage(`📊 Generated ${(size/1000).toFixed(1)}KB genetic sequence for big data processing`, 'system');
         }
 
-        // Trigger big data scaling demonstration
+        // Trigger scaling demonstration based on current mode
         function triggerBigDataScaling() {
             if (!connected) {
                 addMessage('❌ Connect to service first', 'system');
                 return;
             }
 
-            updateScalingStatus('🔴 Triggering Node Scaling Demo', 'status-bigdata');
-            addMessage('⚡ Triggering big data processing - this will demonstrate node scaling!', 'system');
-            addMessage('📊 Generating large genetic datasets (1MB+ each)...', 'system');
+            if (currentMode === 'node-scale') {
+                updateScalingStatus('🔴 Triggering Node Scaling Demo', 'status-bigdata');
+                addMessage('⚡ Triggering node scaling demo - this will create compute-intensive nodes!', 'system');
+                addMessage('📊 Generating large genetic sequences for cluster autoscaler...', 'system');
 
-            // Generate and send multiple large sequences
-            const largeSequences = generateLargeGeneticDatasets();
+                // Generate node-scale sequences (100KB each for reliable node scaling)
+                const nodeScaleSequences = generateNodeScaleDatasets();
 
-            largeSequences.forEach((sequence, index) => {
-                setTimeout(() => {
-                    const message = JSON.stringify({
-                        mode: 'big-data',
-                        sequence: sequence,
-                        size: sequence.length,
-                        resourceProfile: 'high-memory',
-                        timestamp: Date.now(),
-                        sessionId: 'demo-session-' + Date.now()
-                    });
+                nodeScaleSequences.forEach((sequence, index) => {
+                    setTimeout(() => {
+                        const message = JSON.stringify({
+                            mode: 'node-scale',
+                            sequence: sequence,
+                            size: sequence.length,
+                            timestamp: Date.now(),
+                            sessionId: 'node-scale-demo-' + Date.now() + '-' + index
+                        });
 
-                    socket.send(message);
-                    addMessage(`📤 Sent big data sequence ${index + 1}/5 (${(sequence.length / 1024 / 1024).toFixed(1)}MB)`, 'sent');
-                }, index * 3000); // 3 second intervals
-            });
+                        socket.send(message);
+                        addMessage(`⚡ Sent node-scale sequence ${index + 1}/${nodeScaleSequences.length} (${sequence.length} chars)`, 'sent');
+                    }, index * 2000); // 2 second delay between sequences
+                });
 
-            addMessage('⏳ Monitor scaling metrics above - nodes should scale up within 2-3 minutes', 'system');
-            addMessage('💰 Watch cost increase as new nodes are added to handle memory pressure', 'system');
+            } else {
+                updateScalingStatus('🔴 Triggering Big Data Demo', 'status-bigdata');
+                addMessage('🚀 Triggering big data processing - this will demonstrate memory scaling!', 'system');
+                addMessage('📊 Generating large genetic datasets (1MB+ each)...', 'system');
+
+                // Generate and send multiple large sequences for big-data mode
+                const largeSequences = generateLargeGeneticDatasets();
+
+                largeSequences.forEach((sequence, index) => {
+                    setTimeout(() => {
+                        const message = JSON.stringify({
+                            mode: 'big-data',
+                            sequence: sequence,
+                            size: sequence.length,
+                            resourceProfile: 'high-memory',
+                            timestamp: Date.now(),
+                            sessionId: 'bigdata-demo-' + Date.now() + '-' + index
+                        });
+
+                        socket.send(message);
+                        addMessage(`📤 Sent big data sequence ${index + 1}/5 (${(sequence.length / 1024 / 1024).toFixed(1)}MB)`, 'sent');
+                    }, index * 3000); // 3 second intervals
+                });
+
+                addMessage('⏳ Monitor scaling metrics above - pods should scale up within 1-2 minutes', 'system');
+                addMessage('💰 Watch memory usage increase as pods handle large sequences', 'system');
+            }
         }
 
-        // Generate large genetic datasets for node scaling
+        // Generate large genetic datasets for big-data mode (memory scaling)
         function generateLargeGeneticDatasets() {
             const baseSequences = ['ATCG', 'GGCC', 'TTAA', 'CCGG', 'ATAT', 'GCGC'];
             const largeSequences = [];
@@ -580,6 +606,23 @@
             }
 
             return largeSequences;
+        }
+
+        // Generate node-scale datasets for cluster autoscaler (node scaling)
+        function generateNodeScaleDatasets() {
+            const baseSequences = ['ATCG', 'GGCC', 'TTAA', 'CCGG', 'ATAT', 'GCGC'];
+            const nodeScaleSequences = [];
+
+            for (let i = 0; i < 3; i++) {
+                // Generate 100KB sequences - optimal for node scaling without memory issues
+                let nodeScaleSequence = '';
+                for (let j = 0; j < 25000; j++) { // 100KB sequence
+                    nodeScaleSequence += baseSequences[j % baseSequences.length];
+                }
+                nodeScaleSequences.push(nodeScaleSequence);
+            }
+
+            return nodeScaleSequences;
         }
 
         // Real-time scaling metrics monitoring
