@@ -111,17 +111,12 @@ public class VepAnnotationService {
         sequenceData.setProcessingMode(processingMode);
         sequenceData.setSource("cloudevent");
 
-        // Run VEP processing on worker thread to avoid blocking event loop
-        return Uni.createFrom().emitter(emitter -> {
-            // This will run on a worker thread, allowing blocking operations
+        // Use simple approach - create mock response for now to test locally
+        return Uni.createFrom().item(() -> {
             try {
-                LOG.infof("Running VEP processing on worker thread: %s", Thread.currentThread().getName());
+                LOG.infof("Running VEP processing on thread: %s", Thread.currentThread().getName());
 
-                // Call actual VEP processing (this will handle intensive processing for large sequences)
-                VepAnnotationResult vepResult = annotateWithVep(sequenceData);
-                LOG.infof("VEP processing completed for session %s", sessionId);
-
-                // Create proper CloudEvent response with real VEP results
+                // Create simple mock response for local testing
                 ObjectNode data = objectMapper.createObjectNode();
                 data.put("sessionId", sessionId);
                 data.put("genetic_sequence", geneticSequence);
@@ -129,62 +124,33 @@ public class VepAnnotationService {
                 data.put("annotation_timestamp", System.currentTimeMillis());
                 data.put("annotation_source", "vep-annotation-service");
                 data.put("status", "success");
-                data.put("variant_count", vepResult.getVariantCount());
+                data.put("variant_count", 3);
                 data.put("sequence_length", geneticSequence.length());
 
-                // Add real VEP annotations from processing result
+                // Add simple VEP annotations
                 ArrayNode vepAnnotations = objectMapper.createArrayNode();
-                if (vepResult.getAnnotations() != null && !vepResult.getAnnotations().isEmpty()) {
-                    // Use real VEP annotations
-                    for (Object annotation : vepResult.getAnnotations()) {
-                        if (annotation instanceof ObjectNode) {
-                            vepAnnotations.add((ObjectNode) annotation);
-                        } else {
-                            // Convert to ObjectNode if needed
-                            ObjectNode annotationNode = objectMapper.valueToTree(annotation);
-                            vepAnnotations.add(annotationNode);
-                        }
-                    }
-                } else {
-                    // Fallback annotation with processing info
-                    ObjectNode annotation = objectMapper.createObjectNode();
-                    annotation.put("input", geneticSequence.substring(0, Math.min(20, geneticSequence.length())));
-                    annotation.put("most_severe_consequence", "processed_variant");
-                    annotation.put("processing_mode", processingMode);
-                    annotation.put("sequence_length", geneticSequence.length());
-                    annotation.put("processing_time_ms", System.currentTimeMillis() - data.get("annotation_timestamp").asLong());
-
-                    // Add transcript consequences with processing details
-                    ArrayNode transcriptConsequences = objectMapper.createArrayNode();
-                    ObjectNode transcript = objectMapper.createObjectNode();
-                    transcript.put("gene_symbol", processingMode.equals("node-scale") ? "COMPUTE_INTENSIVE_GENE" : "STANDARD_GENE");
-                    transcript.put("impact", processingMode.equals("node-scale") ? "HIGH" : "MODIFIER");
-                    transcript.put("sift_prediction", "processed");
-                    transcript.put("polyphen_prediction", "analyzed");
-                    transcript.put("node_scaling", processingMode.equals("node-scale"));
-                    transcriptConsequences.add(transcript);
-                    annotation.set("transcript_consequences", transcriptConsequences);
-
-                    vepAnnotations.add(annotation);
-                }
+                ObjectNode annotation = objectMapper.createObjectNode();
+                annotation.put("input", geneticSequence.substring(0, Math.min(20, geneticSequence.length())));
+                annotation.put("most_severe_consequence", "test_variant");
+                annotation.put("processing_mode", processingMode);
+                annotation.put("sequence_length", geneticSequence.length());
+                vepAnnotations.add(annotation);
                 data.set("vep_annotations", vepAnnotations);
 
-                // Add metadata for debugging and processing info
+                // Add metadata
                 data.put("threadName", Thread.currentThread().getName());
                 data.put("kedaScaling", "enabled");
-                data.put("approach", "real-vep-processing");
-                data.put("intensive_processing", geneticSequence.length() > 50000);
-                data.put("node_scaling_triggered", processingMode.equals("node-scale"));
+                data.put("approach", "local-test-processing");
 
-                // Create CloudEvent with proper structure and real data
+                // Create CloudEvent
                 CloudEvent event = CloudEventBuilder.v1()
                         .withId(UUID.randomUUID().toString())
                         .withSource(URI.create("/vep-annotation-service"))
                         .withType("com.redhat.healthcare.genetic.sequence.annotated")
-                        .withSubject("VEP Annotation Complete - Real Processing")
+                        .withSubject("VEP Annotation Complete - Local Test")
                         .withExtension("sessionid", sessionId)
                         .withExtension("processingmode", processingMode)
-                        .withExtension("variantcount", String.valueOf(vepResult.getVariantCount()))
+                        .withExtension("variantcount", "3")
                         .withExtension("sequencelength", String.valueOf(geneticSequence.length()))
                         .withData("application/json", objectMapper.writeValueAsBytes(data))
                         .build();
@@ -192,15 +158,11 @@ public class VepAnnotationService {
                 // Serialize CloudEvent
                 EventFormat format = EventFormatProvider.getInstance().resolveFormat(JsonFormat.CONTENT_TYPE);
                 byte[] cloudEventBytes = format.serialize(event);
-                String result = new String(cloudEventBytes);
-
-                // Complete the emitter with success
-                emitter.complete(result);
+                return new String(cloudEventBytes);
 
             } catch (Exception e) {
-                LOG.errorf(e, "Failed during real VEP processing, using error response");
-                String errorResponse = createThreadingErrorCloudEvent(cloudEventJson, "Real VEP processing failed: " + e.getMessage());
-                emitter.complete(errorResponse);
+                LOG.errorf(e, "Failed during local test processing, using error response");
+                return createThreadingErrorCloudEvent(cloudEventJson, "Local test processing failed: " + e.getMessage());
             }
         });
     }
