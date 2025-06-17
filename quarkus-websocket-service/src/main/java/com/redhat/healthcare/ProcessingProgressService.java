@@ -86,9 +86,9 @@ public class ProcessingProgressService {
             String sessionId = entry.getKey();
             ProcessingSession session = entry.getValue();
             
-            // Check if WebSocket session is still open
-            if (!session.websocketSession.isOpen()) {
-                LOGGER.info("WebSocket session {} closed, removing from progress updates", sessionId);
+            // Enhanced session validation with keepalive
+            if (!isSessionHealthy(session.websocketSession, sessionId)) {
+                LOGGER.info("📋 SESSION HEALTH: WebSocket session {} is unhealthy, removing from progress updates", sessionId);
                 return true; // Remove from map
             }
             
@@ -96,9 +96,9 @@ public class ProcessingProgressService {
             long elapsedTime = currentTime - session.startTime;
             int elapsedSeconds = (int) (elapsedTime / 1000);
             
-            // Stop updates after 5 minutes (300 seconds) to prevent infinite updates
-            if (elapsedSeconds > 300) {
-                LOGGER.warn("Progress updates for session {} exceeded 5 minutes, stopping", sessionId);
+            // Stop updates after 15 minutes (900 seconds) to accommodate VEP processing + Kafka delay
+            if (elapsedSeconds > 900) {
+                LOGGER.warn("Progress updates for session {} exceeded 15 minutes, stopping", sessionId);
                 sendTimeoutMessage(session);
                 return true; // Remove from map
             }
@@ -154,8 +154,12 @@ public class ProcessingProgressService {
             return String.format("[%s] 🔍 Analyzing variants and generating annotations... (%ds)", timeStr, elapsedSeconds);
         } else if (elapsedSeconds <= 120) {
             return String.format("[%s] 📊 Finalizing ML predictions and results... (%ds)", timeStr, elapsedSeconds);
+        } else if (elapsedSeconds <= 300) {
+            return String.format("[%s] 🧬 VEP annotation service processing... (%ds)", timeStr, elapsedSeconds);
+        } else if (elapsedSeconds <= 600) {
+            return String.format("[%s] 📤 Publishing results and preparing delivery... (%ds)", timeStr, elapsedSeconds);
         } else {
-            return String.format("[%s] ⏱️ Complex analysis in progress, please wait... (%ds)", timeStr, elapsedSeconds);
+            return String.format("[%s] ⏳ Extended analysis in progress, maintaining connection... (%ds)", timeStr, elapsedSeconds);
         }
     }
     
@@ -178,6 +182,38 @@ public class ProcessingProgressService {
         }
     }
     
+    /**
+     * Enhanced session health check with keepalive validation.
+     *
+     * @param websocketSession The WebSocket session to check
+     * @param sessionId The session ID for logging
+     * @return true if session is healthy and active
+     */
+    private boolean isSessionHealthy(Session websocketSession, String sessionId) {
+        try {
+            // Check if session is open
+            if (!websocketSession.isOpen()) {
+                LOGGER.info("📋 SESSION HEALTH: Session {} is closed", sessionId);
+                return false;
+            }
+
+            // Send keepalive ping to verify connection
+            try {
+                websocketSession.getAsyncRemote().sendPing(java.nio.ByteBuffer.wrap("keepalive".getBytes()));
+                LOGGER.debug("📋 SESSION HEALTH: Sent keepalive ping to session {}", sessionId);
+                return true;
+            } catch (Exception pingException) {
+                LOGGER.warn("📋 SESSION HEALTH: Failed to send keepalive ping to session {}: {}",
+                           sessionId, pingException.getMessage());
+                return false;
+            }
+
+        } catch (Exception e) {
+            LOGGER.error("📋 SESSION HEALTH: Error checking session {} health: {}", sessionId, e.getMessage());
+            return false;
+        }
+    }
+
     /**
      * Get the number of currently active processing sessions.
      */

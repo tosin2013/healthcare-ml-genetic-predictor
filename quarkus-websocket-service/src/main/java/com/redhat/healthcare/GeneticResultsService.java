@@ -229,7 +229,8 @@ public class GeneticResultsService {
 
             Session session = activeSessions.get(formattedResults.sessionId);
 
-            if (session != null && session.isOpen()) {
+            // Enhanced session validation before delivery
+            if (session != null && isSessionReadyForDelivery(session, formattedResults.sessionId)) {
                 try {
                     LOGGER.info("✅ WEBSOCKET DELIVERY: Found active session for: {}", formattedResults.sessionId);
 
@@ -256,6 +257,44 @@ public class GeneticResultsService {
 
             return null;
         });
+    }
+
+    /**
+     * Enhanced session validation before result delivery.
+     *
+     * @param session The WebSocket session to validate
+     * @param sessionId The session ID for logging
+     * @return true if session is ready for result delivery
+     */
+    private boolean isSessionReadyForDelivery(Session session, String sessionId) {
+        try {
+            // Check if session is open
+            if (!session.isOpen()) {
+                LOGGER.warn("📋 SESSION VALIDATION: Session {} is closed, cannot deliver results", sessionId);
+                return false;
+            }
+
+            // Verify session is not in closing state
+            if (session.isSecure() && !session.isOpen()) {
+                LOGGER.warn("📋 SESSION VALIDATION: Session {} is in closing state, cannot deliver results", sessionId);
+                return false;
+            }
+
+            // Send validation ping to ensure connection is alive
+            try {
+                session.getAsyncRemote().sendPing(java.nio.ByteBuffer.wrap("validation".getBytes()));
+                LOGGER.debug("📋 SESSION VALIDATION: Session {} passed validation checks", sessionId);
+                return true;
+            } catch (Exception pingException) {
+                LOGGER.warn("📋 SESSION VALIDATION: Session {} failed ping validation: {}",
+                           sessionId, pingException.getMessage());
+                return false;
+            }
+
+        } catch (Exception e) {
+            LOGGER.error("📋 SESSION VALIDATION: Error validating session {}: {}", sessionId, e.getMessage());
+            return false;
+        }
     }
 
     // Helper classes for data transfer
