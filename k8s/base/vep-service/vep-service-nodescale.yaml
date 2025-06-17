@@ -46,18 +46,16 @@ spec:
         - name: SCALING_MODE
           value: "nodescale"
         - name: JAVA_OPTS
-          value: "-Xmx6g -Xms6g -XX:+UseG1GC -XX:MaxGCPauseMillis=200"
-        
-        # Very high resource requests to force node scaling
+          value: "-Xmx2g -Xms2g -XX:+UseG1GC -XX:MaxGCPauseMillis=200"
+
+        # Optimized resource requests to trigger compute-intensive node scaling
         resources:
           requests:
-            memory: "8Gi"      # 8GB memory request per pod
-            cpu: "4000m"       # 4 CPU cores per pod
-            ephemeral-storage: "10Gi"
+            memory: "3Gi"      # 3GB memory request per pod
+            cpu: "5000m"       # 5 CPU cores - exceeds smallest standard node capacity
           limits:
-            memory: "12Gi"     # 12GB memory limit per pod
+            memory: "4Gi"      # 4GB memory limit per pod
             cpu: "6000m"       # 6 CPU cores per pod
-            ephemeral-storage: "20Gi"
         
         # Health checks
         livenessProbe:
@@ -87,8 +85,30 @@ spec:
           timeoutSeconds: 5
           failureThreshold: 30
       
-      # Node affinity to spread across different nodes
+      # Node affinity for compute-intensive workloads (STRICT)
       affinity:
+        nodeAffinity:
+          # REQUIRE compute-intensive nodes (no fallback to standard)
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: workload-type
+                operator: In
+                values: ["compute-intensive"]
+          # Prefer high-memory resource profile
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            preference:
+              matchExpressions:
+              - key: resource-profile
+                operator: In
+                values: ["high-memory"]
+          - weight: 80
+            preference:
+              matchExpressions:
+              - key: environment
+                operator: In
+                values: ["demo"]
         podAntiAffinity:
           preferredDuringSchedulingIgnoredDuringExecution:
           - weight: 100
@@ -129,10 +149,10 @@ spec:
     kind: Deployment
     name: vep-service-nodescale
   pollingInterval: 5   # Very aggressive polling
-  cooldownPeriod: 30   # Quick cooldown
+  cooldownPeriod: 300  # 5 minutes cooldown to allow VEP processing to complete
   idleReplicaCount: 0  # Scale to zero when idle
   minReplicaCount: 0
-  maxReplicaCount: 20  # High max to force node scaling (20 pods * 8GB = 160GB)
+  maxReplicaCount: 20  # High max to force node scaling (20 pods * 5 CPU = 100 cores)
   fallback:
     failureThreshold: 3
     replicas: 2
@@ -142,11 +162,11 @@ spec:
       name: vep-service-nodescale-hpa
       behavior:
         scaleDown:
-          stabilizationWindowSeconds: 60
+          stabilizationWindowSeconds: 300  # 5 minutes stabilization
           policies:
           - type: Percent
             value: 25
-            periodSeconds: 30
+            periodSeconds: 60  # Slower scale-down
         scaleUp:
           stabilizationWindowSeconds: 0    # Immediate scale up
           policies:
@@ -154,7 +174,7 @@ spec:
             value: 1000  # 1000% increase = 10x scaling
             periodSeconds: 5
           - type: Pods
-            value: 10    # Add 10 pods at once (10 * 8GB = 80GB)
+            value: 10    # Add 10 pods at once (10 * 5 CPU = 50 cores)
             periodSeconds: 5
           selectPolicy: Max
   triggers:

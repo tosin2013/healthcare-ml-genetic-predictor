@@ -76,7 +76,7 @@ spec:
     kind: Deployment
     name: vep-service-nodescale
   pollingInterval: 5
-  cooldownPeriod: 180
+  cooldownPeriod: 300  # 5 minutes to allow VEP processing completion
   minReplicaCount: 0
   maxReplicaCount: 20
   triggers:
