@@ -7,6 +7,7 @@ import io.smallrye.mutiny.Uni;
 import io.smallrye.mutiny.infrastructure.Infrastructure;
 import org.eclipse.microprofile.rest.client.inject.RestClient;
 import org.jboss.logging.Logger;
+import jakarta.inject.Inject;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -22,6 +23,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.net.URI;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -48,6 +50,9 @@ public class VepAnnotationService {
 
     @Inject
     VepAnnotationProcessor annotationProcessor;
+
+    @Inject
+    SequenceToHgvsConverter hgvsConverter;
 
     @Inject
     ObjectMapper objectMapper;
@@ -388,11 +393,26 @@ public class VepAnnotationService {
                 return createSimulatedVepResult(sequenceData);
             }
 
-            // Call VEP API for normal-sized sequences (blocking operation now safe on Virtual Thread)
-            VepApiResponse response = vepApiClient.annotateSequence(
+            // Convert raw sequence to HGVS notations
+            List<String> hgvsNotations = hgvsConverter.convertSequenceToHgvs(
                 sequenceData.getSequence(),
-                sequenceData.getSpecies(),
-                sequenceData.getAssembly()
+                sequenceData.getSequenceId()
+            );
+
+            if (hgvsNotations.isEmpty()) {
+                LOG.warnf("No HGVS notations generated for sequence %s", sequenceData.getSequenceId());
+                return VepAnnotationResult.empty(sequenceData);
+            }
+
+            // Create VEP request with HGVS notations
+            VepHgvsRequest vepRequest = VepHgvsRequest.fromMultiple(hgvsNotations);
+            LOG.infof("Calling VEP API with %d HGVS notations for sequence %s",
+                     hgvsNotations.size(), sequenceData.getSequenceId());
+
+            // Call VEP API with proper HGVS format (blocking operation now safe on worker thread)
+            VepApiResponse response = vepApiClient.annotateVariants(
+                vepRequest,
+                sequenceData.getSpecies()
             );
 
             // Convert API response to internal format

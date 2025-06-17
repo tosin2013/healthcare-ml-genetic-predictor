@@ -19,34 +19,31 @@ import java.util.concurrent.CompletionStage;
 public interface VepApiClient {
 
     /**
-     * Annotate genetic variants using VEP
+     * Annotate genetic variants using VEP with HGVS notations
      *
-     * @param sequence Genetic sequence to annotate
+     * @param request VEP request containing HGVS notations
      * @param species Species (default: human)
-     * @param assembly Genome assembly (default: GRCh38)
      * @return VEP annotation response
      */
     @POST
     @Path("/vep/{species}/hgvs")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
-    VepApiResponse annotateSequence(
-        @QueryParam("content") String sequence,
-        @PathParam("species") @DefaultValue("human") String species,
-        @QueryParam("assembly") @DefaultValue("GRCh38") String assembly
+    VepApiResponse annotateVariants(
+        VepHgvsRequest request,
+        @PathParam("species") @DefaultValue("human") String species
     );
 
     /**
-     * Asynchronous variant annotation
+     * Asynchronous variant annotation with HGVS notations
      */
     @POST
     @Path("/vep/{species}/hgvs")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
-    CompletionStage<VepApiResponse> annotateSequenceAsync(
-        @QueryParam("content") String sequence,
-        @PathParam("species") @DefaultValue("human") String species,
-        @QueryParam("assembly") @DefaultValue("GRCh38") String assembly
+    CompletionStage<VepApiResponse> annotateVariantsAsync(
+        VepHgvsRequest request,
+        @PathParam("species") @DefaultValue("human") String species
     );
 
     /**
