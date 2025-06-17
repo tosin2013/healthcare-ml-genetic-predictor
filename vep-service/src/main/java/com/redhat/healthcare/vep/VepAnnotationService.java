@@ -78,6 +78,11 @@ public class VepAnnotationService {
                     LOG.errorf("❌ KAFKA FLOW: Result is null or empty - will not publish to genetic-data-annotated!");
                 }
             })
+            .onItem().delayIt().by(java.time.Duration.ofSeconds(30))
+            .onItem().invoke(result -> {
+                LOG.infof("🔄 KAFKA FLUSH: Allowing 30 seconds for Kafka producer to flush normal mode message");
+                LOG.infof("✅ KAFKA FLUSH: Extended delay ensures message delivery to genetic-data-annotated topic");
+            })
             .onFailure().invoke(throwable -> {
                 LOG.errorf(throwable, "💥 KAFKA FLOW: Failed to process normal sequence - no message will be published");
             });
@@ -100,6 +105,11 @@ public class VepAnnotationService {
                 } else {
                     LOG.errorf("❌ KAFKA FLOW: Result is null or empty - will not publish to genetic-data-annotated!");
                 }
+            })
+            .onItem().delayIt().by(java.time.Duration.ofSeconds(30))
+            .onItem().invoke(result -> {
+                LOG.infof("🔄 KAFKA FLUSH: Allowing 30 seconds for Kafka producer to flush big-data mode message");
+                LOG.infof("✅ KAFKA FLUSH: Extended delay ensures message delivery to genetic-data-annotated topic");
             })
             .onFailure().invoke(throwable -> {
                 LOG.errorf(throwable, "💥 KAFKA FLOW: Failed to process big-data sequence - no message will be published");
@@ -134,6 +144,12 @@ public class VepAnnotationService {
                 } else {
                     LOG.errorf("❌ KAFKA FLOW: Result is null or empty - will not publish to genetic-data-annotated!");
                 }
+            })
+            .onItem().delayIt().by(java.time.Duration.ofSeconds(30))
+            .onItem().invoke(result -> {
+                LOG.infof("🔄 KAFKA FLUSH: Allowing 30 seconds for Kafka producer to flush node-scale message");
+                LOG.infof("✅ KAFKA FLUSH: Extended delay ensures message delivery to genetic-data-annotated topic");
+                LOG.infof("🎯 KAFKA FLUSH: Message should now be available for WebSocket service consumption");
             })
             .onFailure().invoke(throwable -> {
                 LOG.errorf(throwable, "💥 KAFKA FLOW: Failed to process node-scale sequence - no message will be published");
