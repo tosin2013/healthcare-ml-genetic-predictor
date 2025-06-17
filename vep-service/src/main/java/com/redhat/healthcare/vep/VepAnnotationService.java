@@ -57,6 +57,9 @@ public class VepAnnotationService {
     @Inject
     ObjectMapper objectMapper;
 
+    @Inject
+    VepResultMapper resultMapper;
+
     /**
      * Processes genetic sequences from the normal mode topic (pod scaling only)
      *
@@ -66,7 +69,18 @@ public class VepAnnotationService {
     @Incoming("genetic-data-raw")
     @Outgoing("genetic-data-annotated")
     public Uni<String> processGeneticSequence(String cloudEventJson) {
-        return processGeneticSequenceInternal(cloudEventJson, "normal");
+        LOG.infof("🔥 KAFKA FLOW: Received message on genetic-data-raw, will publish to genetic-data-annotated");
+        return processGeneticSequenceInternal(cloudEventJson, "normal")
+            .onItem().invoke(result -> {
+                if (result != null && !result.isEmpty()) {
+                    LOG.infof("🎉 KAFKA FLOW: Successfully created result for genetic-data-annotated (size: %d chars)", result.length());
+                } else {
+                    LOG.errorf("❌ KAFKA FLOW: Result is null or empty - will not publish to genetic-data-annotated!");
+                }
+            })
+            .onFailure().invoke(throwable -> {
+                LOG.errorf(throwable, "💥 KAFKA FLOW: Failed to process normal sequence - no message will be published");
+            });
     }
 
     /**
@@ -78,7 +92,18 @@ public class VepAnnotationService {
     @Incoming("genetic-bigdata-raw")
     @Outgoing("genetic-data-annotated")
     public Uni<String> processBigDataGeneticSequence(String cloudEventJson) {
-        return processGeneticSequenceInternal(cloudEventJson, "big-data");
+        LOG.infof("🔥 KAFKA FLOW: Received message on genetic-bigdata-raw, will publish to genetic-data-annotated");
+        return processGeneticSequenceInternal(cloudEventJson, "big-data")
+            .onItem().invoke(result -> {
+                if (result != null && !result.isEmpty()) {
+                    LOG.infof("🎉 KAFKA FLOW: Successfully created result for genetic-data-annotated (size: %d chars)", result.length());
+                } else {
+                    LOG.errorf("❌ KAFKA FLOW: Result is null or empty - will not publish to genetic-data-annotated!");
+                }
+            })
+            .onFailure().invoke(throwable -> {
+                LOG.errorf(throwable, "💥 KAFKA FLOW: Failed to process big-data sequence - no message will be published");
+            });
     }
 
     /**
@@ -90,7 +115,18 @@ public class VepAnnotationService {
     @Incoming("genetic-nodescale-raw")
     @Outgoing("genetic-data-annotated")
     public Uni<String> processNodeScaleGeneticSequence(String cloudEventJson) {
-        return processGeneticSequenceInternal(cloudEventJson, "node-scale");
+        LOG.infof("🔥 KAFKA FLOW: Received message on genetic-nodescale-raw, will publish to genetic-data-annotated");
+        return processGeneticSequenceInternal(cloudEventJson, "node-scale")
+            .onItem().invoke(result -> {
+                if (result != null && !result.isEmpty()) {
+                    LOG.infof("🎉 KAFKA FLOW: Successfully created result for genetic-data-annotated (size: %d chars)", result.length());
+                } else {
+                    LOG.errorf("❌ KAFKA FLOW: Result is null or empty - will not publish to genetic-data-annotated!");
+                }
+            })
+            .onFailure().invoke(throwable -> {
+                LOG.errorf(throwable, "💥 KAFKA FLOW: Failed to process node-scale sequence - no message will be published");
+            });
     }
 
     /**
@@ -129,83 +165,23 @@ public class VepAnnotationService {
         })
         .runSubscriptionOn(Infrastructure.getDefaultExecutor())
         .map(vepResult -> {
+            LOG.infof("Mapping VEP result for session %s (mode: %s, variants: %d)",
+                     sessionId, processingMode, vepResult.getVariantCount());
+
             try {
-                // Create proper CloudEvent response with real VEP results
-                ObjectNode data = objectMapper.createObjectNode();
-                data.put("sessionId", sessionId);
-                data.put("genetic_sequence", geneticSequence);
-                data.put("processing_mode", processingMode);
-                data.put("annotation_timestamp", System.currentTimeMillis());
-                data.put("annotation_source", "vep-annotation-service");
-                data.put("status", "success");
-                data.put("variant_count", vepResult.getVariantCount());
-                data.put("sequence_length", geneticSequence.length());
+                // Use unified result mapper for consistent CloudEvent creation
+                String resultCloudEvent = resultMapper.mapVepResultToCloudEvent(
+                    vepResult, sessionId, geneticSequence, processingMode
+                );
 
-                // Add real VEP annotations from processing result
-                ArrayNode vepAnnotations = objectMapper.createArrayNode();
-                if (vepResult.getAnnotations() != null && !vepResult.getAnnotations().isEmpty()) {
-                    // Use real VEP annotations
-                    for (Object annotation : vepResult.getAnnotations()) {
-                        if (annotation instanceof ObjectNode) {
-                            vepAnnotations.add((ObjectNode) annotation);
-                        } else {
-                            // Convert to ObjectNode if needed
-                            ObjectNode annotationNode = objectMapper.valueToTree(annotation);
-                            vepAnnotations.add(annotationNode);
-                        }
-                    }
-                } else {
-                    // Fallback annotation with processing info
-                    ObjectNode annotation = objectMapper.createObjectNode();
-                    annotation.put("input", geneticSequence.substring(0, Math.min(20, geneticSequence.length())));
-                    annotation.put("most_severe_consequence", "processed_variant");
-                    annotation.put("processing_mode", processingMode);
-                    annotation.put("sequence_length", geneticSequence.length());
-                    annotation.put("processing_time_ms", System.currentTimeMillis() - data.get("annotation_timestamp").asLong());
+                LOG.infof("Successfully mapped VEP result to CloudEvent for session %s (size: %d chars)",
+                         sessionId, resultCloudEvent.length());
 
-                    // Add transcript consequences with processing details
-                    ArrayNode transcriptConsequences = objectMapper.createArrayNode();
-                    ObjectNode transcript = objectMapper.createObjectNode();
-                    transcript.put("gene_symbol", processingMode.equals("node-scale") ? "COMPUTE_INTENSIVE_GENE" : "STANDARD_GENE");
-                    transcript.put("impact", processingMode.equals("node-scale") ? "HIGH" : "MODIFIER");
-                    transcript.put("sift_prediction", "processed");
-                    transcript.put("polyphen_prediction", "analyzed");
-                    transcript.put("node_scaling", processingMode.equals("node-scale"));
-                    transcriptConsequences.add(transcript);
-                    annotation.set("transcript_consequences", transcriptConsequences);
-
-                    vepAnnotations.add(annotation);
-                }
-                data.set("vep_annotations", vepAnnotations);
-
-                // Add metadata for debugging and processing info
-                data.put("threadName", Thread.currentThread().getName());
-                data.put("kedaScaling", "enabled");
-                data.put("approach", "real-vep-processing-worker-thread");
-                data.put("intensive_processing", geneticSequence.length() > 50000);
-                data.put("node_scaling_triggered", processingMode.equals("node-scale"));
-
-                // Create CloudEvent with proper structure and real data
-                CloudEvent event = CloudEventBuilder.v1()
-                        .withId(UUID.randomUUID().toString())
-                        .withSource(URI.create("/vep-annotation-service"))
-                        .withType("com.redhat.healthcare.genetic.sequence.annotated")
-                        .withSubject("VEP Annotation Complete - Real Processing")
-                        .withExtension("sessionid", sessionId)
-                        .withExtension("processingmode", processingMode)
-                        .withExtension("variantcount", String.valueOf(vepResult.getVariantCount()))
-                        .withExtension("sequencelength", String.valueOf(geneticSequence.length()))
-                        .withData("application/json", objectMapper.writeValueAsBytes(data))
-                        .build();
-
-                // Serialize CloudEvent
-                EventFormat format = EventFormatProvider.getInstance().resolveFormat(JsonFormat.CONTENT_TYPE);
-                byte[] cloudEventBytes = format.serialize(event);
-                return new String(cloudEventBytes);
+                return resultCloudEvent;
 
             } catch (Exception e) {
-                LOG.errorf(e, "Failed during real VEP processing, using error response");
-                return createThreadingErrorCloudEvent(cloudEventJson, "Real VEP processing failed: " + e.getMessage());
+                LOG.errorf(e, "Failed to map VEP result for session %s: %s", sessionId, e.getMessage());
+                return createThreadingErrorCloudEvent(cloudEventJson, "VEP result mapping failed: " + e.getMessage());
             }
         });
     }
