@@ -66,10 +66,11 @@ public class VepResultMapper {
 
             // WEBSOCKET SERVICE COMPATIBILITY: Log expected fields
             LOG.infof("📋 WEBSOCKET COMPATIBILITY: Created CloudEvent with required fields:");
-            LOG.infof("  - sessionId: %s", sessionId);
+            LOG.infof("  - sessionId: %s (PRESERVED from input)", sessionId);
             LOG.infof("  - genetic_sequence: %d chars", geneticSequence.length());
             LOG.infof("  - vep_annotations: %d annotations", vepAnnotations.size());
             LOG.infof("  - processing_mode: %s", processingMode);
+            LOG.infof("🔗 SESSION MATCHING: WebSocket service should find session '%s' in activeSessions", sessionId);
 
             // Create CloudEvent with consistent structure
             CloudEvent event = createStandardCloudEvent(data, sessionId, processingMode, vepResult);

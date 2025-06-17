@@ -167,18 +167,39 @@ public class VepAnnotationService {
         // Reactive approach with actual VEP processing on worker thread
         LOG.infof("Processing genetic sequence in %s mode on thread: %s", processingMode, Thread.currentThread().getName());
 
-        // Extract sessionId from CloudEvent to maintain communication flow
-        String sessionId = extractSessionIdSafely(cloudEventJson);
+        // Extract sessionId and genetic sequence using proper CloudEvent deserialization
+        // FAIL FAST: If we can't extract session ID, don't waste processing time
+        GeneticSequenceData sequenceData;
+        try {
+            sequenceData = parseCloudEventData(cloudEventJson);
+        } catch (Exception e) {
+            LOG.errorf("❌ FAIL FAST: Cannot parse CloudEvent, returning immediate failure: %s", e.getMessage());
+            return Uni.createFrom().item(createInstantFailureResponse(cloudEventJson, "CloudEvent parsing failed"));
+        }
 
-        // Extract genetic sequence from the original CloudEvent (non-blocking)
-        String geneticSequence = extractGeneticSequenceSafely(cloudEventJson);
-        LOG.infof("Starting real VEP processing for %s mode with %d character sequence", processingMode, geneticSequence.length());
+        String sessionId = sequenceData.getSequenceId();
+        String geneticSequence = sequenceData.getSequence();
 
-        // Create GeneticSequenceData for actual VEP processing
-        GeneticSequenceData sequenceData = GeneticSequenceData.fromPlainSequence(geneticSequence);
-        sequenceData.setSequenceId(sessionId);
+        // FAIL FAST: If session ID is missing or invalid, don't process
+        if (sessionId == null || sessionId.isEmpty() || sessionId.equals("unknown") || sessionId.startsWith("reactive-session-")) {
+            LOG.errorf("❌ FAIL FAST: Invalid session ID '%s', returning immediate failure", sessionId);
+            return Uni.createFrom().item(createInstantFailureResponse(cloudEventJson, "Invalid or missing session ID"));
+        }
+
+        LOG.infof("✅ SESSION VALIDATION: Valid session ID '%s' extracted, proceeding with processing", sessionId);
+
+        // FAIL FAST: If genetic sequence is missing or invalid, don't process
+        if (geneticSequence == null || geneticSequence.isEmpty() || geneticSequence.length() < 4) {
+            LOG.errorf("❌ FAIL FAST: Invalid genetic sequence (length: %d), returning immediate failure",
+                      geneticSequence != null ? geneticSequence.length() : 0);
+            return Uni.createFrom().item(createInstantFailureResponse(cloudEventJson, "Invalid or missing genetic sequence"));
+        }
+
+        LOG.infof("✅ SEQUENCE VALIDATION: Valid genetic sequence (%d chars) extracted, proceeding with processing", geneticSequence.length());
+        LOG.infof("Starting real VEP processing for %s mode with session '%s'", processingMode, sessionId);
+
+        // Update processing mode in sequence data (already has correct sessionId and sequence)
         sequenceData.setProcessingMode(processingMode);
-        sequenceData.setSource("cloudevent");
 
         // Run VEP processing on worker thread to avoid blocking event loop
         return Uni.createFrom().item(() -> {
@@ -288,6 +309,70 @@ public class VepAnnotationService {
             return "unknown-session";
         } catch (Exception e) {
             return "extraction-failed";
+        }
+    }
+
+    /**
+     * Creates an instant failure response when session ID extraction fails.
+     * This prevents wasted processing and provides immediate feedback.
+     */
+    private String createInstantFailureResponse(String originalCloudEvent, String failureReason) {
+        try {
+            LOG.infof("🚨 INSTANT FAILURE: Creating immediate failure response: %s", failureReason);
+
+            // Try to extract any session ID for error reporting
+            String sessionId = "session-extraction-failed";
+            try {
+                if (originalCloudEvent.contains("\"sessionId\":")) {
+                    int start = originalCloudEvent.indexOf("\"sessionId\":") + 13;
+                    int end = originalCloudEvent.indexOf("\"", start);
+                    if (start > 12 && end > start) {
+                        sessionId = originalCloudEvent.substring(start, end);
+                    }
+                }
+            } catch (Exception e) {
+                LOG.debugf("Could not extract session ID for error response: %s", e.getMessage());
+            }
+
+            // Create immediate failure CloudEvent
+            ObjectNode errorData = objectMapper.createObjectNode();
+            errorData.put("sessionId", sessionId);
+            errorData.put("status", "instant_failure");
+            errorData.put("error_type", "SESSION_EXTRACTION_FAILURE");
+            errorData.put("error_message", failureReason);
+            errorData.put("processing_mode", "failed");
+            errorData.put("timestamp", System.currentTimeMillis());
+            errorData.put("annotation_source", "vep-annotation-service");
+            errorData.put("fail_fast", true);
+
+            CloudEvent errorEvent = CloudEventBuilder.v1()
+                    .withId(UUID.randomUUID().toString())
+                    .withSource(URI.create("/vep-annotation-service"))
+                    .withType("com.redhat.healthcare.genetic.error.instant")
+                    .withSubject("VEP Instant Failure - Session Extraction")
+                    .withExtension("sessionid", sessionId)
+                    .withExtension("errortype", "instant_failure")
+                    .withData("application/json", objectMapper.writeValueAsBytes(errorData))
+                    .build();
+
+            EventFormat format = EventFormatProvider.getInstance().resolveFormat(JsonFormat.CONTENT_TYPE);
+            byte[] cloudEventBytes = format.serialize(errorEvent);
+            String result = new String(cloudEventBytes);
+
+            LOG.infof("✅ INSTANT FAILURE: Created failure response for session %s", sessionId);
+            return result;
+
+        } catch (Exception e) {
+            LOG.errorf(e, "Failed to create instant failure response, using simple error");
+            return String.format("""
+                {
+                    "sessionId": "error-response-failed",
+                    "status": "critical_failure",
+                    "error_message": "%s",
+                    "timestamp": %d,
+                    "fail_fast": true
+                }
+                """, failureReason.replace("\"", "\\\""), System.currentTimeMillis());
         }
     }
 
