@@ -50,7 +50,8 @@ public class GeneticResultsService {
      */
     public static void registerSession(String sessionId, Session session) {
         activeSessions.put(sessionId, session);
-        LOGGER.info("Registered WebSocket session: {}", sessionId);
+        LOGGER.info("📝 SESSION REGISTRY: Registered WebSocket session: {}", sessionId);
+        LOGGER.info("📊 SESSION REGISTRY: Total active sessions: {}", activeSessions.size());
     }
 
     /**
@@ -58,8 +59,13 @@ public class GeneticResultsService {
      * Called by the WebSocket endpoint when a client disconnects.
      */
     public static void unregisterSession(String sessionId) {
-        activeSessions.remove(sessionId);
-        LOGGER.info("Unregistered WebSocket session: {}", sessionId);
+        Session removed = activeSessions.remove(sessionId);
+        if (removed != null) {
+            LOGGER.info("📝 SESSION REGISTRY: Unregistered WebSocket session: {}", sessionId);
+        } else {
+            LOGGER.warn("⚠️  SESSION REGISTRY: Attempted to unregister non-existent session: {}", sessionId);
+        }
+        LOGGER.info("📊 SESSION REGISTRY: Total active sessions: {}", activeSessions.size());
     }
 
     /**
@@ -74,14 +80,38 @@ public class GeneticResultsService {
      */
     @Incoming("genetic-data-annotated-in")
     public Uni<Void> processAnnotatedResults(String cloudEventJson) {
-        LOGGER.debug("Processing annotated genetic data: {}", cloudEventJson);
-        
+        LOGGER.info("🔥 WEBSOCKET CONSUMER: Received message from genetic-data-annotated topic");
+        LOGGER.info("📥 WEBSOCKET CONSUMER: Message size: {} chars", cloudEventJson.length());
+        LOGGER.debug("📄 WEBSOCKET CONSUMER: Full message content: {}", cloudEventJson);
+
         return parseCloudEvent(cloudEventJson)
+            .onItem().invoke(cloudEvent -> {
+                LOGGER.info("✅ WEBSOCKET CONSUMER: Successfully parsed CloudEvent");
+                LOGGER.info("📋 WEBSOCKET CONSUMER: CloudEvent type: {}", cloudEvent.getType());
+                LOGGER.info("📋 WEBSOCKET CONSUMER: CloudEvent source: {}", cloudEvent.getSource());
+            })
+            .onFailure().invoke(throwable -> {
+                LOGGER.error("❌ WEBSOCKET CONSUMER: Failed to parse CloudEvent: {}", throwable.getMessage());
+                LOGGER.error("📄 WEBSOCKET CONSUMER: Problematic content: {}", cloudEventJson);
+            })
             .chain(this::extractSessionAndResults)
+            .onItem().invoke(results -> {
+                LOGGER.info("✅ WEBSOCKET CONSUMER: Successfully extracted session and results");
+                LOGGER.info("📋 WEBSOCKET CONSUMER: Session ID: {}", results.sessionId);
+                LOGGER.info("📋 WEBSOCKET CONSUMER: Annotations count: {}", results.vepAnnotations.size());
+            })
+            .onFailure().invoke(throwable -> {
+                LOGGER.error("❌ WEBSOCKET CONSUMER: Failed to extract session and results: {}", throwable.getMessage());
+            })
             .chain(this::formatResultsForFrontend)
             .chain(this::sendResultsToClient)
-            .onFailure().invoke(throwable -> 
-                LOGGER.error("Failed to process annotated results: {}", throwable.getMessage(), throwable))
+            .onItem().invoke(() -> {
+                LOGGER.info("🎉 WEBSOCKET CONSUMER: Successfully processed and sent results to client");
+            })
+            .onFailure().invoke(throwable -> {
+                LOGGER.error("💥 WEBSOCKET CONSUMER: Failed to process annotated results: {}", throwable.getMessage(), throwable);
+                LOGGER.error("🚨 WEBSOCKET CONSUMER: This message will be lost due to recoverWithNull()");
+            })
             .onFailure().recoverWithNull();
     }
 
@@ -194,24 +224,33 @@ public class GeneticResultsService {
      */
     private Uni<Void> sendResultsToClient(FormattedResults formattedResults) {
         return Uni.createFrom().item(() -> {
+            LOGGER.info("📤 WEBSOCKET DELIVERY: Attempting to send results to session: {}", formattedResults.sessionId);
+            LOGGER.info("📊 WEBSOCKET DELIVERY: Current active sessions: {}", activeSessions.keySet());
+
             Session session = activeSessions.get(formattedResults.sessionId);
 
             if (session != null && session.isOpen()) {
                 try {
+                    LOGGER.info("✅ WEBSOCKET DELIVERY: Found active session for: {}", formattedResults.sessionId);
+
                     // Stop progress updates before sending final results
                     progressService.stopProcessingUpdates(formattedResults.sessionId);
 
                     // Send final results
                     session.getAsyncRemote().sendText(formattedResults.message);
-                    LOGGER.info("Sent VEP results to WebSocket session: {}", formattedResults.sessionId);
+                    LOGGER.info("🎉 WEBSOCKET DELIVERY: Successfully sent VEP results to session: {}", formattedResults.sessionId);
+                    LOGGER.info("📄 WEBSOCKET DELIVERY: Message preview: {}",
+                               formattedResults.message.substring(0, Math.min(100, formattedResults.message.length())) + "...");
                 } catch (Exception e) {
-                    LOGGER.error("Failed to send results to WebSocket session {}: {}",
+                    LOGGER.error("💥 WEBSOCKET DELIVERY: Failed to send results to session {}: {}",
                         formattedResults.sessionId, e.getMessage());
                 }
+            } else if (session != null) {
+                LOGGER.warn("🔌 WEBSOCKET DELIVERY: Session {} found but closed, cannot send results", formattedResults.sessionId);
+                progressService.stopProcessingUpdates(formattedResults.sessionId);
             } else {
-                LOGGER.warn("WebSocket session {} not found or closed, cannot send results",
-                    formattedResults.sessionId);
-                // Stop progress updates even if session is closed
+                LOGGER.warn("❌ WEBSOCKET DELIVERY: Session {} not found in registry, cannot send results", formattedResults.sessionId);
+                LOGGER.warn("🕐 WEBSOCKET DELIVERY: Session may have timed out or disconnected before results arrived");
                 progressService.stopProcessingUpdates(formattedResults.sessionId);
             }
 

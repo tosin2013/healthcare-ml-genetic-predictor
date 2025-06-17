@@ -52,25 +52,33 @@ public class VepResultMapper {
      */
     public String mapVepResultToCloudEvent(VepAnnotationResult vepResult, String sessionId, String geneticSequence, String processingMode) {
         LOG.infof("Mapping VEP result to CloudEvent for session %s (mode: %s)", sessionId, processingMode);
-        
+
         try {
             // Create standardized data payload
             ObjectNode data = createStandardDataPayload(vepResult, sessionId, geneticSequence, processingMode);
-            
+
             // Add VEP annotations in consistent format
             ArrayNode vepAnnotations = createVepAnnotationsArray(vepResult, processingMode, geneticSequence);
             data.set("vep_annotations", vepAnnotations);
-            
+
             // Add processing metadata
             addProcessingMetadata(data, processingMode, geneticSequence);
-            
+
+            // WEBSOCKET SERVICE COMPATIBILITY: Log expected fields
+            LOG.infof("📋 WEBSOCKET COMPATIBILITY: Created CloudEvent with required fields:");
+            LOG.infof("  - sessionId: %s", sessionId);
+            LOG.infof("  - genetic_sequence: %d chars", geneticSequence.length());
+            LOG.infof("  - vep_annotations: %d annotations", vepAnnotations.size());
+            LOG.infof("  - processing_mode: %s", processingMode);
+
             // Create CloudEvent with consistent structure
             CloudEvent event = createStandardCloudEvent(data, sessionId, processingMode, vepResult);
-            
+
             // Serialize CloudEvent
             String cloudEventJson = serializeCloudEvent(event);
-            
+
             LOG.infof("Successfully created CloudEvent for session %s (size: %d chars)", sessionId, cloudEventJson.length());
+            LOG.infof("📤 WEBSOCKET SERVICE: CloudEvent ready for genetic-data-annotated topic consumption");
             return cloudEventJson;
             
         } catch (Exception e) {

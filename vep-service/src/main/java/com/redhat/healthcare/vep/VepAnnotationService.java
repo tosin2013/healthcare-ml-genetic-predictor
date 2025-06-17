@@ -119,7 +119,18 @@ public class VepAnnotationService {
         return processGeneticSequenceInternal(cloudEventJson, "node-scale")
             .onItem().invoke(result -> {
                 if (result != null && !result.isEmpty()) {
-                    LOG.infof("🎉 KAFKA FLOW: Successfully created result for genetic-data-annotated (size: %d chars)", result.length());
+                    LOG.infof("🎉 KAFKA PUBLISHER: Successfully created result for genetic-data-annotated (size: %d chars)", result.length());
+                    LOG.infof("📤 KAFKA PUBLISHER: Publishing CloudEvent to genetic-data-annotated topic");
+
+                    // Log key fields that WebSocket service expects
+                    try {
+                        if (result.contains("\"sessionId\"")) {
+                            String sessionId = extractSessionIdFromResult(result);
+                            LOG.infof("📋 WEBSOCKET COMPATIBILITY: Publishing result for session %s", sessionId);
+                        }
+                    } catch (Exception e) {
+                        LOG.warnf("Could not extract session ID for logging: %s", e.getMessage());
+                    }
                 } else {
                     LOG.errorf("❌ KAFKA FLOW: Result is null or empty - will not publish to genetic-data-annotated!");
                 }
@@ -240,6 +251,27 @@ public class VepAnnotationService {
             String fallbackSequence = "ATCGATCGATCGATCGATCG";
             LOG.debugf("Could not extract genetic sequence, using fallback %s: %s", fallbackSequence, e.getMessage());
             return fallbackSequence;
+        }
+    }
+
+    /**
+     * Extracts session ID from result CloudEvent for logging compatibility with WebSocket service
+     */
+    private String extractSessionIdFromResult(String resultCloudEvent) {
+        try {
+            if (resultCloudEvent.contains("\"sessionId\":")) {
+                int start = resultCloudEvent.indexOf("\"sessionId\":");
+                if (start != -1) {
+                    start = resultCloudEvent.indexOf("\"", start + 12);
+                    int end = resultCloudEvent.indexOf("\"", start + 1);
+                    if (start != -1 && end != -1) {
+                        return resultCloudEvent.substring(start + 1, end);
+                    }
+                }
+            }
+            return "unknown-session";
+        } catch (Exception e) {
+            return "extraction-failed";
         }
     }
 
