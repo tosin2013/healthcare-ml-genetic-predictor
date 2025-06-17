@@ -122,7 +122,7 @@ public class VepAnnotationService {
 
             return vepResult;
         })
-        .emitOn(Infrastructure.getDefaultExecutor())
+        .runSubscriptionOn(Infrastructure.getDefaultExecutor())
         .map(vepResult -> {
             try {
                 // Create proper CloudEvent response with real VEP results
