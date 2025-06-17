@@ -112,6 +112,11 @@ public class SequenceToHgvsConverter {
      * Generates SNV (Single Nucleotide Variant) HGVS notation
      */
     private String generateSnvHgvs(String sequence, int variantIndex) {
+        // Handle empty sequences
+        if (sequence.length() == 0) {
+            return generateGenomicHgvs(variantIndex);
+        }
+
         // Find a position in the sequence for the variant
         int position = Math.min(variantIndex * 100 + random.nextInt(100), sequence.length() - 1);
         char originalBase = sequence.charAt(position);
