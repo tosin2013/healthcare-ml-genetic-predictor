@@ -95,23 +95,27 @@ public class VepAnnotationService {
      * @return Annotated genetic data for downstream processing
      */
     private Uni<String> processGeneticSequenceInternal(String cloudEventJson, String processingMode) {
-        // Reactive approach with actual VEP processing
+        // Reactive approach with actual VEP processing on worker thread
         LOG.infof("Processing genetic sequence in %s mode on thread: %s", processingMode, Thread.currentThread().getName());
 
         // Extract sessionId from CloudEvent to maintain communication flow
         String sessionId = extractSessionIdSafely(cloudEventJson);
 
-        return Uni.createFrom().item(() -> {
-            try {
-                // Extract genetic sequence from the original CloudEvent
-                String geneticSequence = extractGeneticSequenceSafely(cloudEventJson);
-                LOG.infof("Starting real VEP processing for %s mode with %d character sequence", processingMode, geneticSequence.length());
+        // Extract genetic sequence from the original CloudEvent (non-blocking)
+        String geneticSequence = extractGeneticSequenceSafely(cloudEventJson);
+        LOG.infof("Starting real VEP processing for %s mode with %d character sequence", processingMode, geneticSequence.length());
 
-                // Create GeneticSequenceData for actual VEP processing
-                GeneticSequenceData sequenceData = GeneticSequenceData.fromPlainSequence(geneticSequence);
-                sequenceData.setSequenceId(sessionId);
-                sequenceData.setProcessingMode(processingMode);
-                sequenceData.setSource("cloudevent");
+        // Create GeneticSequenceData for actual VEP processing
+        GeneticSequenceData sequenceData = GeneticSequenceData.fromPlainSequence(geneticSequence);
+        sequenceData.setSequenceId(sessionId);
+        sequenceData.setProcessingMode(processingMode);
+        sequenceData.setSource("cloudevent");
+
+        // Run VEP processing on worker thread to avoid blocking event loop
+        return Uni.createFrom().emitter(emitter -> {
+            // This will run on a worker thread, allowing blocking operations
+            try {
+                LOG.infof("Running VEP processing on worker thread: %s", Thread.currentThread().getName());
 
                 // Call actual VEP processing (this will handle intensive processing for large sequences)
                 VepAnnotationResult vepResult = annotateWithVep(sequenceData);
@@ -188,11 +192,15 @@ public class VepAnnotationService {
                 // Serialize CloudEvent
                 EventFormat format = EventFormatProvider.getInstance().resolveFormat(JsonFormat.CONTENT_TYPE);
                 byte[] cloudEventBytes = format.serialize(event);
-                return new String(cloudEventBytes);
+                String result = new String(cloudEventBytes);
+
+                // Complete the emitter with success
+                emitter.complete(result);
 
             } catch (Exception e) {
                 LOG.errorf(e, "Failed during real VEP processing, using error response");
-                return createThreadingErrorCloudEvent(cloudEventJson, "Real VEP processing failed: " + e.getMessage());
+                String errorResponse = createThreadingErrorCloudEvent(cloudEventJson, "Real VEP processing failed: " + e.getMessage());
+                emitter.complete(errorResponse);
             }
         });
     }
