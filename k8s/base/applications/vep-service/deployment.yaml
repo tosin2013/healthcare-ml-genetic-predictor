@@ -104,6 +104,45 @@ spec:
             - name: config-volume
               mountPath: /deployments/config
               readOnly: true
+
+      # Node affinity for standard workload pool
+      affinity:
+        nodeAffinity:
+          # Require standard workload nodes
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: workload-type
+                operator: In
+                values: ["standard"]
+          # Prefer balanced resource profile
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            preference:
+              matchExpressions:
+              - key: resource-profile
+                operator: In
+                values: ["balanced"]
+          - weight: 80
+            preference:
+              matchExpressions:
+              - key: workload.healthcare-ml/mode
+                operator: In
+                values: ["normal-bigdata"]
+
+        # Pod anti-affinity for better distribution
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - vep-service
+              topologyKey: kubernetes.io/hostname
+
       volumes:
         - name: config-volume
           configMap:

@@ -1,0 +1,141 @@
+apiVersion: machine.openshift.io/v1beta1
+kind: MachineSet
+metadata:
+  name: aro-cluster-smrmt-xrbr3-worker-compute-intensive
+  namespace: openshift-machine-api
+  annotations:
+    description: "Compute-intensive MachineSet for healthcare ML node scaling demo"
+    insights.openshift.io/cost-center: "genomics-research-demo"
+    insights.openshift.io/billing-model: "chargeback"
+    insights.openshift.io/workload-type: "compute-intensive"
+  labels:
+    machine.openshift.io/cluster-api-cluster: aro-cluster-smrmt-xrbr3
+    machine.openshift.io/cluster-api-machine-role: worker
+    machine.openshift.io/cluster-api-machine-type: worker
+    workload-type: compute-intensive
+spec:
+  replicas: 0  # Start with 0, autoscaler will scale up
+  selector:
+    matchLabels:
+      machine.openshift.io/cluster-api-cluster: aro-cluster-smrmt-xrbr3
+      machine.openshift.io/cluster-api-machineset: aro-cluster-smrmt-xrbr3-worker-compute-intensive
+  template:
+    metadata:
+      labels:
+        machine.openshift.io/cluster-api-cluster: aro-cluster-smrmt-xrbr3
+        machine.openshift.io/cluster-api-machine-role: worker
+        machine.openshift.io/cluster-api-machine-type: worker
+        machine.openshift.io/cluster-api-machineset: aro-cluster-smrmt-xrbr3-worker-compute-intensive
+        # Cost management and workload labels
+        workload-type: compute-intensive
+        cost-center: genomics-research-demo
+        billing-model: chargeback
+        resource-profile: high-memory
+        environment: demo
+    spec:
+      lifecycleHooks: {}
+      metadata:
+        labels:
+          # Node labels applied when machine becomes a node
+          workload-type: compute-intensive
+          cost-center: genomics-research-demo
+          billing-model: chargeback
+          resource-profile: high-memory
+          environment: demo
+          availability-zone: eastus3
+      providerSpec:
+        value:
+          acceleratedNetworking: true
+          apiVersion: machine.openshift.io/v1beta1
+          credentialsSecret:
+            name: azure-cloud-credentials
+            namespace: openshift-machine-api
+          diagnostics: {}
+          image:
+            offer: aro4
+            publisher: azureopenshift
+            resourceID: ""
+            sku: aro_414
+            type: MarketplaceNoPlan
+            version: 414.92.20240213
+          kind: AzureMachineProviderSpec
+          location: eastus
+          metadata:
+            creationTimestamp: null
+          networkResourceGroup: openenv-smrmt
+          osDisk:
+            diskSettings: {}
+            diskSizeGB: 128
+            managedDisk:
+              securityProfile:
+                diskEncryptionSet: {}
+              storageAccountType: Premium_LRS
+            osType: Linux
+          publicIP: false
+          publicLoadBalancer: aro-cluster-smrmt-xrbrh
+          resourceGroup: aro-b9892ub1
+          securityProfile:
+            settings: {}
+          subnet: worker-subnet
+          vnet: aro-vnet-smrmt
+          zone: "3"
+          # Compute-intensive instance type (8 cores, 32GB RAM)
+          vmSize: Standard_D8s_v3
+          tags:
+            workload-type: compute-intensive
+            cost-center: genomics-research-demo
+            billing-model: chargeback
+            environment: demo
+            kubernetes.io_cluster_aro-cluster-smrmt-xrbrh: owned
+          userDataSecret:
+            name: worker-user-data
+
+---
+apiVersion: autoscaling.openshift.io/v1beta1
+kind: MachineAutoscaler
+metadata:
+  name: worker-compute-intensive-autoscaler
+  namespace: openshift-machine-api
+  annotations:
+    description: "Machine autoscaler for compute-intensive healthcare ML workloads"
+    insights.openshift.io/cost-center: "genomics-research-demo"
+spec:
+  minReplicas: 0  # Scale to zero when no workloads
+  maxReplicas: 3  # Small max for demo (easier to trigger)
+  scaleTargetRef:
+    apiVersion: machine.openshift.io/v1beta1
+    kind: MachineSet
+    name: aro-cluster-smrmt-xrbr3-worker-compute-intensive
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: compute-intensive-node-config
+  namespace: healthcare-ml-demo
+  annotations:
+    description: "Configuration for compute-intensive node pool"
+data:
+  node-labels.yaml: |
+    # Labels automatically applied to compute-intensive nodes
+    workload-type: compute-intensive
+    cost-center: genomics-research-demo
+    billing-model: chargeback
+    resource-profile: high-memory
+    environment: demo
+    availability-zone: eastus3
+  
+  node-taints.yaml: |
+    # Optional: Taint compute-intensive nodes to ensure only appropriate workloads
+    # Uncomment if you want dedicated nodes (no other workloads)
+    # - key: workload-type
+    #   value: compute-intensive
+    #   effect: NoSchedule
+  
+  cost-attribution.yaml: |
+    # Cost management labels for chargeback
+    insights.openshift.io/cost-center: genomics-research-demo
+    insights.openshift.io/billing-model: chargeback
+    insights.openshift.io/workload-type: compute-intensive
+    insights.openshift.io/environment: demo
+    insights.openshift.io/project: healthcare-ml-demo

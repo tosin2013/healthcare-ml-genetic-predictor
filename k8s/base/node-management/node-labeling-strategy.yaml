@@ -1,0 +1,234 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: node-labeling-strategy
+  namespace: healthcare-ml-demo
+  annotations:
+    description: "Node labeling strategy for healthcare ML workload isolation and cost attribution"
+    insights.openshift.io/cost-center: "genomics-research"
+    insights.openshift.io/project: "node-affinity-v1"
+data:
+  strategy.md: |
+    # Healthcare ML Node Labeling Strategy
+    
+    ## Node Pool Classifications
+    
+    ### Standard Workload Nodes
+    **Purpose**: Normal and big-data genetic analysis processing
+    **Labels**:
+    ```yaml
+    workload-type: standard
+    cost-center: genomics-research
+    billing-model: chargeback
+    resource-profile: balanced
+    availability-zone: eastus1|eastus2|eastus3
+    ```
+    
+    **Target Workloads**:
+    - Normal mode genetic analysis (genetic-data-raw)
+    - Big data mode processing (genetic-bigdata-raw)
+    - WebSocket services
+    - Standard VEP annotation services
+    
+    **Resource Characteristics**:
+    - CPU: 8 cores per node
+    - Memory: 32-64GB per node
+    - Storage: Standard SSD
+    - Network: Standard bandwidth
+    
+    ### Compute-Intensive Workload Nodes
+    **Purpose**: Node-scale processing and cluster autoscaler demonstration
+    **Labels**:
+    ```yaml
+    workload-type: compute-intensive
+    cost-center: genomics-research
+    billing-model: chargeback
+    resource-profile: high-memory
+    availability-zone: eastus1|eastus2|eastus3
+    ```
+    
+    **Target Workloads**:
+    - Node-scale mode processing (genetic-nodescale-raw)
+    - High-resource VEP services
+    - ML model training workloads
+    - Batch processing jobs
+    
+    **Resource Characteristics**:
+    - CPU: 8+ cores per node
+    - Memory: 64GB+ per node
+    - Storage: Premium SSD
+    - Network: High bandwidth
+    
+    ## Cost Attribution Labels
+    
+    ### Project-Level Chargeback
+    ```yaml
+    insights.openshift.io/cost-center: genomics-research
+    insights.openshift.io/billing-model: chargeback
+    insights.openshift.io/project: healthcare-ml-demo
+    insights.openshift.io/environment: production
+    ```
+    
+    ### Workload-Specific Attribution
+    ```yaml
+    workload.healthcare-ml/type: genetic-analysis
+    workload.healthcare-ml/mode: normal|bigdata|nodescale
+    workload.healthcare-ml/service: vep-annotation|websocket|kafka
+    ```
+    
+    ## Implementation Commands
+    
+    ### Label Existing Nodes
+    ```bash
+    # Standard workload nodes (current workers)
+    oc label node aro-cluster-smrmt-xrbrh-worker-eastus1-rl4n7 \
+      workload-type=standard \
+      cost-center=genomics-research \
+      billing-model=chargeback \
+      resource-profile=balanced \
+      availability-zone=eastus1
+    
+    oc label node aro-cluster-smrmt-xrbrh-worker-eastus2-x5qpn \
+      workload-type=standard \
+      cost-center=genomics-research \
+      billing-model=chargeback \
+      resource-profile=balanced \
+      availability-zone=eastus2
+    
+    oc label node aro-cluster-smrmt-xrbr3-worker-eastus3-qcc9h \
+      workload-type=standard \
+      cost-center=genomics-research \
+      billing-model=chargeback \
+      resource-profile=balanced \
+      availability-zone=eastus3
+    ```
+    
+    ### Configure Machine Sets for Compute-Intensive Nodes
+    ```bash
+    # Create new machine sets with compute-intensive labels
+    # These will be auto-labeled when nodes are provisioned
+    ```
+    
+    ## Node Affinity Rules
+    
+    ### Standard Workloads
+    ```yaml
+    affinity:
+      nodeAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          nodeSelectorTerms:
+          - matchExpressions:
+            - key: workload-type
+              operator: In
+              values: ["standard"]
+        preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          preference:
+            matchExpressions:
+            - key: resource-profile
+              operator: In
+              values: ["balanced"]
+    ```
+    
+    ### Compute-Intensive Workloads
+    ```yaml
+    affinity:
+      nodeAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          nodeSelectorTerms:
+          - matchExpressions:
+            - key: workload-type
+              operator: In
+              values: ["compute-intensive"]
+        preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          preference:
+            matchExpressions:
+            - key: resource-profile
+              operator: In
+              values: ["high-memory"]
+    ```
+
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: label-existing-nodes
+  namespace: healthcare-ml-demo
+  annotations:
+    description: "Job to label existing worker nodes with healthcare ML workload types"
+spec:
+  template:
+    spec:
+      serviceAccountName: node-labeler
+      containers:
+      - name: node-labeler
+        image: image-registry.openshift-image-registry.svc:5000/openshift/cli:latest
+        command:
+        - /bin/bash
+        - -c
+        - |
+          echo "Labeling existing worker nodes for healthcare ML workloads..."
+          
+          # Label eastus1 node as standard workload
+          oc label node aro-cluster-smrmt-xrbrh-worker-eastus1-rl4n7 \
+            workload-type=standard \
+            cost-center=genomics-research \
+            billing-model=chargeback \
+            resource-profile=balanced \
+            availability-zone=eastus1 \
+            --overwrite
+          
+          # Label eastus2 node as standard workload  
+          oc label node aro-cluster-smrmt-xrbrh-worker-eastus2-x5qpn \
+            workload-type=standard \
+            cost-center=genomics-research \
+            billing-model=chargeback \
+            resource-profile=balanced \
+            availability-zone=eastus2 \
+            --overwrite
+          
+          # Label eastus3 node as standard workload
+          oc label node aro-cluster-smrmt-xrbr3-worker-eastus3-qcc9h \
+            workload-type=standard \
+            cost-center=genomics-research \
+            billing-model=chargeback \
+            resource-profile=balanced \
+            availability-zone=eastus3 \
+            --overwrite
+          
+          echo "Node labeling completed successfully!"
+          oc get nodes --show-labels | grep workload-type
+      restartPolicy: OnFailure
+  backoffLimit: 3
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: node-labeler
+  namespace: healthcare-ml-demo
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: node-labeler
+rules:
+- apiGroups: [""]
+  resources: ["nodes"]
+  verbs: ["get", "list", "patch", "update"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: node-labeler
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: node-labeler
+subjects:
+- kind: ServiceAccount
+  name: node-labeler
+  namespace: healthcare-ml-demo

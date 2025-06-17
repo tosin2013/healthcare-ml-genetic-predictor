@@ -1,0 +1,45 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+metadata:
+  name: healthcare-ml-demo-environment
+  annotations:
+    description: "Demo environment overlay for healthcare ML genetic predictor"
+
+# Base configurations
+resources:
+- ./compute-intensive-machineset.yaml
+- ./cost-management-config.yaml
+
+# Namespace for all resources
+namespace: healthcare-ml-demo
+
+# Common labels applied to all resources
+commonLabels:
+  environment: demo
+  cost-center: genomics-research-demo
+  billing-model: chargeback
+  app.kubernetes.io/part-of: healthcare-ml-genetic-predictor
+
+# Common annotations for cost attribution
+commonAnnotations:
+  insights.openshift.io/cost-center: "genomics-research-demo"
+  insights.openshift.io/billing-model: "chargeback"
+  insights.openshift.io/environment: "demo"
+  insights.openshift.io/project: "healthcare-ml-demo"
+
+# No patches needed - resources are self-contained
+
+# Environment-specific configuration
+configMapGenerator:
+- name: demo-environment-config
+  literals:
+  - ENVIRONMENT=demo
+  - COST_CENTER=genomics-research-demo
+  - MAX_NODES=3
+  - VEP_MEMORY_LIMIT=6Gi
+  - VEP_CPU_LIMIT=3000m
+  - KEDA_LAG_THRESHOLD=1
+
+# Generate unique names for demo resources
+nameSuffix: -demo

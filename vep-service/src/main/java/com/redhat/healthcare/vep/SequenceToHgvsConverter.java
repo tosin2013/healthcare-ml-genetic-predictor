@@ -9,16 +9,30 @@ import java.util.Random;
 
 /**
  * Converts raw genetic sequences to HGVS notation variants
- * 
+ *
+ * WHY THIS CONVERTER IS NEEDED:
+ * - Ensembl VEP API requires HGVS notation, NOT raw DNA sequences
+ * - Raw sequences like "ATCGATCG..." cause HTTP 400 Bad Request errors
+ * - HGVS is the international standard for variant description
+ *
+ * HGVS SPECIFICATION: https://varnomen.hgvs.org/
+ * VEP API REQUIREMENTS: https://rest.ensembl.org/documentation/info/vep_hgvs_post
+ *
  * This service simulates realistic genetic variant calling by:
  * 1. Analyzing the input sequence for potential variants
  * 2. Generating HGVS notations based on common variant patterns
  * 3. Creating clinically relevant variant examples
- * 
- * In a real implementation, this would use tools like:
- * - BWA/Bowtie2 for alignment
- * - GATK/FreeBayes for variant calling
- * - VCF to HGVS conversion tools
+ *
+ * REAL-WORLD PIPELINE (for production):
+ * Raw FASTQ → BWA/Bowtie2 alignment → GATK variant calling → VCF format → HGVS conversion → VEP API
+ *
+ * CURRENT IMPLEMENTATION (for demo):
+ * Raw sequence → Simulated variant calling → Direct HGVS generation → VEP API
+ *
+ * VARIANT DENSITY:
+ * - Realistic: ~1 variant per 1000 base pairs (human genome average)
+ * - Common variants: 60% SNVs, 20% genomic, 20% transcript-based
+ * - Clinical examples: BRCA1, BRCA2, BRAF variants for fallback
  */
 @ApplicationScoped
 public class SequenceToHgvsConverter {

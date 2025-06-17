@@ -410,13 +410,17 @@ public class VepAnnotationService {
                      hgvsNotations.size(), sequenceData.getSequenceId());
 
             // Call VEP API with proper HGVS format (blocking operation now safe on worker thread)
-            VepApiResponse response = vepApiClient.annotateVariants(
+            // API: POST https://rest.ensembl.org/vep/human/hgvs
+            // Documentation: https://rest.ensembl.org/documentation/info/vep_hgvs_post
+            // CRITICAL: Returns List<VepApiResponse> (Array), not single VepApiResponse
+            // This fixes the "Cannot deserialize from Array value" error we were seeing
+            List<VepApiResponse> responses = vepApiClient.annotateVariants(
                 vepRequest,
                 sequenceData.getSpecies()
             );
 
-            // Convert API response to internal format
-            return VepAnnotationResult.fromApiResponse(response, sequenceData);
+            // Convert API response list to internal format
+            return VepAnnotationResult.fromApiResponseList(responses, sequenceData);
 
         } catch (Exception e) {
             LOG.warnf(e, "VEP API call failed for sequence %s: %s",

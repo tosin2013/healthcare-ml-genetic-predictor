@@ -14,6 +14,13 @@ RESULTS_DIR="performance-results-${TIMESTAMP}"
 CONCURRENT_USERS=(1 5 10 20 50)
 SEQUENCE_SIZES=(20 100 500 1000)
 
+# 3scale Configuration (Optional - set if 3scale is deployed)
+THREESCALE_ENABLED=${THREESCALE_ENABLED:-false}
+THREESCALE_ADMIN_URL=${THREESCALE_ADMIN_URL:-""}
+THREESCALE_ACCESS_TOKEN=${THREESCALE_ACCESS_TOKEN:-""}
+API_KEY=${API_KEY:-""}
+APPLICATION_IDS=("research-app-001" "clinical-app-001" "enterprise-app-001")
+
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -48,27 +55,66 @@ measure_api_response() {
     local endpoint=$1
     local payload=$2
     local description=$3
-    
+    local app_id=${4:-"direct"}
+
     echo -e "${YELLOW}📊 Testing: $description${NC}"
-    
+
+    # Build curl headers
+    local headers=("-H" "Content-Type: application/json")
+    if [[ "$THREESCALE_ENABLED" == "true" && -n "$API_KEY" && "$app_id" != "direct" ]]; then
+        headers+=("-H" "X-API-Key: $API_KEY")
+        headers+=("-H" "X-App-ID: $app_id")
+        echo "  Using 3scale with App ID: $app_id"
+    fi
+
     # Measure response time using curl
     local response_time=$(curl -w "%{time_total}" -s -o /dev/null \
         -X POST "$API_BASE/$endpoint" \
-        -H "Content-Type: application/json" \
+        "${headers[@]}" \
         -d "$payload")
-    
+
     local http_code=$(curl -w "%{http_code}" -s -o /dev/null \
         -X POST "$API_BASE/$endpoint" \
-        -H "Content-Type: application/json" \
+        "${headers[@]}" \
         -d "$payload")
-    
+
     echo "  Response Time: ${response_time}s"
     echo "  HTTP Code: $http_code"
-    
+
     log_result "$description" "response_time" "$response_time" "seconds"
     log_result "$description" "http_code" "$http_code" "code"
-    
+    log_result "$description" "app_id" "$app_id" "string"
+
+    # Get 3scale analytics if enabled
+    if [[ "$THREESCALE_ENABLED" == "true" && -n "$THREESCALE_ADMIN_URL" && "$app_id" != "direct" ]]; then
+        get_3scale_analytics "$app_id" "$description"
+    fi
+
     return 0
+}
+
+# Function to get 3scale analytics
+get_3scale_analytics() {
+    local app_id=$1
+    local description=$2
+
+    if [[ -n "$THREESCALE_ACCESS_TOKEN" ]]; then
+        echo "  Fetching 3scale analytics for $app_id..."
+        local analytics=$(curl -s \
+            "$THREESCALE_ADMIN_URL/admin/api/analytics/applications/$app_id.json" \
+            -H "Authorization: Bearer $THREESCALE_ACCESS_TOKEN" 2>/dev/null || echo "N/A")
+
+        if [[ "$analytics" != "N/A" ]]; then
+            local request_count=$(echo "$analytics" | jq -r '.requests // "0"' 2>/dev/null || echo "0")
+            local avg_response_time=$(echo "$analytics" | jq -r '.avg_response_time // "0"' 2>/dev/null || echo "0")
+
+            echo "  3scale Requests: $request_count"
+            echo "  3scale Avg Response: ${avg_response_time}ms"
+
+            log_result "$description" "3scale_requests" "$request_count" "count"
+            log_result "$description" "3scale_avg_response" "$avg_response_time" "milliseconds"
+        fi
+    fi
 }
 
 # Function to measure system metrics
@@ -224,7 +270,53 @@ for i in {1..8}; do
     echo "  Monitoring cycle $i/8 completed"
 done
 
-echo -e "${GREEN}🧪 Test 6: Resource Utilization Analysis${NC}"
+echo -e "${GREEN}🧪 Test 6: 3scale API Management Testing${NC}"
+if [[ "$THREESCALE_ENABLED" == "true" ]]; then
+    echo "Testing different application tiers through 3scale..."
+
+    # Test Research Tier (Rate Limited)
+    echo -e "${BLUE}Testing Research Tier (Rate Limited)${NC}"
+    for i in {1..5}; do
+        sequence=$(generate_sequence 100)
+        payload="{\"sequence\": \"$sequence\", \"resourceProfile\": \"standard\"}"
+        measure_api_response "genetic/analyze" "$payload" "research_tier_request_$i" "research-app-001"
+        sleep 1  # Respect rate limits
+    done
+
+    # Test Clinical Tier (Higher Limits)
+    echo -e "${BLUE}Testing Clinical Tier (Higher Limits)${NC}"
+    for i in {1..10}; do
+        sequence=$(generate_sequence 200)
+        payload="{\"sequence\": \"$sequence\", \"resourceProfile\": \"standard\"}"
+        measure_api_response "genetic/analyze" "$payload" "clinical_tier_request_$i" "clinical-app-001"
+    done
+
+    # Test Enterprise Tier (Concurrent)
+    echo -e "${BLUE}Testing Enterprise Tier (Concurrent Requests)${NC}"
+    pids=()
+    for i in {1..20}; do
+        {
+            sequence=$(generate_sequence 150)
+            payload="{\"sequence\": \"$sequence\", \"resourceProfile\": \"high-memory\"}"
+            measure_api_response "genetic/analyze" "$payload" "enterprise_tier_request_$i" "enterprise-app-001"
+        } &
+        pids+=($!)
+
+        # Limit concurrent requests to prevent overwhelming
+        if (( ${#pids[@]} >= 5 )); then
+            wait "${pids[@]}"
+            pids=()
+        fi
+    done
+    wait "${pids[@]}"
+
+    echo "3scale testing completed!"
+else
+    echo "3scale not enabled - skipping API management tests"
+    echo "To enable: export THREESCALE_ENABLED=true"
+fi
+
+echo -e "${GREEN}🧪 Test 7: Resource Utilization Analysis${NC}"
 # Get resource usage if available
 if command -v oc &> /dev/null; then
     echo "Collecting resource utilization data..."

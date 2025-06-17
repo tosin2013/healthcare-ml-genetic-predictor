@@ -1,0 +1,136 @@
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: vep-service-bigdata-scaler
+  labels:
+    app.kubernetes.io/component: vep-service
+    app.kubernetes.io/name: vep-annotation-service
+    app.kubernetes.io/part-of: healthcare-ml-genetic-predictor
+    app.kubernetes.io/version: "1.0.0"
+    scaling-mode: bigdata
+  annotations:
+    insights.openshift.io/billing-model: chargeback
+    insights.openshift.io/cost-center: genomics-research
+    insights.openshift.io/project: vep-bigdata-v1
+    description: "KEDA scaler for big data VEP processing with high-memory pods"
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: vep-service  # Same deployment, different topic trigger
+  pollingInterval: 10  # More aggressive polling for big data
+  cooldownPeriod: 30   # Faster cooldown for big data workloads
+  idleReplicaCount: 0  # Scale to zero when no big data processing
+  minReplicaCount: 0
+  maxReplicaCount: 10  # Higher max for big data processing
+  fallback:
+    failureThreshold: 3
+    replicas: 1
+  advanced:
+    restoreToOriginalReplicaCount: false
+    horizontalPodAutoscalerConfig:
+      name: vep-service-bigdata-hpa
+      behavior:
+        scaleDown:
+          stabilizationWindowSeconds: 30  # Faster scale down
+          policies:
+          - type: Percent
+            value: 50
+            periodSeconds: 30
+        scaleUp:
+          stabilizationWindowSeconds: 5   # Very fast scale up for big data
+          policies:
+          - type: Percent
+            value: 200  # Aggressive scaling
+            periodSeconds: 5
+          - type: Pods
+            value: 5    # Add 5 pods at once for big data
+            periodSeconds: 5
+          selectPolicy: Max
+  triggers:
+    # Primary trigger: Kafka topic lag for genetic-bigdata-raw
+    - type: kafka
+      metadata:
+        bootstrapServers: genetic-data-cluster-kafka-bootstrap.healthcare-ml-demo.svc.cluster.local:9092
+        consumerGroup: vep-bigdata-service-group
+        topic: genetic-bigdata-raw
+        lagThreshold: '2'  # Lower threshold for faster scaling
+        offsetResetPolicy: latest
+        allowIdleConsumers: 'false'
+        scaleToZeroOnInvalidOffset: 'true'
+        excludePersistentLag: 'false'
+    
+    # Secondary trigger: Memory utilization for big data processing
+    - type: memory
+      metricType: Utilization
+      metadata:
+        value: '60'  # Scale when memory usage hits 60%
+
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: vep-service-nodescale-scaler
+  labels:
+    app.kubernetes.io/component: vep-service
+    app.kubernetes.io/name: vep-annotation-service
+    app.kubernetes.io/part-of: healthcare-ml-genetic-predictor
+    app.kubernetes.io/version: "1.0.0"
+    scaling-mode: nodescale
+  annotations:
+    insights.openshift.io/billing-model: chargeback
+    insights.openshift.io/cost-center: genomics-research
+    insights.openshift.io/project: vep-nodescale-v1
+    description: "KEDA scaler for node-scale VEP processing with cluster autoscaler"
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: vep-service  # Same deployment, different topic trigger
+  pollingInterval: 5   # Very aggressive polling for node scaling
+  cooldownPeriod: 60   # Longer cooldown to allow node provisioning
+  idleReplicaCount: 0  # Scale to zero when no node-scale processing
+  minReplicaCount: 0
+  maxReplicaCount: 50  # Very high max to trigger node scaling
+  fallback:
+    failureThreshold: 3
+    replicas: 2
+  advanced:
+    restoreToOriginalReplicaCount: false
+    horizontalPodAutoscalerConfig:
+      name: vep-service-nodescale-hpa
+      behavior:
+        scaleDown:
+          stabilizationWindowSeconds: 120  # Slower scale down for node scaling
+          policies:
+          - type: Percent
+            value: 25
+            periodSeconds: 60
+        scaleUp:
+          stabilizationWindowSeconds: 0    # Immediate scale up
+          policies:
+          - type: Percent
+            value: 500  # Very aggressive scaling to trigger nodes
+            periodSeconds: 5
+          - type: Pods
+            value: 20   # Add 20 pods at once to force node scaling
+            periodSeconds: 5
+          selectPolicy: Max
+  triggers:
+    # Primary trigger: Kafka topic lag for genetic-nodescale-raw
+    - type: kafka
+      metadata:
+        bootstrapServers: genetic-data-cluster-kafka-bootstrap.healthcare-ml-demo.svc.cluster.local:9092
+        consumerGroup: vep-nodescale-service-group
+        topic: genetic-nodescale-raw
+        lagThreshold: '1'  # Very low threshold for immediate scaling
+        offsetResetPolicy: latest
+        allowIdleConsumers: 'false'
+        scaleToZeroOnInvalidOffset: 'true'
+        excludePersistentLag: 'false'
+    
+    # Secondary trigger: CPU utilization for node scaling
+    - type: cpu
+      metricType: Utilization
+      metadata:
+        value: '50'  # Scale aggressively on CPU

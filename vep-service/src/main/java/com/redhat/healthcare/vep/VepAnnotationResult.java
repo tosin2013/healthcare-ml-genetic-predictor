@@ -47,13 +47,41 @@ public class VepAnnotationResult {
     // Static factory methods
     public static VepAnnotationResult fromApiResponse(VepApiResponse response, GeneticSequenceData sequenceData) {
         VepAnnotationResult result = new VepAnnotationResult(sequenceData.getSequenceId());
-        
+
         if (response != null) {
             result.annotations.add(response);
             result.variantCount = response.getTotalConsequences();
             result.mostSevereConsequence = response.getMostSevereConsequence();
         }
-        
+
+        return result;
+    }
+
+    public static VepAnnotationResult fromApiResponseList(List<VepApiResponse> responses, GeneticSequenceData sequenceData) {
+        VepAnnotationResult result = new VepAnnotationResult(sequenceData.getSequenceId());
+
+        if (responses != null && !responses.isEmpty()) {
+            result.annotations.addAll(responses);
+
+            // Calculate total variant count and find most severe consequence
+            int totalVariants = 0;
+            String mostSevere = null;
+
+            for (VepApiResponse response : responses) {
+                if (response != null) {
+                    totalVariants += response.getTotalConsequences();
+
+                    // Update most severe consequence (prioritize first non-null)
+                    if (mostSevere == null && response.getMostSevereConsequence() != null) {
+                        mostSevere = response.getMostSevereConsequence();
+                    }
+                }
+            }
+
+            result.variantCount = totalVariants;
+            result.mostSevereConsequence = mostSevere;
+        }
+
         return result;
     }
 

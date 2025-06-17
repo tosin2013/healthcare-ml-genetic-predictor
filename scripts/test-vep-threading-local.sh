@@ -70,24 +70,12 @@ create_network() {
 # Function to start local Kafka for testing
 start_kafka() {
     echo -e "${YELLOW}🚀 Starting Local Kafka${NC}"
-    
-    # Stop existing Kafka container
-    podman stop $KAFKA_CONTAINER 2>/dev/null || true
-    podman rm $KAFKA_CONTAINER 2>/dev/null || true
-    
-    # Start Kafka container
-    podman run -d \
-        --name $KAFKA_CONTAINER \
-        --network $NETWORK_NAME \
-        -p 9092:9092 \
-        -e KAFKA_ZOOKEEPER_CONNECT=localhost:2181 \
-        -e KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://localhost:9092 \
-        -e KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1 \
-        confluentinc/cp-kafka:latest
-    
-    echo -e "${GREEN}✅ Kafka container started${NC}"
-    echo "Waiting for Kafka to be ready..."
-    sleep 10
+
+    # For now, skip Kafka container and use embedded testing
+    echo "Note: Using Quarkus dev mode with embedded testing instead of external Kafka"
+    echo "This allows us to focus on threading issues without Kafka complexity"
+
+    echo -e "${GREEN}✅ Kafka setup configured for embedded testing${NC}"
     echo ""
 }
 
@@ -124,18 +112,21 @@ test_threading_models() {
     echo "   - Validate Uni<String> reactive processing"
     echo ""
     
-    # Set environment for local testing
-    export KAFKA_BOOTSTRAP_SERVERS="localhost:9092"
-    export QUARKUS_PROFILE="dev"
-    
-    # Start in dev mode
-    ./mvnw quarkus:dev
+    # Set environment for local testing (use test profile to avoid Kafka)
+    export QUARKUS_PROFILE="test"
+
+    echo -e "${BLUE}Starting VEP service in test mode to debug threading...${NC}"
+    echo "This will use in-memory messaging to isolate threading issues"
+    echo ""
+
+    # Start in dev mode with test profile
+    ./mvnw quarkus:dev -Dquarkus.profile=test
 }
 
 # Function to create test messages
 create_test_messages() {
     echo -e "${YELLOW}📨 Creating Test Messages${NC}"
-    
+
     # Create simple test CloudEvent
     cat > test-cloudevent.json << EOF
 {
@@ -152,8 +143,28 @@ create_test_messages() {
     }
 }
 EOF
-    
-    echo -e "${GREEN}✅ Test CloudEvent created: test-cloudevent.json${NC}"
+
+    # Create large sequence test (100KB) for node scaling simulation
+    LARGE_SEQUENCE=$(printf 'ATCG%.0s' {1..25000})  # 100KB sequence
+    cat > test-large-sequence.json << EOF
+{
+    "specversion": "1.0",
+    "type": "com.redhat.healthcare.genetic.sequence.nodescale",
+    "source": "local-test",
+    "id": "test-large-$(date +%s)",
+    "time": "$(date -Iseconds)",
+    "datacontenttype": "application/json",
+    "data": {
+        "sessionId": "local-test-large-session",
+        "genetic_sequence": "$LARGE_SEQUENCE",
+        "processing_mode": "node-scale"
+    }
+}
+EOF
+
+    echo -e "${GREEN}✅ Test CloudEvents created:${NC}"
+    echo "   - test-cloudevent.json (normal sequence)"
+    echo "   - test-large-sequence.json (100KB sequence for node scaling)"
     echo ""
 }
 

@@ -1,0 +1,219 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cost-management-config
+  namespace: healthcare-ml-demo
+  annotations:
+    description: "Cost management configuration for healthcare ML demo environment"
+    insights.openshift.io/cost-center: "genomics-research-demo"
+    insights.openshift.io/billing-model: "chargeback"
+data:
+  cost-attribution-strategy.yaml: |
+    # Healthcare ML Cost Attribution Strategy
+    # Demo Environment Configuration
+    
+    ## Cost Centers
+    primary_cost_center: genomics-research-demo
+    secondary_cost_centers:
+      - development
+      - testing
+      - demo
+    
+    ## Billing Models
+    billing_model: chargeback
+    billing_frequency: monthly
+    currency: USD
+    
+    ## Workload Cost Categories
+    workload_categories:
+      standard:
+        description: "Normal and big-data genetic analysis"
+        cost_multiplier: 1.0
+        resource_profile: balanced
+        expected_utilization: 70%
+      
+      compute_intensive:
+        description: "Node-scale processing and ML training"
+        cost_multiplier: 1.5
+        resource_profile: high-memory
+        expected_utilization: 85%
+    
+    ## Resource Cost Allocation
+    resource_allocation:
+      cpu:
+        unit: core-hours
+        rate_per_hour: 0.05
+        peak_multiplier: 1.2
+      
+      memory:
+        unit: gb-hours
+        rate_per_hour: 0.01
+        peak_multiplier: 1.1
+      
+      storage:
+        unit: gb-months
+        rate_per_month: 0.10
+        type: premium-ssd
+      
+      network:
+        unit: gb-transferred
+        rate_per_gb: 0.02
+        ingress_free: true
+
+  labels-and-annotations.yaml: |
+    # Standard labels for all healthcare ML resources
+    standard_labels:
+      app.kubernetes.io/name: healthcare-ml-genetic-predictor
+      app.kubernetes.io/component: genetic-analysis
+      app.kubernetes.io/part-of: healthcare-ml-ecosystem
+      app.kubernetes.io/managed-by: kustomize
+      app.kubernetes.io/version: "1.0.0"
+    
+    # Cost management labels
+    cost_labels:
+      insights.openshift.io/cost-center: genomics-research-demo
+      insights.openshift.io/billing-model: chargeback
+      insights.openshift.io/environment: demo
+      insights.openshift.io/project: healthcare-ml-demo
+    
+    # Workload-specific labels
+    workload_labels:
+      workload.healthcare-ml/type: genetic-analysis
+      workload.healthcare-ml/mode: normal|bigdata|nodescale
+      workload.healthcare-ml/service: vep-annotation|websocket|kafka
+      workload.healthcare-ml/priority: standard|high|critical
+
+  dashboard-config.json: |
+    {
+      "dashboard": {
+        "title": "Healthcare ML Cost Management - Demo Environment",
+        "description": "Cost attribution and resource utilization for genetic analysis workloads",
+        "refresh_interval": "5m",
+        "time_range": "24h"
+      },
+      "panels": [
+        {
+          "title": "Cost by Workload Type",
+          "type": "pie_chart",
+          "query": "sum by (workload_type) (cost_per_hour{environment='demo'})",
+          "colors": ["#1f77b4", "#ff7f0e", "#2ca02c"]
+        },
+        {
+          "title": "Resource Utilization by Node Pool",
+          "type": "time_series",
+          "queries": [
+            "avg by (workload_type) (cpu_utilization{environment='demo'})",
+            "avg by (workload_type) (memory_utilization{environment='demo'})"
+          ]
+        },
+        {
+          "title": "Node Scaling Events",
+          "type": "table",
+          "query": "increase(node_scaling_events{environment='demo'}[1h])",
+          "columns": ["timestamp", "workload_type", "action", "node_count"]
+        },
+        {
+          "title": "Cost per Genetic Analysis",
+          "type": "gauge",
+          "query": "avg(cost_per_analysis{environment='demo'})",
+          "thresholds": [0.10, 0.25, 0.50]
+        }
+      ]
+    }
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: cost-management-credentials
+  namespace: healthcare-ml-demo
+  annotations:
+    description: "Credentials for cost management integration"
+type: Opaque
+stringData:
+  # Red Hat Insights Cost Management API
+  insights_api_key: "REPLACE_WITH_ACTUAL_API_KEY"
+  insights_org_id: "REPLACE_WITH_ORG_ID"
+  
+  # Azure Cost Management API (if using Azure billing integration)
+  azure_subscription_id: "REPLACE_WITH_SUBSCRIPTION_ID"
+  azure_tenant_id: "REPLACE_WITH_TENANT_ID"
+  azure_client_id: "REPLACE_WITH_CLIENT_ID"
+  azure_client_secret: "REPLACE_WITH_CLIENT_SECRET"
+
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: cost-attribution-report
+  namespace: healthcare-ml-demo
+  annotations:
+    description: "Generate daily cost attribution reports for healthcare ML workloads"
+spec:
+  schedule: "0 6 * * *"  # Daily at 6 AM UTC
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: cost-reporter
+            image: image-registry.openshift-image-registry.svc:5000/openshift/cli:latest
+            command:
+            - /bin/bash
+            - -c
+            - |
+              echo "Generating cost attribution report for $(date)"
+              
+              # Get resource usage by workload type
+              echo "=== Resource Usage by Workload Type ==="
+              oc get pods -l workload-type=compute-intensive -o json | \
+                jq '.items[] | {name: .metadata.name, cpu: .spec.containers[0].resources.requests.cpu, memory: .spec.containers[0].resources.requests.memory}'
+              
+              # Get node scaling events
+              echo "=== Node Scaling Events (Last 24h) ==="
+              oc get events --field-selector reason=ScalingReplicaSet --since=24h
+              
+              # Get cost attribution labels
+              echo "=== Cost Attribution Summary ==="
+              oc get nodes -l workload-type=compute-intensive --show-labels | grep cost-center
+              
+              echo "Cost report generated successfully"
+          restartPolicy: OnFailure
+          serviceAccountName: cost-reporter
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: cost-reporter
+  namespace: healthcare-ml-demo
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: cost-reporter
+rules:
+- apiGroups: [""]
+  resources: ["pods", "nodes", "events"]
+  verbs: ["get", "list"]
+- apiGroups: ["apps"]
+  resources: ["deployments", "replicasets"]
+  verbs: ["get", "list"]
+- apiGroups: ["machine.openshift.io"]
+  resources: ["machines", "machinesets"]
+  verbs: ["get", "list"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: cost-reporter
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cost-reporter
+subjects:
+- kind: ServiceAccount
+  name: cost-reporter
+  namespace: healthcare-ml-demo

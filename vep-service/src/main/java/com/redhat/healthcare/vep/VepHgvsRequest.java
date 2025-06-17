@@ -6,14 +6,36 @@ import java.util.ArrayList;
 
 /**
  * Request object for VEP HGVS API calls
- * 
- * This class represents the JSON structure expected by the Ensembl VEP API
+ *
+ * API Documentation: https://rest.ensembl.org/documentation/info/vep_hgvs_post
+ *
+ * This class represents the EXACT JSON structure expected by the Ensembl VEP API
  * for HGVS notation-based variant annotation requests.
- * 
- * Example JSON:
+ *
+ * WHY HGVS FORMAT:
+ * - HGVS (Human Genome Variation Society) is the international standard
+ * - Required by Ensembl VEP API (raw sequences cause 400 Bad Request)
+ * - Enables precise variant description and clinical interpretation
+ * - Supported by all major genomics tools (GATK, ClinVar, dbSNP)
+ *
+ * SUPPORTED HGVS FORMATS:
+ * - Genomic: "17:g.43094692G>A" (chromosome:g.position>change)
+ * - Transcript: "ENST00000366667:c.803C>T" (transcript:c.position>change)
+ * - Protein: "ENSP00000355632:p.Arg268Cys" (protein:p.change)
+ *
+ * Example JSON Request:
  * {
- *   "hgvs_notations": ["ENST00000366667:c.803C>T", "9:g.22125504G>C"]
+ *   "hgvs_notations": [
+ *     "ENST00000366667:c.803C>T",  // BRCA1 missense variant
+ *     "9:g.22125504G>C",           // Genomic variant on chr9
+ *     "17:g.43094692G>A"           // BRCA1 genomic variant
+ *   ]
  * }
+ *
+ * LIMITS:
+ * - Maximum 1000 HGVS notations per request
+ * - Each notation must be valid HGVS format
+ * - Invalid notations will cause API errors
  */
 public class VepHgvsRequest {
     
