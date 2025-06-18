@@ -6,39 +6,62 @@ A real-time genetic risk prediction system built with Quarkus WebSockets, deploy
 
 This project implements a healthcare ML application that processes genetic data in real-time using WebSocket connections, Kafka event streaming, and machine learning inference. The system is designed for cost-effective deployment on OpenShift with comprehensive monitoring and HIPAA-compliant security.
 
+![alt text](image-1.png)
+
 ## 🏗️ Architecture
 
-```
-┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│   Web Client    │───▶│  Quarkus WebSocket │───▶│  Kafka Cluster  │
-│  (Genetic UI)   │    │     Service        │    │ (AMQ Streams)   │
-└─────────────────┘    └──────────────────┘    └─────────────────┘
-                                │                         │
-                                ▼                         ▼
-                       ┌──────────────────┐    ┌─────────────────┐
-                       │   Health Checks  │    │  ML Inference   │
-                       │   & Metrics      │    │   (Knative)     │
-                       └──────────────────┘    └─────────────────┘
+```mermaid
+graph TB
+    Frontend[Web Frontend] --> WebSocket[Quarkus WebSocket Service]
+    WebSocket --> Kafka[Apache Kafka]
+    Kafka --> VEP[VEP Annotation Service]
+    VEP --> VEPAPI[Ensembl VEP API]
+    VEP --> Kafka
+    Kafka --> WebSocket
+    WebSocket --> Frontend
+
+    KEDA[KEDA Autoscaler] --> WebSocket
+    KEDA --> VEP
+
+    Insights[Red Hat Insights] --> Cost[Cost Management]
+
+    subgraph "OpenShift Cluster"
+        WebSocket
+        VEP
+        Kafka
+        KEDA
+    end
 ```
 
 ### Key Components
 
-- **Quarkus WebSocket Service**: Real-time genetic data processing
-- **Apache Kafka**: Event streaming for genetic data pipeline
-- **Knative Serving**: Scale-to-zero ML inference services
-- **KEDA**: Event-driven autoscaling based on Kafka lag
-- **Red Hat Insights**: Cost management and observability
+- **🌐 Quarkus WebSocket Service**: Real-time genetic data processing and session management
+- **🔬 VEP Annotation Service**: Genetic variant annotation using Ensembl VEP API
+- **📊 Apache Kafka**: Event streaming backbone with multiple topics for different scaling modes
+- **⚡ KEDA**: Event-driven autoscaling for both pod and node scaling
+- **💰 Red Hat Insights**: Cost management and observability with chargeback capabilities
+
+### Scaling Modes
+1. **📊 Normal Mode**: Pod scaling only (genetic-data-raw topic)
+2. **🚀 Big Data Mode**: Memory-intensive processing (genetic-bigdata-raw topic)
+3. **⚡ Node Scale Mode**: Cluster autoscaler with dedicated compute nodes (genetic-nodescale-raw topic)
 
 ## 🚀 Quick Start
 
 ### Prerequisites
 
-- Azure Red Hat OpenShift cluster
-- OpenShift CLI (`oc`) installed and logged in
-- Git repository access
+- **Azure Red Hat OpenShift cluster** with admin access
+- **OpenShift CLI (`oc`)** installed and logged in
+- **Java 17** (hard requirement for local development)
+- **Podman** (preferred over Docker for containerization)
+- **Git repository access**
 
-### Deploy to OpenShift
+### 🎯 Choose Your Path
 
+#### **🎓 New to the System?**
+Start with the [Getting Started Tutorial](./docs/tutorials/01-getting-started.md) for a complete walkthrough.
+
+#### **🚀 Quick Deploy (Experienced Users)**
 **📖 For complete deployment instructions, see [DEPLOYMENT.md](DEPLOYMENT.md)**
 
 **✅ Automated Deployment (Recommended):**
@@ -201,26 +224,85 @@ curl http://localhost:8080/q/metrics
 
 ## 🤝 Contributing
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Test locally and on OpenShift
-5. Submit a pull request
+We welcome contributions from the community! This project has many opportunities for enhancement and expansion.
+
+### 🎯 **[Complete Contributing Guide](./CONTRIBUTING.md)** - Comprehensive contribution opportunities
+
+#### High Priority Areas
+- **🔥 Red Hat Cost Management Console Access** - Help validate console.redhat.com access
+- **📊 Alternative Cost Visualization** - Create local dashboards for cost monitoring
+- **🔒 Enhanced Security & Compliance** - Implement healthcare-grade security features
+- **🧬 Advanced ML Models** - Expand genetic analysis capabilities
+
+#### Quick Start for Contributors
+1. **📖 Read**: [Contributing Guide](./CONTRIBUTING.md) for detailed opportunities
+2. **🔍 Browse**: [Open Issues](https://github.com/tosin2013/healthcare-ml-genetic-predictor/issues) for current needs
+3. **🚀 Start**: Fork the repository and create a feature branch
+4. **✅ Test**: Validate changes locally and on OpenShift
+5. **📝 Submit**: Create a pull request with clear description
+
+#### Areas Seeking Contributions
+- **Cost Management**: Console access validation and alternative dashboards
+- **Security**: HIPAA compliance and healthcare-grade security features
+- **ML/AI**: Advanced genetic analysis models and OpenShift AI integration
+- **Documentation**: Tutorials, guides, and community resources
+- **Performance**: Optimization and advanced scaling configurations
+- **Integration**: Multi-cloud deployments and healthcare system integration
 
 ## 📚 Documentation
 
-- [Quarkus WebSocket Service](./quarkus-websocket-service/README.md)
-- [OpenShift Deployment Guide](./k8s/README.md)
-- [Technical Research](./research.md)
-- [Development Specification](./dev.spec.md)
+### 🎯 **[Complete Documentation Suite](./docs/README.md)** - Comprehensive Diátaxis framework documentation
+
+#### Quick Access
+- **🎓 Tutorials**: [Getting Started](./docs/tutorials/01-getting-started.md) | [Local Development](./docs/tutorials/02-local-development.md)
+- **🛠️ How-To Guides**: [Deploy to OpenShift](./docs/how-to/deploy-openshift.md) | [Advanced Troubleshooting](./docs/how-to/advanced-troubleshooting-augment.md)
+- **📖 Reference**: [API Reference](./docs/reference/api-reference.md) | [Configuration](./docs/reference/configuration.md)
+- **💡 Explanation**: [System Architecture](./docs/explanation/system-architecture.md) | [Scaling Strategy](./docs/explanation/scaling-strategy.md)
+
+#### Augment Code Integration
+- **🚀 [Augment Code Integration Guide](./docs/augment-code-integration-guide.md)** - AI-assisted development optimization
+- **🧹 [Code Cleanup Analysis](./docs/code-cleanup-analysis-augment.md)** - Environment alignment recommendations
+- **✅ [Quality Assurance Framework](./docs/quality-assurance-framework-augment.md)** - Healthcare-grade standards
+
+#### Component Documentation
+- [Quarkus WebSocket Service](./quarkus-websocket-service/README.md) - Threading validation and API endpoints
+- [OpenShift Deployment Guide](./k8s/README.md) - Kustomize-based deployment structure
+- [Technical Research](./research.md) - Research foundation and ML approaches
+- [Development Specification](./dev.spec.md) - Technical specifications and requirements
+
+## 🚀 Augment Code Integration
+
+This project is **fully optimized for Augment Code's superior context awareness**:
+
+### Context-Aware Development
+```bash
+# Use Augment's codebase retrieval for intelligent code discovery:
+"Show me the WebSocket endpoint implementation for genetic analysis"
+"Find KEDA scaling configurations for pod and node scaling"
+"Locate VEP service processing logic and API integration"
+"Show me the complete data flow from WebSocket to VEP API"
+"Find threading validation patterns and @Blocking annotations"
+```
+
+### AI-Assisted Workflow
+- **Pattern Recognition**: Leverage Augment's pattern matching for consistent healthcare ML development
+- **Context Gathering**: Use intelligent queries before making code changes
+- **Integration Validation**: Verify cross-service compatibility with AI assistance
+- **Quality Assurance**: Automated validation using healthcare-grade standards
 
 ## 📞 Support
 
-For questions or issues:
-1. Check the documentation
-2. Review OpenShift logs: `oc logs -f deployment/quarkus-websocket-service -n healthcare-ml-demo`
-3. Validate configurations: `kustomize build k8s/base`
-4. Contact the development team
+### Getting Help
+1. **📚 Documentation**: Start with the [Complete Documentation Suite](./docs/README.md)
+2. **🔧 Advanced Troubleshooting**: Use [Context-Aware Debugging Guide](./docs/how-to/advanced-troubleshooting-augment.md)
+3. **🧠 Augment Code**: Leverage [AI-Assisted Development Guide](./docs/augment-code-integration-guide.md)
+4. **📊 System Logs**: `oc logs -f deployment/quarkus-websocket-service -n healthcare-ml-demo`
+5. **⚙️ Configuration**: `kustomize build k8s/base`
+
+### Emergency Response
+- **Critical Issues**: Follow [Emergency Response Procedures](./docs/how-to/advanced-troubleshooting-augment.md#emergency-response-procedures)
+- **System Recovery**: Use [Recovery Scripts](./scripts/) for automated system restoration
+- **Cost Management**: Monitor via [Red Hat Insights Cost Dashboard](./docs/how-to/monitor-costs.md)
 
 ## 📄 License
 
