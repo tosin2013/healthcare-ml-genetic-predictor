@@ -43,11 +43,12 @@ logs/
 .gradle/
 gradle/wrapper/gradle-wrapper.jar
 
-# Documentation and research files
-*.md
-!README.md
-!k8s/README.md
-!docs/README.md
+# Documentation and research files - exclude temporary/working files
+research.md
+research_deep.md
+dev.spec.md
+more_research.md
+retrospective.md
 
 # Windsurf and AI assistant files
 .windsurf/
@@ -56,3 +57,7 @@ gradle/wrapper/gradle-wrapper.jar
 test-*.md
 *-issue.md
 *-prd.md
+github-issues-assessment-report.md
+issue-closure-summary.md
+contribution-documentation-summary.md
+cost-access-issue.md
