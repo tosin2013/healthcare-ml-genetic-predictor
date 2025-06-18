@@ -7,7 +7,7 @@
 
 ## 📚 Documentation Framework
 
-This documentation follows the **Diátaxis framework** to provide comprehensive coverage for developers, operators, and users of the Healthcare ML Genetic Prediction system. The documentation is optimized for **Augment Code** environments with context-aware recommendations and AI-assisted development workflows.
+This documentation follows the **Diátaxis framework** to provide comprehensive coverage for developers, operators, and users of the Healthcare ML Genetic Prediction system. 
 
 ## 🎯 Documentation Types
 
