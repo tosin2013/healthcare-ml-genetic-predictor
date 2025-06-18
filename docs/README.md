@@ -43,32 +43,6 @@ Conceptual and architectural documentation:
 - **Security Model** *(Coming Soon)* - Healthcare-grade security
 - **Cost Optimization** *(Coming Soon)* - Cost management strategies
 
-## 🚀 Augment Code Integration
-
-### Context-Aware Features
-This documentation is **fully optimized for Augment Code's superior context awareness**:
-- **Codebase Integration**: Direct links to relevant code sections with `<augment_code_snippet>` tags
-- **AI-Assisted Development**: Patterns that complement Augment's AI features
-- **Intelligent Code Analysis**: Leverages Augment's world-leading context engine
-- **Advanced Troubleshooting**: Context-aware debugging with intelligent queries
-
-### Enhanced Augment Code Documentation
-- 📖 **[Augment Code Integration Guide](augment-code-integration-guide.md)** - Complete Augment optimization guide
-- 🔧 **[Advanced Troubleshooting](how-to/advanced-troubleshooting-augment.md)** - Context-aware debugging
-- 🧹 **[Code Cleanup Analysis](code-cleanup-analysis-augment.md)** - Environment alignment recommendations
-- ✅ **[Quality Assurance Framework](quality-assurance-framework-augment.md)** - Healthcare-grade QA standards
-
-### Quick Navigation for Augment Users
-```bash
-# Use Augment's codebase retrieval for specific components
-# Example queries for Augment Code:
-"Show me the WebSocket endpoint implementation for genetic analysis"
-"Find KEDA scaling configurations for pod and node scaling"
-"Locate VEP service processing logic and API integration"
-"Show Kafka topic definitions and consumer group configurations"
-"Find threading validation patterns and @Blocking annotations"
-"Show me the complete data flow from WebSocket to VEP API"
-```
 
 ## 🏗️ System Overview
 

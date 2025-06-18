@@ -6,7 +6,7 @@ A real-time genetic risk prediction system built with Quarkus WebSockets, deploy
 
 This project implements a healthcare ML application that processes genetic data in real-time using WebSocket connections, Kafka event streaming, and machine learning inference. The system is designed for cost-effective deployment on OpenShift with comprehensive monitoring and HIPAA-compliant security.
 
-![alt text](image-1.png)
+![alt text](image.png)
 
 ## 🏗️ Architecture
 
@@ -259,36 +259,11 @@ We welcome contributions from the community! This project has many opportunities
 - **📖 Reference**: [API Reference](./docs/reference/api-reference.md) | [Configuration](./docs/reference/configuration.md)
 - **💡 Explanation**: [System Architecture](./docs/explanation/system-architecture.md) | [Scaling Strategy](./docs/explanation/scaling-strategy.md)
 
-#### Augment Code Integration
-- **🚀 [Augment Code Integration Guide](./docs/augment-code-integration-guide.md)** - AI-assisted development optimization
-- **🧹 [Code Cleanup Analysis](./docs/code-cleanup-analysis-augment.md)** - Environment alignment recommendations
-- **✅ [Quality Assurance Framework](./docs/quality-assurance-framework-augment.md)** - Healthcare-grade standards
-
 #### Component Documentation
 - [Quarkus WebSocket Service](./quarkus-websocket-service/README.md) - Threading validation and API endpoints
 - [OpenShift Deployment Guide](./k8s/README.md) - Kustomize-based deployment structure
 - [Technical Research](./research.md) - Research foundation and ML approaches
 - [Development Specification](./dev.spec.md) - Technical specifications and requirements
-
-## 🚀 Augment Code Integration
-
-This project is **fully optimized for Augment Code's superior context awareness**:
-
-### Context-Aware Development
-```bash
-# Use Augment's codebase retrieval for intelligent code discovery:
-"Show me the WebSocket endpoint implementation for genetic analysis"
-"Find KEDA scaling configurations for pod and node scaling"
-"Locate VEP service processing logic and API integration"
-"Show me the complete data flow from WebSocket to VEP API"
-"Find threading validation patterns and @Blocking annotations"
-```
-
-### AI-Assisted Workflow
-- **Pattern Recognition**: Leverage Augment's pattern matching for consistent healthcare ML development
-- **Context Gathering**: Use intelligent queries before making code changes
-- **Integration Validation**: Verify cross-service compatibility with AI assistance
-- **Quality Assurance**: Automated validation using healthcare-grade standards
 
 ## 📞 Support
 
