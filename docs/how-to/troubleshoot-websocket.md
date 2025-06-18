@@ -93,7 +93,7 @@ oc logs deployment/quarkus-websocket-service -n healthcare-ml-demo | grep -E "(k
 #### **Solutions**
 
 **Threading Fix (Critical for Quarkus)**
-<augment_code_snippet path="quarkus-websocket-service/src/main/java/com/healthcare/ml/websocket/GeneticPredictorEndpoint.java" mode="EXCERPT">
+
 ````java
 @ServerEndpoint("/genetic-predictor")
 public class GeneticPredictorEndpoint {
@@ -111,7 +111,7 @@ public class GeneticPredictorEndpoint {
     }
 }
 ````
-</augment_code_snippet>
+
 
 **Resource Adjustment**
 ```bash

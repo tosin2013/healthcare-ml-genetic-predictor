@@ -63,7 +63,7 @@ graph TB
 **Technology**: Quarkus 3.8, Java 17, WebSockets, Reactive Messaging  
 **Scaling**: Fixed replicas (1-2) for session consistency
 
-<augment_code_snippet path="quarkus-websocket-service/src/main/java/com/redhat/healthcare/GeneticPredictorEndpoint.java" mode="EXCERPT">
+
 ````java
 @ServerEndpoint("/genetics")
 @ApplicationScoped
@@ -78,7 +78,7 @@ public class GeneticPredictorEndpoint {
     @Channel("genetic-nodescale-raw-out")
     Emitter<String> geneticNodeScaleEmitter;
 ````
-</augment_code_snippet>
+
 
 **Key Responsibilities**:
 - WebSocket session management with 15-minute timeouts
@@ -91,7 +91,7 @@ public class GeneticPredictorEndpoint {
 **Technology**: Quarkus 3.8, Java 17, Reactive Programming, REST Client  
 **Scaling**: KEDA-managed (0-10 replicas based on Kafka lag)
 
-<augment_code_snippet path="vep-service/src/main/java/com/redhat/healthcare/vep/VepAnnotationService.java" mode="EXCERPT">
+
 ````java
 @ApplicationScoped
 public class VepAnnotationService {
@@ -104,7 +104,7 @@ public class VepAnnotationService {
             return vepResult;
         }).runSubscriptionOn(Infrastructure.getDefaultExecutor())
 ````
-</augment_code_snippet>
+
 
 **Key Responsibilities**:
 - Kafka message consumption from multiple topics
@@ -141,7 +141,7 @@ graph LR
 **Technology**: KEDA 2.x with Kafka scalers  
 **Scaling Modes**: Three distinct scaling behaviors
 
-<augment_code_snippet path="k8s/base/keda/multi-topic-scaledobjects.yaml" mode="EXCERPT">
+
 ````yaml
 apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
@@ -159,7 +159,7 @@ spec:
       topic: genetic-data-raw
       lagThreshold: "3"
 ````
-</augment_code_snippet>
+
 
 ## 🔄 Data Flow Architecture
 

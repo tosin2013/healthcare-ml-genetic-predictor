@@ -74,7 +74,7 @@ curl -I https://$(oc get route quarkus-websocket-service -o jsonpath='{.spec.hos
 #### **Common Root Causes & Solutions**
 
 **Threading Issues (Event Loop Blocking)**
-<augment_code_snippet path="quarkus-websocket-service/src/main/java/com/healthcare/ml/websocket/GeneticPredictorEndpoint.java" mode="EXCERPT">
+
 ````java
 @ServerEndpoint("/genetic-predictor")
 public class GeneticPredictorEndpoint {
@@ -91,7 +91,7 @@ public class GeneticPredictorEndpoint {
     }
 }
 ````
-</augment_code_snippet>
+
 
 **Solution**: Ensure all WebSocket message processing is asynchronous.
 
@@ -132,7 +132,7 @@ oc exec -it genetic-data-cluster-kafka-0 -- bin/kafka-consumer-groups.sh \
 #### **Common Root Causes & Solutions**
 
 **Incorrect Kafka Topic Configuration**
-<augment_code_snippet path="k8s/base/keda/vep-service-scaler.yaml" mode="EXCERPT">
+
 ````yaml
 apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
@@ -149,7 +149,7 @@ spec:
       topic: genetic-data-raw  # ✅ Ensure correct topic name
       lagThreshold: '5'        # ✅ Appropriate threshold
 ````
-</augment_code_snippet>
+
 
 **Solution**: Verify topic names match between Kafka configuration and KEDA triggers.
 
@@ -188,7 +188,7 @@ oc get configmap vep-service-config -o yaml
 #### **Common Root Causes & Solutions**
 
 **API Rate Limiting**
-<augment_code_snippet path="vep-service/src/main/java/com/healthcare/ml/service/VepApiService.java" mode="EXCERPT">
+
 ````java
 @ApplicationScoped
 public class VepApiService {
@@ -210,7 +210,7 @@ public class VepApiService {
     }
 }
 ````
-</augment_code_snippet>
+
 
 **Solution**: Implement proper rate limiting and fallback mechanisms.
 

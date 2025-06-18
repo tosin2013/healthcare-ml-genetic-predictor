@@ -34,7 +34,7 @@ public Response analyzeGenetic(GeneticRequest request) {
 #### **Error Handling Standards**
 Consistent error handling across all services:
 
-<augment_code_snippet path="quarkus-websocket-service/src/main/java/com/healthcare/ml/exception/GlobalExceptionHandler.java" mode="EXCERPT">
+
 ````java
 @Provider
 public class GlobalExceptionHandler implements ExceptionMapper<Exception> {
@@ -54,7 +54,7 @@ public class GlobalExceptionHandler implements ExceptionMapper<Exception> {
     }
 }
 ````
-</augment_code_snippet>
+
 
 ### 2. Documentation Quality Standards
 
@@ -108,7 +108,7 @@ Documentation must include Augment-specific elements:
 - Document integration points for AI assistance
 
 ### Code Examples
-- Use <augment_code_snippet> tags for all code examples
+- Use  tags for all code examples
 - Include path and mode attributes
 - Limit examples to <10 lines for clickable navigation
 
@@ -123,7 +123,7 @@ Documentation must include Augment-specific elements:
 #### **OpenShift Deployment Standards**
 All Kubernetes manifests must meet healthcare-grade requirements:
 
-<augment_code_snippet path="k8s/base/applications/quarkus-websocket/deployment.yaml" mode="EXCERPT">
+
 ````yaml
 apiVersion: apps/v1
 kind: Deployment
@@ -147,7 +147,7 @@ spec:
           capabilities:
             drop: ["ALL"]                  # Minimal capabilities
 ````
-</augment_code_snippet>
+
 
 #### **KEDA Scaling Standards**
 All scaling configurations must include proper monitoring:
@@ -248,9 +248,9 @@ check_augment_optimization() {
         return 1
     fi
     
-    # Check for code snippet tags
-    if ! grep -r "<augment_code_snippet" docs/; then
-        echo "❌ Missing Augment Code snippet tags"
+    # Check for proper code formatting (augment_code_snippet tags removed for community release)
+    if ! find docs/ -name "*.md" -exec grep -l "```" {} \; | head -1 > /dev/null; then
+        echo "❌ Missing code examples in documentation"
         return 1
     fi
     echo "✅ Augment Code optimization present"
@@ -275,7 +275,7 @@ check_augment_optimization
 
 ### Augment Code Optimization
 - [ ] Contains specific Augment queries for code discovery
-- [ ] Uses <augment_code_snippet> tags for code examples
+- [ ] Uses  tags for code examples
 - [ ] Includes pattern documentation for AI recognition
 - [ ] Provides context for architectural decisions
 - [ ] Optimizes for superior context awareness

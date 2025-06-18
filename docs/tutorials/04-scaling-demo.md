@@ -30,13 +30,13 @@ curl --version
 ### Environment Verification
 Run the demo readiness validation script:
 
-<augment_code_snippet path="scripts/validate-demo-readiness.sh" mode="EXCERPT">
+
 ````bash
 #!/bin/bash
 # Validate that all components are ready for scaling demo
 ./scripts/validate-demo-readiness.sh
 ````
-</augment_code_snippet>
+
 
 Expected output should show:
 - ✅ All Kafka topics available (7 topics including genetic-data-raw, genetic-bigdata-raw, genetic-nodescale-raw)
@@ -66,12 +66,12 @@ oc exec genetic-data-cluster-kafka-0 -- /opt/kafka/bin/kafka-consumer-groups.sh 
 
 Use the Node.js script to test normal mode scaling:
 
-<augment_code_snippet path="scripts/test-websocket-client.js" mode="EXCERPT">
+
 ````bash
 # Test normal mode with 20bp sequence (triggers genetic-data-raw topic)
 node scripts/test-websocket-client.js normal "ATCGATCGATCGATCGATCG" 120
 ````
-</augment_code_snippet>
+
 
 **Expected Behavior:**
 - WebSocket connection established in <1000ms
@@ -129,13 +129,13 @@ curl -X POST https://quarkus-websocket-service-healthcare-ml-demo.apps.b9892ub1.
 
 ### Step 2: Test Big Data Mode with Larger Sequence
 
-<augment_code_snippet path="scripts/test-websocket-client.js" mode="EXCERPT">
+
 ````bash
 # Test big data mode with 2KB sequence (triggers genetic-bigdata-raw topic)
 LARGE_SEQUENCE=$(printf 'ATCG%.0s' {1..500})  # 2KB sequence
 node scripts/test-websocket-client.js big-data "$LARGE_SEQUENCE" 180
 ````
-</augment_code_snippet>
+
 
 **Expected Behavior:**
 - WebSocket sends JSON message with `resourceProfile: "high-memory"`
@@ -174,13 +174,13 @@ curl -X POST https://quarkus-websocket-service-healthcare-ml-demo.apps.b9892ub1.
 
 ### Step 2: Test Node Scale Mode with Very Large Sequence
 
-<augment_code_snippet path="scripts/test-websocket-client.js" mode="EXCERPT">
+
 ````bash
 # Test node scale mode with 10KB sequence (triggers genetic-nodescale-raw topic)
 HUGE_SEQUENCE=$(printf 'ATCG%.0s' {1..2500})  # 10KB sequence
 node scripts/test-websocket-client.js node-scale "$HUGE_SEQUENCE" 300
 ````
-</augment_code_snippet>
+
 
 **Expected Behavior:**
 - WebSocket sends JSON message with `resourceProfile: "cluster-scale"`
@@ -223,12 +223,12 @@ curl -X POST https://quarkus-websocket-service-healthcare-ml-demo.apps.b9892ub1.
 
 Use the comprehensive monitoring script to track all scaling activities:
 
-<augment_code_snippet path="scripts/test-keda-scaling-behavior.sh" mode="EXCERPT">
+
 ````bash
 # Run comprehensive scaling behavior test
 ./scripts/test-keda-scaling-behavior.sh --all
 ````
-</augment_code_snippet>
+
 
 This script provides:
 - Automated testing of all three scaling modes

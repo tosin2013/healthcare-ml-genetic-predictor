@@ -103,12 +103,12 @@ Expected VEP analysis results include:
 
 ### Step 1: Use Node.js WebSocket Client
 
-<augment_code_snippet path="scripts/test-websocket-client.js" mode="EXCERPT">
+
 ````bash
 # Test normal mode with 20bp sequence
 node scripts/test-websocket-client.js normal "ATCGATCGATCGATCGATCG" 120
 ````
-</augment_code_snippet>
+
 
 **Expected Output**:
 ```

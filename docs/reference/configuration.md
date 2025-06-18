@@ -8,7 +8,7 @@ This reference provides comprehensive configuration details for all components i
 
 ### Application Properties
 
-<augment_code_snippet path="quarkus-websocket-service/src/main/resources/application.properties" mode="EXCERPT">
+
 ````properties
 # Quarkus WebSocket Service Configuration
 quarkus.application.name=healthcare-ml-websocket
@@ -22,7 +22,7 @@ mp.messaging.outgoing.genetic-data-out.topic=genetic-data-raw
 mp.messaging.incoming.genetic-results-in.connector=smallrye-kafka
 mp.messaging.incoming.genetic-results-in.topic=genetic-data-processed
 ````
-</augment_code_snippet>
+
 
 ### Environment Variables
 
@@ -110,7 +110,7 @@ resources:
 
 ### Cluster Configuration
 
-<augment_code_snippet path="k8s/base/infrastructure/kafka/kafka-cluster.yaml" mode="EXCERPT">
+
 ````yaml
 apiVersion: kafka.strimzi.io/v1beta2
 kind: Kafka
@@ -138,7 +138,7 @@ spec:
     storage:
       type: ephemeral
 ````
-</augment_code_snippet>
+
 
 ### Topic Configurations
 

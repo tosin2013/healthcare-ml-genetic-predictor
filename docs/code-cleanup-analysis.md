@@ -89,23 +89,23 @@ k8s/base/eventing/keda-scaler/scaledobject.yaml
 ### 1. Application Properties Duplication
 **Issue**: Configuration scattered across multiple files
 
-<augment_code_snippet path="vep-service/src/main/resources/application.properties" mode="EXCERPT">
+
 ````properties
 # VEP service configuration
 quarkus.log.level=INFO
 quarkus.log.category."com.redhat.healthcare".level=DEBUG
 kafka.bootstrap.servers=genetic-data-cluster-kafka-bootstrap.healthcare-ml-demo.svc.cluster.local:9092
 ````
-</augment_code_snippet>
 
-<augment_code_snippet path="k8s/base/applications/vep-service/configmap.yaml" mode="EXCERPT">
+
+
 ````yaml
 # Duplicate configuration in ConfigMap
 data:
   quarkus.log.level: "INFO"
   quarkus.log.category.com-redhat-healthcare.level: "DEBUG"
 ````
-</augment_code_snippet>
+
 
 **Recommendation**:
 - Use ConfigMaps as single source of truth for environment-specific config
@@ -151,13 +151,13 @@ vep-service-scaler               # kebab-case
 ### 1. Local vs OpenShift Configuration Mismatch
 **Issue**: Test configurations don't match deployment configurations
 
-<augment_code_snippet path="vep-service/src/test/resources/application-test.properties" mode="EXCERPT">
+
 ````properties
 # Test disables Kafka but production uses it
 quarkus.kafka.devservices.enabled=false
 mp.messaging.incoming.genetic-data-raw.connector=smallrye-in-memory
 ````
-</augment_code_snippet>
+
 
 **Recommendation**:
 - Use Testcontainers for integration tests with real Kafka
@@ -167,12 +167,12 @@ mp.messaging.incoming.genetic-data-raw.connector=smallrye-in-memory
 ### 2. Hardcoded URLs and Endpoints
 **Issue**: Hardcoded OpenShift URLs in test scripts
 
-<augment_code_snippet path="scripts/test-openshift-api.sh" mode="EXCERPT">
+
 ````bash
 # Hardcoded cluster URL
 OPENSHIFT_URL="https://quarkus-websocket-service-healthcare-ml-demo.apps.b9892ub1.eastus.aroapp.io"
 ````
-</augment_code_snippet>
+
 
 **Recommendation**:
 - Use environment variables for cluster URLs
@@ -199,12 +199,12 @@ OPENSHIFT_URL="https://quarkus-websocket-service-healthcare-ml-demo.apps.b9892ub
 ### 1. Deployment Strategy Inconsistencies
 **Issue**: Mixed deployment approaches (Knative vs Deployment)
 
-<augment_code_snippet path="vep-service/src/main/resources/application.properties" mode="EXCERPT">
+
 ````properties
 # VEP service configured for Knative
 quarkus.openshift.deployment-kind=knative
 ````
-</augment_code_snippet>
+
 
 But actual deployment uses regular Deployment with KEDA scaling.
 

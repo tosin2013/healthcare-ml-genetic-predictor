@@ -155,7 +155,7 @@ public CloudEvent processGeneticData(CloudEvent inputEvent) {
 ### 2. Event-Driven Scaling Pattern
 
 #### **KEDA Integration**
-<augment_code_snippet path="k8s/base/keda/multi-topic-scaledobjects.yaml" mode="EXCERPT">
+
 ````yaml
 apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
@@ -169,7 +169,7 @@ spec:
       lagThreshold: "3"
       consumerGroup: vep-service-group
 ````
-</augment_code_snippet>
+
 
 #### **Scaling Logic**
 1. **Event Accumulation**: Messages accumulate in `genetic-data-raw` topic

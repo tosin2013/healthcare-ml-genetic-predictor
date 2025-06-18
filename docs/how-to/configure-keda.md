@@ -43,7 +43,7 @@ oc get scaledobjects -n healthcare-ml-demo
 
 ### 1. WebSocket Service Scaler
 
-<augment_code_snippet path="k8s/base/keda/multi-topic-scaledobjects.yaml" mode="EXCERPT">
+
 ````yaml
 apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
@@ -62,11 +62,11 @@ spec:
       topic: genetic-data-processed
       lagThreshold: "10"
 ````
-</augment_code_snippet>
+
 
 ### 2. VEP Service Scaler
 
-<augment_code_snippet path="k8s/base/keda/multi-topic-scaledobjects.yaml" mode="EXCERPT">
+
 ````yaml
 apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
@@ -85,7 +85,7 @@ spec:
       topic: genetic-data-raw
       lagThreshold: "3"
 ````
-</augment_code_snippet>
+
 
 ## 🔧 Configuration Tasks
 
