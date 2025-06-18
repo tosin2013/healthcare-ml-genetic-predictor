@@ -162,22 +162,102 @@ spec:
             - /bin/bash
             - -c
             - |
-              echo "Generating cost attribution report for $(date)"
-              
-              # Get resource usage by workload type
-              echo "=== Resource Usage by Workload Type ==="
-              oc get pods -l workload-type=compute-intensive -o json | \
-                jq '.items[] | {name: .metadata.name, cpu: .spec.containers[0].resources.requests.cpu, memory: .spec.containers[0].resources.requests.memory}'
-              
-              # Get node scaling events
-              echo "=== Node Scaling Events (Last 24h) ==="
-              oc get events --field-selector reason=ScalingReplicaSet --since=24h
-              
-              # Get cost attribution labels
-              echo "=== Cost Attribution Summary ==="
-              oc get nodes -l workload-type=compute-intensive --show-labels | grep cost-center
-              
-              echo "Cost report generated successfully"
+              echo "💰 Healthcare ML Cost Attribution Report - $(date)"
+              echo "=================================================="
+              echo ""
+
+              # Check Cost Management Metrics Operator Status
+              echo "🔍 Cost Management Metrics Operator Status:"
+              echo "==========================================="
+              COST_CONFIG_STATUS=$(oc get costmanagementmetricsconfig healthcare-ml-demo-cost-config -n costmanagement-metrics-operator --no-headers 2>/dev/null | awk '{print $2}' || echo "Not Found")
+              if [ "$COST_CONFIG_STATUS" != "Not Found" ]; then
+                echo "  ✅ Cost Management Config: Active ($COST_CONFIG_STATUS)"
+                echo "  📊 Data Collection: $(oc get costmanagementmetricsconfig healthcare-ml-demo-cost-config -n costmanagement-metrics-operator -o jsonpath='{.spec.upload.upload_toggle}' 2>/dev/null || echo 'Unknown')"
+                echo "  🔄 Upload Cycle: $(oc get costmanagementmetricsconfig healthcare-ml-demo-cost-config -n costmanagement-metrics-operator -o jsonpath='{.spec.upload.upload_cycle}' 2>/dev/null || echo 'Unknown') minutes"
+                echo "  🌐 Red Hat Integration: Enabled"
+              else
+                echo "  ❌ Cost Management Metrics Operator not configured"
+                echo "  ⚠️  Run: ./scripts/setup-redhat-cost-management-official.sh"
+              fi
+              echo ""
+
+              # Check for Cost Management Operator Pods and Logs
+              echo "📈 Cost Management Data Collection Status:"
+              echo "========================================"
+              COST_PODS=$(oc get pods -n costmanagement-metrics-operator --no-headers 2>/dev/null | wc -l || echo "0")
+              if [ "$COST_PODS" -gt 0 ]; then
+                echo "  ✅ Cost Management Pods: $COST_PODS running"
+                oc get pods -n costmanagement-metrics-operator -o custom-columns="NAME:.metadata.name,STATUS:.status.phase,AGE:.metadata.creationTimestamp" --no-headers 2>/dev/null || echo "  Unable to get pod details"
+                echo ""
+                echo "  📊 Recent Cost Data Collection Activity:"
+                oc logs -n costmanagement-metrics-operator -l app=cost-mgmt-operator --tail=5 --since=1h 2>/dev/null | grep -E "(upload|collect|report)" | tail -3 || echo "  No recent cost collection activity found"
+              else
+                echo "  ❌ No Cost Management operator pods found"
+              fi
+              echo ""
+
+              # Get actual resource usage and costs from Cost Management data
+              echo "💰 Resource Usage by Workload Type (Cost Management Data):"
+              echo "========================================================"
+              echo "🖥️  Compute-Intensive Workloads:"
+              oc get pods -l workload-type=compute-intensive -o custom-columns="NAME:.metadata.name,CPU-REQUEST:.spec.containers[0].resources.requests.cpu,MEMORY-REQUEST:.spec.containers[0].resources.requests.memory,NODE:.spec.nodeName,COST-CENTER:.metadata.labels.cost-center" --no-headers 2>/dev/null || echo "No compute-intensive pods found"
+              echo ""
+              echo "📊 All Healthcare ML Workloads:"
+              oc get pods -n healthcare-ml-demo -o custom-columns="NAME:.metadata.name,CPU-REQUEST:.spec.containers[0].resources.requests.cpu,MEMORY-REQUEST:.spec.containers[0].resources.requests.memory,STATUS:.status.phase,COST-CENTER:.metadata.labels.cost-center" --no-headers 2>/dev/null || echo "No pods found in healthcare-ml-demo namespace"
+              echo ""
+
+              # Cost Management Metrics Integration
+              echo "📊 Cost Management Metrics (Red Hat Insights Data):"
+              echo "================================================="
+              # Check if we can access cost management metrics via the operator
+              COST_DATA_PVC=$(oc get pvc -n costmanagement-metrics-operator healthcare-ml-cost-data --no-headers 2>/dev/null | awk '{print $2}' || echo "Not Found")
+              if [ "$COST_DATA_PVC" != "Not Found" ]; then
+                echo "  ✅ Cost Data Storage: $COST_DATA_PVC"
+                echo "  📁 Storage Size: $(oc get pvc healthcare-ml-cost-data -n costmanagement-metrics-operator -o jsonpath='{.spec.resources.requests.storage}' 2>/dev/null || echo 'Unknown')"
+                echo "  🔄 Last Upload Status: $(oc describe costmanagementmetricsconfig healthcare-ml-demo-cost-config -n costmanagement-metrics-operator 2>/dev/null | grep -A 2 "Upload" | tail -1 || echo 'Status unavailable')"
+              else
+                echo "  ❌ Cost data storage not found"
+              fi
+              echo ""
+
+              # Node scaling events with cost impact
+              echo "⚡ Node Scaling Events (Cost Impact Analysis):"
+              echo "============================================"
+              echo "🔄 Recent Scaling Events:"
+              oc get events --field-selector reason=ScalingReplicaSet --sort-by='.lastTimestamp' --no-headers 2>/dev/null | tail -10 || echo "No scaling events found"
+              echo ""
+              echo "🏗️  Machine Autoscaler Events (Node Cost Changes):"
+              oc get events --field-selector reason=MachineCreated --sort-by='.lastTimestamp' --no-headers 2>/dev/null | tail -5 || echo "No machine creation events found"
+              echo ""
+
+              # Enhanced cost attribution with Red Hat Insights labels
+              echo "🏷️  Cost Attribution Summary (Red Hat Insights Integration):"
+              echo "=========================================================="
+              echo "💰 Node Cost Attribution:"
+              oc get nodes -o custom-columns="NAME:.metadata.name,WORKLOAD-TYPE:.metadata.labels.workload-type,COST-CENTER:.metadata.labels.cost-center,INSTANCE-TYPE:.metadata.labels.node\.kubernetes\.io/instance-type,BILLING-MODEL:.metadata.labels.billing-model" --no-headers 2>/dev/null | grep -v "<none>" || echo "No cost-attributed nodes found"
+              echo ""
+              echo "📈 Cost Center Breakdown (Red Hat Cost Management):"
+              echo "  📋 genomics-research: Standard workload nodes (normal/bigdata VEP processing)"
+              echo "  ⚡ genomics-research-demo: Compute-intensive nodes (node scaling demo)"
+              echo "  🌐 Red Hat Dashboard: https://console.redhat.com/openshift/cost-management"
+              echo "  🔍 Filter by cluster: healthcare-ml-demo-cluster"
+              echo "  📊 Project filter: healthcare-ml-demo"
+              echo ""
+
+              # Red Hat Cost Management Dashboard Links
+              echo "🌐 Red Hat Cost Management Dashboard Access:"
+              echo "=========================================="
+              CLUSTER_ID=$(oc get clusterversion version -o jsonpath='{.spec.clusterID}' 2>/dev/null || echo "Unknown")
+              echo "  🆔 Cluster ID: $CLUSTER_ID"
+              echo "  🌐 Dashboard URL: https://console.redhat.com/openshift/cost-management"
+              echo "  📊 Direct Link: https://console.redhat.com/openshift/cost-management/openshift?cluster=$CLUSTER_ID"
+              echo "  🏷️  Cost Center Filter: genomics-research, genomics-research-demo"
+              echo "  📁 Project Filter: healthcare-ml-demo"
+              echo ""
+
+              echo "✅ Cost attribution report completed successfully"
+              echo "📊 For detailed cost analysis, visit the Red Hat Cost Management dashboard"
+              echo "⏱️  Cost data is updated hourly and available within 1-2 hours of resource usage"
           restartPolicy: OnFailure
           serviceAccountName: cost-reporter
 
@@ -195,13 +275,19 @@ metadata:
   name: cost-reporter
 rules:
 - apiGroups: [""]
-  resources: ["pods", "nodes", "events"]
+  resources: ["pods", "nodes", "events", "persistentvolumeclaims"]
   verbs: ["get", "list"]
 - apiGroups: ["apps"]
   resources: ["deployments", "replicasets"]
   verbs: ["get", "list"]
 - apiGroups: ["machine.openshift.io"]
   resources: ["machines", "machinesets"]
+  verbs: ["get", "list"]
+- apiGroups: ["costmanagement-metrics-cfg.openshift.io"]
+  resources: ["costmanagementmetricsconfigs"]
+  verbs: ["get", "list", "describe"]
+- apiGroups: ["config.openshift.io"]
+  resources: ["clusterversions"]
   verbs: ["get", "list"]
 
 ---

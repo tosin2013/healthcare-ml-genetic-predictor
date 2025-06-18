@@ -104,7 +104,7 @@ spec:
     name: quarkus-websocket-service
   pollingInterval: 15
   cooldownPeriod: 120
-  minReplicaCount: 2
+  minReplicaCount: 1
   maxReplicaCount: 10
   triggers:
   - type: kafka
