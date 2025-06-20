@@ -4,11 +4,12 @@
 
 ## Overview
 
-This tutorial guides you through hands-on demonstrations of the healthcare ML system's three-tier scaling architecture:
+This tutorial guides you through hands-on demonstrations of the healthcare ML system's four-tier scaling architecture:
 
 - **🟢 Normal Mode**: Standard pod scaling for typical genetic analysis workloads
 - **🟡 Big Data Mode**: Memory-intensive pod scaling for large genetic datasets
 - **🔴 Node Scale Mode**: Cluster autoscaler triggering for massive computational workloads
+- **🟣 Kafka Lag Mode**: KEDA consumer lag-based scaling for event-driven workloads
 
 You'll use the Node.js WebSocket client to test complete end-to-end flows while monitoring KEDA scaling behavior and cost attribution.
 
@@ -217,7 +218,57 @@ curl -X POST https://quarkus-websocket-service-healthcare-ml-demo.apps.b9892ub1.
 - Cluster autoscaler may add new compute-intensive nodes
 - Cost attribution visible with `cost-center=genomics-research` labels
 
-## Part 4: Monitoring and Validation
+## Part 4: Kafka Lag Mode Scaling Demo
+
+### Step 1: Configure Kafka Lag Mode
+
+Set the system to Kafka lag mode for KEDA consumer lag demonstration:
+
+```bash
+# Configure Kafka lag mode via API
+curl -X POST https://quarkus-websocket-service-healthcare-ml-demo.apps.b9892ub1.eastus.aroapp.io/api/scaling/mode \
+  -H "Content-Type: application/json" \
+  -d '{"mode": "kafka-lag", "description": "Tutorial demo - Kafka consumer lag mode"}'
+```
+
+### Step 2: Test Kafka Lag Mode with Batch Messages
+
+Use the UI trigger button to create sustained consumer lag:
+
+**Using UI Trigger Button:**
+1. Open the Healthcare ML Genetic Predictor interface
+2. Select "🔄 Kafka Lag Mode (KEDA Consumer Lag)"
+3. Click "🔄 Trigger Kafka Lag Demo" button
+4. Monitor consumer lag and scaling behavior
+
+**Expected Behavior:**
+- Multiple batches of messages sent to create sustained lag
+- KEDA monitors consumer lag and triggers HPA scaling
+- VEP service scales based on lag thresholds
+- Demonstrates lag-based scaling vs. CPU/memory-based scaling
+
+### Step 3: Monitor Kafka Lag Scaling Behavior
+
+```bash
+# Monitor consumer lag and scaling
+watch 'oc get scaledobject kafka-lag-scaler -o yaml | grep -A 5 "currentMetrics"'
+
+# Monitor VEP service scaling
+watch 'oc get pods -l app=vep-service-kafka-lag'
+
+# Check Kafka topic lag
+oc exec -it kafka-cluster-kafka-0 -- bin/kafka-consumer-groups.sh \
+  --bootstrap-server localhost:9092 \
+  --describe --group genetic-lag-consumer-group
+```
+
+**✅ Success Criteria:**
+- Consumer lag accumulates and triggers KEDA scaling
+- VEP service scales based on lag thresholds (not CPU/memory)
+- Demonstrates event-driven scaling with Kafka consumer lag
+- Clear differentiation from other scaling modes
+
+## Part 5: Monitoring and Validation
 
 ### Real-Time Scaling Monitoring
 
@@ -263,8 +314,12 @@ echo "🌐 Frontend URL: https://quarkus-websocket-service-healthcare-ml-demo.ap
 
 **Frontend Testing Steps:**
 1. Open the Healthcare ML Genetic Predictor interface
-2. Use the 8-Bit Genetic Data Simulator controls
-3. Test each scaling mode (Normal, Big Data, Node Scale)
+2. Use the Multi-Tier Scaling Demo Controls
+3. Test each scaling mode with dedicated trigger buttons:
+   - **Normal Mode**: No trigger button (use manual sequence input)
+   - **Big Data Mode**: Click "🚀 Trigger Big Data Demo" button
+   - **Node Scale Mode**: Click "⚡ Trigger Node Scale Demo" button
+   - **Kafka Lag Mode**: Click "🔄 Trigger Kafka Lag Demo" button
 4. Monitor real-time scaling & cost display
 5. Verify VEP annotation results appear in the UI
 
@@ -323,8 +378,10 @@ You've successfully demonstrated:
 - ✅ **Normal Mode**: Standard pod scaling with genetic-data-raw topic
 - ✅ **Big Data Mode**: Memory-intensive scaling with genetic-bigdata-raw topic
 - ✅ **Node Scale Mode**: Cluster autoscaler with genetic-nodescale-raw topic
+- ✅ **Kafka Lag Mode**: KEDA consumer lag-based scaling with genetic-lag-demo-raw topic
 - ✅ **End-to-End Flow**: WebSocket → Kafka → VEP → Results
 - ✅ **Cost Attribution**: Genomics research cost center tracking
 - ✅ **Multi-Topic KEDA**: Different lag thresholds for different workloads
+- ✅ **Individual Trigger Buttons**: Mode-specific demonstration controls
 
 The healthcare ML system's multi-tier scaling architecture enables cost-effective processing of genetic analysis workloads from small research samples to large-scale genomic datasets.
