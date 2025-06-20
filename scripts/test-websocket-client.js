@@ -2,36 +2,76 @@
 
 /**
  * WebSocket Client Test for Healthcare ML Genetic Analysis
- * 
+ *
  * Tests the complete end-to-end flow:
  * 1. Connect to WebSocket endpoint
- * 2. Send genetic sequence for analysis
+ * 2. Send genetic sequence for analysis (auto-generated or custom)
  * 3. Keep connection alive and wait for VEP results
  * 4. Monitor timing and session management
- * 
+ *
  * Usage:
- *   node test-websocket-client.js [mode] [sequence] [timeout]
- * 
+ *   node test-websocket-client.js [mode] [sequence|--generate] [timeout]
+ *
  * Examples:
+ *   node test-websocket-client.js normal --generate 60
+ *   node test-websocket-client.js bigdata --generate 120
+ *   node test-websocket-client.js node-scale --generate 180
+ *   node test-websocket-client.js kafka-lag --generate 90
  *   node test-websocket-client.js normal "ATCGATCGATCGATCGATCG" 60
- *   node test-websocket-client.js big-data "ATCGATCGATCGATCGATCGATCGATCGATCGATCG" 120
- *   node test-websocket-client.js node-scale "ATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCG" 180
  */
 
 const WebSocket = require('ws');
+const { generateGeneticSequence, getSequenceLengthForMode } = require('./generate-genetic-sequence.js');
 
 // Configuration
 const WEBSOCKET_URL = process.env.WEBSOCKET_URL || 'wss://quarkus-websocket-service-healthcare-ml-demo.apps.b9892ub1.eastus.aroapp.io/genetics';
 const mode = process.argv[2] || 'normal';
-const sequence = process.argv[3] || 'ATCGATCGATCGATCGATCG';
+const sequenceArg = process.argv[3] || '--generate';
 const timeoutSeconds = parseInt(process.argv[4]) || 120;
+
+// Generate or use provided sequence
+let sequence;
+let sequenceGenerated = false;
+
+if (sequenceArg === '--generate' || sequenceArg === '-g') {
+    console.log(`🧬 Generating genetic sequence for ${mode} mode...`);
+    const targetLength = getSequenceLengthForMode(mode);
+    sequence = generateGeneticSequence(targetLength, targetLength > 100);
+    sequenceGenerated = true;
+    console.log(`✅ Generated ${sequence.length} character sequence`);
+} else {
+    sequence = sequenceArg;
+    console.log(`📝 Using provided sequence (${sequence.length} characters)`);
+}
 
 console.log('🧬 Healthcare ML WebSocket Client Test');
 console.log('=====================================');
 console.log(`WebSocket URL: ${WEBSOCKET_URL}`);
 console.log(`Mode: ${mode}`);
-console.log(`Sequence: ${sequence} (${sequence.length} chars)`);
+console.log(`Sequence: ${sequenceGenerated ? '[GENERATED]' : sequence.substring(0, 50)}${sequence.length > 50 ? '...' : ''} (${sequence.length} chars)`);
+console.log(`Sequence source: ${sequenceGenerated ? 'Auto-generated for mode' : 'User provided'}`);
 console.log(`Timeout: ${timeoutSeconds} seconds`);
+
+// Show mode-specific information
+switch (mode.toLowerCase()) {
+    case 'normal':
+        console.log(`📊 Normal Mode: Testing standard pod scaling with small sequence`);
+        break;
+    case 'bigdata':
+    case 'big-data':
+        console.log(`🚀 Big Data Mode: Testing memory-intensive scaling with large sequence (${(sequence.length / 1024).toFixed(1)}KB)`);
+        break;
+    case 'nodescale':
+    case 'node-scale':
+        console.log(`⚡ Node Scale Mode: Testing cluster autoscaler with very large sequence (${(sequence.length / 1024 / 1024).toFixed(1)}MB)`);
+        break;
+    case 'kafkalag':
+    case 'kafka-lag':
+        console.log(`🔄 Kafka Lag Mode: Testing consumer lag-based scaling with medium sequence (${(sequence.length / 1024).toFixed(1)}KB)`);
+        break;
+    default:
+        console.log(`❓ Unknown mode: ${mode} - using as-is`);
+}
 console.log('');
 
 // Test state

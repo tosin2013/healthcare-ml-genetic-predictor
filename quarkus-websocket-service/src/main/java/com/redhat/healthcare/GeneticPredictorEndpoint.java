@@ -44,6 +44,9 @@ public class GeneticPredictorEndpoint {
     @Channel("genetic-nodescale-raw-out")
     Emitter<String> geneticNodeScaleEmitter;
 
+    @Channel("genetic-lag-demo-raw-out")
+    Emitter<String> geneticLagDemoEmitter;
+
     @Inject
     ObjectMapper objectMapper;
 
@@ -140,6 +143,10 @@ public class GeneticPredictorEndpoint {
                     eventType = "com.redhat.healthcare.genetic.sequence.nodescale";
                     kafkaTopic = "genetic-nodescale-raw";
                     break;
+                case "kafka-lag":
+                    eventType = "com.redhat.healthcare.genetic.sequence.kafkalag";
+                    kafkaTopic = "genetic-lag-demo-raw";
+                    break;
                 default: // "normal"
                     eventType = "com.redhat.healthcare.genetic.sequence.raw";
                     kafkaTopic = "genetic-data-raw";
@@ -172,6 +179,9 @@ public class GeneticPredictorEndpoint {
                 case "node-scale":
                     geneticNodeScaleEmitter.send(cloudEventJson);
                     break;
+                case "kafka-lag":
+                    geneticLagDemoEmitter.send(cloudEventJson);
+                    break;
                 default: // "normal"
                     geneticDataEmitter.send(cloudEventJson);
                     break;
@@ -189,6 +199,11 @@ public class GeneticPredictorEndpoint {
                 case "node-scale":
                     session.getAsyncRemote().sendText(
                         String.format("⚡ Node scaling sequence (%d chars) queued for cluster autoscaler → %s",
+                                    geneticSequence.length(), kafkaTopic));
+                    break;
+                case "kafka-lag":
+                    session.getAsyncRemote().sendText(
+                        String.format("🔄 Kafka lag sequence (%d chars) queued for consumer lag demonstration → %s",
                                     geneticSequence.length(), kafkaTopic));
                     break;
                 default: // "normal"
