@@ -254,7 +254,7 @@ We welcome contributions from the community! This project has many opportunities
 ### 🎯 **[Complete Documentation Suite](./docs/README.md)** - Comprehensive Diátaxis framework documentation
 
 #### Quick Access
-- **🎓 Tutorials**: [Getting Started](./docs/tutorials/01-getting-started.md) | [Local Development](./docs/tutorials/02-local-development.md)
+- **🎓 Tutorials**: [Getting Started](./docs/tutorials/01-getting-started.md) | [Local Development](./docs/tutorials/02-local-development.md) | [Scaling Demo](./docs/tutorials/04-scaling-demo.md) | [Kafka Lag Scaling](./docs/tutorials/05-kafka-lag-scaling.md)
 - **🛠️ How-To Guides**: [Deploy to OpenShift](./docs/how-to/deploy-openshift.md) | [Advanced Troubleshooting](./docs/how-to/advanced-troubleshooting-augment.md)
 - **📖 Reference**: [API Reference](./docs/reference/api-reference.md) | [Configuration](./docs/reference/configuration.md)
 - **💡 Explanation**: [System Architecture](./docs/explanation/system-architecture.md) | [Scaling Strategy](./docs/explanation/scaling-strategy.md)

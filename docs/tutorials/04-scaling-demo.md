@@ -70,7 +70,7 @@ Use the Node.js script to test normal mode scaling:
 
 ````bash
 # Test normal mode with 20bp sequence (triggers genetic-data-raw topic)
-node scripts/test-websocket-client.js normal "ATCGATCGATCGATCGATCG" 120
+node scripts/test-websocket-client.js normal --generate 120
 ````
 
 
@@ -132,9 +132,8 @@ curl -X POST https://quarkus-websocket-service-healthcare-ml-demo.apps.b9892ub1.
 
 
 ````bash
-# Test big data mode with 2KB sequence (triggers genetic-bigdata-raw topic)
-LARGE_SEQUENCE=$(printf 'ATCG%.0s' {1..500})  # 2KB sequence
-node scripts/test-websocket-client.js big-data "$LARGE_SEQUENCE" 180
+# Test big data mode with auto-generated 100KB sequence
+node scripts/test-websocket-client.js bigdata --generate 180
 ````
 
 
@@ -177,9 +176,8 @@ curl -X POST https://quarkus-websocket-service-healthcare-ml-demo.apps.b9892ub1.
 
 
 ````bash
-# Test node scale mode with 10KB sequence (triggers genetic-nodescale-raw topic)
-HUGE_SEQUENCE=$(printf 'ATCG%.0s' {1..2500})  # 10KB sequence
-node scripts/test-websocket-client.js node-scale "$HUGE_SEQUENCE" 300
+# Test node scale mode with auto-generated 1MB sequence
+node scripts/test-websocket-client.js node-scale --generate 300
 ````
 
 
@@ -219,6 +217,8 @@ curl -X POST https://quarkus-websocket-service-healthcare-ml-demo.apps.b9892ub1.
 - Cost attribution visible with `cost-center=genomics-research` labels
 
 ## Part 4: Kafka Lag Mode Scaling Demo
+
+> **📖 Comprehensive Tutorial**: For detailed coverage of Kafka lag-based scaling, see [Tutorial 5: Kafka Lag-Based Scaling with KEDA](05-kafka-lag-scaling.md)
 
 ### Step 1: Configure Kafka Lag Mode
 
