@@ -13,7 +13,7 @@ public class ScalingDemoRequest {
     
     @JsonProperty("demoType")
     @NotBlank(message = "Demo type is required")
-    @Pattern(regexp = "node-scaling|pod-scaling", message = "Demo type must be 'node-scaling' or 'pod-scaling'")
+    @Pattern(regexp = "node-scaling|pod-scaling|kafka-lag", message = "Demo type must be 'node-scaling', 'pod-scaling', or 'kafka-lag'")
     private String demoType;
     
     @JsonProperty("sequenceCount")
@@ -66,6 +66,10 @@ public class ScalingDemoRequest {
     
     public boolean isPodScalingDemo() {
         return "pod-scaling".equals(demoType);
+    }
+
+    public boolean isKafkaLagDemo() {
+        return "kafka-lag".equals(demoType);
     }
     
     public int getSequenceSizeInBytes() {

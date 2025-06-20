@@ -270,17 +270,27 @@ public class ScalingTestController {
             int sequenceSize = request.getSequenceSizeInBytes();
             int sequenceCount = request.getSequenceCount();
 
-            // Generate and send multiple large sequences (similar to genetic-client.html triggerBigDataScaling)
+            // Generate and send multiple sequences based on demo type
             for (int i = 0; i < sequenceCount; i++) {
-                String largeSequence = generateLargeGeneticSequence(sequenceSize);
+                String sequence = generateLargeGeneticSequence(sequenceSize);
 
                 // Create genetic analysis request for each sequence
                 GeneticAnalysisRequest analysisRequest = new GeneticAnalysisRequest();
-                analysisRequest.setSequence(largeSequence);
-                analysisRequest.setMode("bigdata");
-                analysisRequest.setResourceProfile("high-memory");
+                analysisRequest.setSequence(sequence);
                 analysisRequest.setTimestamp(System.currentTimeMillis());
                 analysisRequest.setSessionId(demoSessionId + "-seq-" + (i + 1));
+
+                // Set mode and resource profile based on demo type
+                if (request.isKafkaLagDemo()) {
+                    analysisRequest.setMode("kafka-lag");
+                    analysisRequest.setResourceProfile("standard");
+                } else if (request.isNodeScalingDemo()) {
+                    analysisRequest.setMode("node-scale");
+                    analysisRequest.setResourceProfile("cluster-scale");
+                } else {
+                    analysisRequest.setMode("bigdata");
+                    analysisRequest.setResourceProfile("high-memory");
+                }
 
                 // Process the sequence (reuse the analyze logic)
                 processSequenceForDemo(analysisRequest, i + 1, sequenceCount);
@@ -512,6 +522,10 @@ public class ScalingTestController {
                 case "node-scale":
                 case "nodescale":
                     geneticNodeScaleEmitter.send(cloudEventJson);
+                    break;
+                case "kafka-lag":
+                    // Send to kafka-lag topic for consumer lag demonstration
+                    geneticLagDemoEmitter.send(cloudEventJson);
                     break;
                 default: // "normal"
                     geneticDataEmitter.send(cloudEventJson);

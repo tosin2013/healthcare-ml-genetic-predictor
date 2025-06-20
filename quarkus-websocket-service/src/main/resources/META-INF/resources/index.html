@@ -702,52 +702,48 @@
             return nodeScaleSequences;
         }
 
-        // Trigger Kafka lag demonstration for KEDA consumer lag scaling
+        // Trigger Kafka lag demonstration for KEDA consumer lag scaling using REST API
         function triggerKafkaLagDemo() {
-            if (!connected) {
-                addMessage('❌ Connect to service first', 'system');
-                return;
-            }
-
             updateScalingStatus('🟣 Triggering Kafka Lag Demo', 'status-kafka');
             addMessage('🔄 Triggering Kafka consumer lag demo - this will demonstrate KEDA lag-based scaling!', 'system');
-            addMessage('📊 Sending 15 individual messages to create consumer lag > 10 threshold...', 'system');
+            addMessage('📊 Using REST API to send 15 individual messages to create consumer lag > 10 threshold...', 'system');
 
-            // Send 15 individual messages rapidly to create consumer lag
-            const totalMessages = 15;
-            const bases = ['A', 'T', 'C', 'G'];
+            // Use REST API to trigger kafka-lag demo with 15 messages of 1KB each
+            const demoRequest = {
+                demoType: 'kafka-lag',
+                sequenceCount: 15,
+                sequenceSize: '1kb'
+            };
 
-            for (let i = 1; i <= totalMessages; i++) {
-                setTimeout(() => {
-                    // Generate 1KB sequence for each message
-                    let sequence = '';
-                    for (let j = 0; j < 1024; j++) {
-                        sequence += bases[Math.floor(Math.random() * 4)];
-                    }
+            fetch('/api/scaling/trigger-demo', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(demoRequest)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    addMessage('✅ Kafka lag demo triggered successfully via REST API!', 'system');
+                    addMessage(`📤 Queued ${data.data.sequencesQueued} messages (${data.data.sequenceSize} each)`, 'sent');
+                    addMessage(`📊 Total data: ${data.data.totalDataSize}`, 'system');
+                    addMessage('🎯 Consumer lag: 15 messages (> 10 threshold) - scaling should trigger!', 'system');
+                    addMessage('⏳ Monitor scaling above - KEDA should scale vep-service-kafka-lag pods', 'system');
+                    addMessage('📈 Expected: 0 → 3+ pods within 15-30 seconds', 'system');
 
-                    const message = JSON.stringify({
-                        mode: 'kafka-lag',
-                        sequence: sequence,
-                        size: sequence.length,
-                        messageId: i,
-                        totalMessages: totalMessages,
-                        timestamp: Date.now(),
-                        sessionId: 'kafka-lag-demo-' + Date.now() + '-' + i
-                    });
-
-                    socket.send(message);
-                    addMessage(`📤 Sent message ${i}/${totalMessages} (1KB) → genetic-lag-demo-raw`, 'sent');
-
-                    // Show progress and expectations
-                    if (i === 10) {
-                        addMessage('🎯 Reached 10 messages - KEDA threshold met, scaling should trigger soon!', 'system');
-                    } else if (i === totalMessages) {
-                        addMessage('✅ All messages sent! Consumer lag: 15 messages (> 10 threshold)', 'system');
-                        addMessage('⏳ Monitor scaling above - KEDA should scale vep-service-kafka-lag pods', 'system');
-                        addMessage('📈 Expected: 0 → 3+ pods within 15-30 seconds', 'system');
-                    }
-                }, i * 200); // 200ms between messages = faster than 5s processing delay
-            }
+                    // Update status with demo session info
+                    updateScalingStatus(`🟣 Kafka Lag Demo Active (${data.data.demoSessionId})`, 'status-kafka');
+                } else {
+                    addMessage(`❌ Failed to trigger Kafka lag demo: ${data.message}`, 'error');
+                    updateScalingStatus('❌ Kafka Lag Demo Failed', 'status-error');
+                }
+            })
+            .catch(error => {
+                console.error('Error triggering Kafka lag demo:', error);
+                addMessage(`❌ Error triggering Kafka lag demo: ${error.message}`, 'error');
+                updateScalingStatus('❌ Kafka Lag Demo Error', 'status-error');
+            });
         }
 
         // Generate individual genetic sequence for Kafka lag demonstration
