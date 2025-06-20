@@ -3,27 +3,765 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>8-Bit Genetic Data Simulator</title>
-    <link rel="stylesheet" href="style.css">
+    <title>Genetic Risk Predictor - WebSocket Client</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #34495e;
+        }
+        input[type="text"], textarea {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+        textarea {
+            height: 100px;
+            resize: vertical;
+        }
+        button {
+            background-color: #3498db;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-right: 10px;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        button:disabled {
+            background-color: #bdc3c7;
+            cursor: not-allowed;
+        }
+        .disconnect {
+            background-color: #e74c3c;
+        }
+        .disconnect:hover {
+            background-color: #c0392b;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            font-weight: bold;
+        }
+        .status.connected {
+            background-color: #d5f4e6;
+            color: #27ae60;
+            border: 1px solid #27ae60;
+        }
+        .status.disconnected {
+            background-color: #fadbd8;
+            color: #e74c3c;
+            border: 1px solid #e74c3c;
+        }
+        .messages {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 15px;
+            height: 300px;
+            overflow-y: auto;
+            margin-top: 20px;
+        }
+        .message {
+            margin-bottom: 10px;
+            padding: 8px;
+            border-radius: 3px;
+        }
+        .message.sent {
+            background-color: #e3f2fd;
+            border-left: 4px solid #2196f3;
+        }
+        .message.received {
+            background-color: #f3e5f5;
+            border-left: 4px solid #9c27b0;
+        }
+        .message.vep-result {
+            background-color: #e8f5e8;
+            border-left: 4px solid #4caf50;
+            font-family: 'Courier New', monospace;
+            white-space: pre-line;
+        }
+
+        /* Multi-tier scaling controls */
+        .scaling-controls {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            color: white;
+        }
+
+        .mode-btn {
+            padding: 12px 24px;
+            margin: 5px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+
+        .mode-btn.normal {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .mode-btn.bigdata {
+            background: #FF6B35;
+            color: white;
+        }
+
+        .mode-btn.active {
+            box-shadow: 0 0 15px rgba(255,255,255,0.5);
+            transform: scale(1.05);
+        }
+
+        .mode-btn:disabled {
+            background: #cccccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        /* Real-time scaling monitor */
+        .scaling-monitor {
+            background: #f8f9fa;
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .metric-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .metric-item:last-child {
+            border-bottom: none;
+        }
+
+        .cost-high {
+            color: #dc3545;
+            font-weight: bold;
+        }
+
+        .cost-medium {
+            color: #fd7e14;
+            font-weight: bold;
+        }
+
+        .cost-low {
+            color: #28a745;
+            font-weight: bold;
+        }
+
+        .scaling-status {
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            font-weight: bold;
+        }
+
+        .status-normal { background: #d4edda; color: #155724; }
+        .status-scaling { background: #fff3cd; color: #856404; }
+        .status-bigdata { background: #f8d7da; color: #721c24; }
+        .message.system {
+            background-color: #fff3e0;
+            border-left: 4px solid #ff9800;
+        }
+        .timestamp {
+            font-size: 12px;
+            color: #666;
+            margin-right: 10px;
+        }
+        .sample-sequences {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .sample-sequences h3 {
+            margin-top: 0;
+            color: #495057;
+        }
+        .sample-btn {
+            background-color: #6c757d;
+            font-size: 14px;
+            padding: 8px 16px;
+            margin: 5px;
+        }
+        .sample-btn:hover {
+            background-color: #5a6268;
+        }
+    </style>
 </head>
 <body>
     <div class="container">
-        <h1>8-Bit Genetic Data Simulator</h1>
-        <div class="controls">
-            <button id="connectBtn">Connect</button>
-            <button id="sendBtn" disabled>Send Sequence</button>
-            <button id="autoStreamBtn" disabled>Start Auto-Stream</button>
+        <h1>🧬 Healthcare ML Genetic Predictor</h1>
+        <p style="text-align: center; color: #666; margin-bottom: 30px;">
+            Multi-tier scaling demonstration with OpenShift AI integration<br>
+            Real-time genetic analysis with VEP annotation and enterprise ML serving
+        </p>
+
+        <!-- Multi-Tier Scaling Controls -->
+        <div class="scaling-controls">
+            <h3>🎛️ Multi-Tier Scaling Demo Controls</h3>
+            <p style="margin: 10px 0; font-size: 14px;">
+                Demonstrate both pod-level scaling (KEDA) and node-level scaling (Cluster Autoscaler)
+            </p>
+            <button id="normalModeBtn" onclick="setNormalMode()" class="mode-btn normal active">
+                📊 Normal Mode (Pod Scaling)
+            </button>
+            <button id="bigDataModeBtn" onclick="setBigDataMode()" class="mode-btn bigdata">
+                🚀 Big Data Mode (Memory Scaling)
+            </button>
+            <button id="nodeScaleModeBtn" onclick="setNodeScaleMode()" class="mode-btn bigdata">
+                ⚡ Node Scale Mode (Cluster Autoscaler)
+            </button>
+            <button id="triggerScalingBtn" onclick="triggerBigDataScaling()" class="mode-btn bigdata" disabled>
+                🔥 Trigger Scaling Demo
+            </button>
         </div>
-        <div class="status">
-            <span>Status:</span>
-            <span id="statusIndicator" class="disconnected"></span>
-            <span id="statusText">Disconnected</span>
+
+        <!-- Real-time Scaling Monitor -->
+        <div class="scaling-monitor">
+            <h3>🔍 Real-Time Scaling & Cost Monitor</h3>
+            <div class="metric-item">
+                <span><strong>VEP Service Pods:</strong></span>
+                <span id="vep-pod-count">0</span>
+            </div>
+            <div class="metric-item">
+                <span><strong>ML Inference Pods:</strong></span>
+                <span id="ml-pod-count">0</span>
+            </div>
+            <div class="metric-item">
+                <span><strong>Worker Nodes:</strong></span>
+                <span id="node-count">3</span>
+            </div>
+            <div class="metric-item">
+                <span><strong>Kafka Queue Depth:</strong></span>
+                <span id="queue-depth">0</span>
+            </div>
+            <div class="metric-item">
+                <span><strong>Current Mode:</strong></span>
+                <span id="scaling-mode">Normal</span>
+            </div>
+            <div class="metric-item">
+                <span><strong>Estimated Cost/Hour:</strong></span>
+                <span id="cost-estimate" class="cost-low">$0.15</span>
+            </div>
+            <div id="scaling-status" class="scaling-status status-normal">
+                🟢 System Ready - Scale-to-Zero Active
+            </div>
         </div>
-        <div class="log-container">
-            <h2>Log</h2>
-            <pre id="log"></pre>
+        
+        <div class="form-group">
+            <label for="wsUrl">WebSocket URL:</label>
+            <input type="text" id="wsUrl" value="" />
+        </div>
+        
+        <div class="form-group">
+            <button id="connectBtn" onclick="connect()">Connect</button>
+            <button id="disconnectBtn" onclick="disconnect()" disabled class="disconnect">Disconnect</button>
+        </div>
+        
+        <div id="status" class="status disconnected">Disconnected</div>
+        
+        <div class="sample-sequences">
+            <h3>Sample Genetic Sequences:</h3>
+            <div id="normal-samples" style="display: block;">
+                <p style="font-size: 14px; color: #666; margin-bottom: 10px;">
+                    <strong>Normal Mode:</strong> Small sequences for pod scaling demonstration
+                </p>
+                <button class="sample-btn" onclick="setSampleSequence('ATCGATCGATCG')">Basic DNA (12bp)</button>
+                <button class="sample-btn" onclick="setSampleSequence('AAGGTTCCAAGGTTCC')">Repeat Pattern (16bp)</button>
+                <button class="sample-btn" onclick="setSampleSequence('ATGCGTACGTAGCTAGCTA')">Complex (19bp)</button>
+                <button class="sample-btn" onclick="setSampleSequence('TTTTAAAACCCCGGGG')">Homopolymer (16bp)</button>
+            </div>
+            <div id="bigdata-samples" style="display: none;">
+                <p style="font-size: 14px; color: #666; margin-bottom: 10px;">
+                    <strong>Big Data Mode:</strong> Large datasets for node scaling demonstration
+                </p>
+                <button class="sample-btn" onclick="generateLargeSequence(1000)">1KB Sequence</button>
+                <button class="sample-btn" onclick="generateLargeSequence(10000)">10KB Sequence</button>
+                <button class="sample-btn" onclick="generateLargeSequence(100000)">100KB Sequence</button>
+                <button class="sample-btn" onclick="generateLargeSequence(1000000)">1MB Sequence</button>
+            </div>
+            <p style="font-size: 12px; color: #666; margin-top: 10px;">
+                💡 Sequences are processed through VEP annotation → OpenShift AI ML inference → Results delivery
+            </p>
+        </div>
+        
+        <div class="form-group">
+            <label for="geneticSequence">Genetic Sequence (DNA):</label>
+            <textarea id="geneticSequence" placeholder="Enter DNA sequence (e.g., ATCGATCGATCG)"></textarea>
+        </div>
+        
+        <div class="form-group">
+            <button id="sendBtn" onclick="sendMessage()" disabled>🧬 Analyze with OpenShift AI</button>
+        </div>
+        
+        <div class="messages" id="messages">
+            <div class="message system">
+                <span class="timestamp">[System]</span>
+                Ready to connect to genetic analysis service...
+            </div>
         </div>
     </div>
-    <script src="app.js"></script>
+
+    <script>
+        let socket = null;
+        let connected = false;
+        let currentMode = 'normal';
+        let scalingMetricsInterval;
+        let messageCount = 0;
+
+        function addMessage(content, type = 'system') {
+            const messages = document.getElementById('messages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}`;
+            
+            const timestamp = new Date().toLocaleTimeString();
+            messageDiv.innerHTML = `<span class="timestamp">[${timestamp}]</span>${content}`;
+            
+            messages.appendChild(messageDiv);
+            messages.scrollTop = messages.scrollHeight;
+        }
+
+        function updateStatus(status, isConnected) {
+            const statusDiv = document.getElementById('status');
+            statusDiv.textContent = status;
+            statusDiv.className = `status ${isConnected ? 'connected' : 'disconnected'}`;
+            
+            document.getElementById('connectBtn').disabled = isConnected;
+            document.getElementById('disconnectBtn').disabled = !isConnected;
+            document.getElementById('sendBtn').disabled = !isConnected;
+            
+            connected = isConnected;
+        }
+
+        function connect() {
+            const url = document.getElementById('wsUrl').value;
+            
+            try {
+                socket = new WebSocket(url);
+                
+                socket.onopen = function(event) {
+                    connected = true;
+                    document.getElementById('connectBtn').disabled = true;
+                    document.getElementById('sendBtn').disabled = false;
+                    document.getElementById('disconnectBtn').disabled = false;
+                    updateStatus('Connected to Healthcare ML Service', true);
+                    addMessage('🧬 Connected to Healthcare ML Service with OpenShift AI Integration', 'system');
+                    startScalingMetricsMonitor();
+                };
+                
+                socket.onmessage = function(event) {
+                    // Check if this is a VEP analysis result
+                    if (event.data.includes('🧬 **Genetic Analysis Complete**')) {
+                        addMessage(event.data, 'vep-result');
+                    } else {
+                        addMessage(`📥 ${event.data}`, 'received');
+                    }
+                };
+                
+                socket.onclose = function(event) {
+                    connected = false;
+                    document.getElementById('connectBtn').disabled = false;
+                    document.getElementById('sendBtn').disabled = true;
+                    document.getElementById('disconnectBtn').disabled = true;
+                    updateStatus('Disconnected', false);
+                    addMessage('🔴 Connection closed', 'system');
+                    if (scalingMetricsInterval) {
+                        clearInterval(scalingMetricsInterval);
+                    }
+                    socket = null;
+                };
+                
+                socket.onerror = function(error) {
+                    updateStatus('Connection Error', false);
+                    addMessage(`❌ Connection error: ${error}`, 'system');
+                };
+                
+            } catch (error) {
+                addMessage(`❌ Failed to connect: ${error.message}`, 'system');
+            }
+        }
+
+        function disconnect() {
+            if (socket) {
+                socket.close();
+            }
+        }
+
+        function sendMessage() {
+            const sequence = document.getElementById('geneticSequence').value.trim();
+            
+            if (!sequence) {
+                addMessage('⚠️ Please enter a genetic sequence', 'system');
+                return;
+            }
+            
+            // Basic validation for DNA sequence
+            const validDNA = /^[ATCG]+$/i.test(sequence);
+            if (!validDNA) {
+                addMessage('⚠️ Invalid DNA sequence. Please use only A, T, C, G characters', 'system');
+                return;
+            }
+            
+            if (socket && connected) {
+                const message = JSON.stringify({
+                    mode: currentMode,
+                    sequence: sequence.toUpperCase(),
+                    size: sequence.length,
+                    timestamp: Date.now(),
+                    sessionId: 'demo-session-' + Date.now()
+                });
+
+                socket.send(message);
+                messageCount++;
+
+                addMessage(`📤 Sent genetic sequence (${currentMode} mode): ${sequence.toUpperCase().substring(0, 50)}${sequence.length > 50 ? '...' : ''}`, 'sent');
+
+                if (currentMode === 'big-data') {
+                    addMessage('🚀 Processing with high-memory big data pipeline...', 'system');
+                    addMessage('⏳ Triggering OpenShift AI inference with memory-intensive processing...', 'system');
+                } else if (currentMode === 'node-scale') {
+                    addMessage('⚡ Processing with cluster autoscaler pipeline...', 'system');
+                    addMessage('⏳ Triggering node scaling and distributed processing...', 'system');
+                } else {
+                    addMessage('🔬 Processing with VEP annotation → OpenShift AI pipeline...', 'system');
+                    addMessage('⏳ Analyzing variants and generating ML predictions...', 'system');
+                }
+            } else {
+                addMessage('❌ Not connected to service', 'system');
+            }
+        }
+
+        function setSampleSequence(sequence) {
+            document.getElementById('geneticSequence').value = sequence;
+        }
+
+        // Multi-tier scaling mode management
+        function setNormalMode() {
+            currentMode = 'normal';
+            document.getElementById('normalModeBtn').classList.add('active');
+            document.getElementById('bigDataModeBtn').classList.remove('active');
+            document.getElementById('triggerScalingBtn').disabled = true;
+            document.getElementById('scaling-mode').textContent = 'Normal';
+            document.getElementById('normal-samples').style.display = 'block';
+            document.getElementById('bigdata-samples').style.display = 'none';
+            updateScalingStatus('🟢 Normal Mode - Pod Scaling Only', 'status-normal');
+            addMessage('📊 Normal Mode activated - pod scaling demonstration', 'system');
+        }
+
+        function setBigDataMode() {
+            currentMode = 'big-data';
+            document.getElementById('normalModeBtn').classList.remove('active');
+            document.getElementById('bigDataModeBtn').classList.add('active');
+            document.getElementById('nodeScaleModeBtn').classList.remove('active');
+            document.getElementById('triggerScalingBtn').disabled = false;
+            document.getElementById('scaling-mode').textContent = 'Big Data';
+            document.getElementById('normal-samples').style.display = 'none';
+            document.getElementById('bigdata-samples').style.display = 'block';
+            updateScalingStatus('🟡 Big Data Mode - Memory Scaling Enabled', 'status-scaling');
+            addMessage('🚀 Big Data Mode activated - high-memory processing ready', 'system');
+        }
+
+        function setNodeScaleMode() {
+            currentMode = 'node-scale';
+            document.getElementById('normalModeBtn').classList.remove('active');
+            document.getElementById('bigDataModeBtn').classList.remove('active');
+            document.getElementById('nodeScaleModeBtn').classList.add('active');
+            document.getElementById('triggerScalingBtn').disabled = false;
+            document.getElementById('scaling-mode').textContent = 'Node Scale';
+            document.getElementById('normal-samples').style.display = 'none';
+            document.getElementById('bigdata-samples').style.display = 'block';
+            updateScalingStatus('🔴 Node Scale Mode - Cluster Autoscaler Enabled', 'status-bigdata');
+            addMessage('⚡ Node Scale Mode activated - cluster autoscaler demonstration ready', 'system');
+            addMessage('💡 Click "🔥 Trigger Scaling Demo" to create compute-intensive nodes', 'system');
+        }
+
+        function updateScalingStatus(message, className) {
+            const statusElement = document.getElementById('scaling-status');
+            statusElement.textContent = message;
+            statusElement.className = 'scaling-status ' + className;
+        }
+
+        // Generate large genetic sequences for big data mode
+        function generateLargeSequence(size) {
+            const bases = ['A', 'T', 'C', 'G'];
+            let sequence = '';
+            for (let i = 0; i < size; i++) {
+                sequence += bases[Math.floor(Math.random() * 4)];
+            }
+            document.getElementById('geneticSequence').value = sequence;
+            addMessage(`📊 Generated ${(size/1000).toFixed(1)}KB genetic sequence for big data processing`, 'system');
+        }
+
+        // Trigger scaling demonstration based on current mode
+        function triggerBigDataScaling() {
+            if (!connected) {
+                addMessage('❌ Connect to service first', 'system');
+                return;
+            }
+
+            if (currentMode === 'node-scale') {
+                updateScalingStatus('🔴 Triggering Node Scaling Demo', 'status-bigdata');
+                addMessage('⚡ Triggering node scaling demo - this will create compute-intensive nodes!', 'system');
+                addMessage('📊 Generating large genetic sequences for cluster autoscaler...', 'system');
+
+                // Generate node-scale sequences (100KB each for reliable node scaling)
+                const nodeScaleSequences = generateNodeScaleDatasets();
+
+                nodeScaleSequences.forEach((sequence, index) => {
+                    setTimeout(() => {
+                        const message = JSON.stringify({
+                            mode: 'node-scale',
+                            sequence: sequence,
+                            size: sequence.length,
+                            timestamp: Date.now(),
+                            sessionId: 'node-scale-demo-' + Date.now() + '-' + index
+                        });
+
+                        socket.send(message);
+                        addMessage(`⚡ Sent node-scale sequence ${index + 1}/${nodeScaleSequences.length} (${sequence.length} chars)`, 'sent');
+                    }, index * 2000); // 2 second delay between sequences
+                });
+
+            } else {
+                updateScalingStatus('🔴 Triggering Big Data Demo', 'status-bigdata');
+                addMessage('🚀 Triggering big data processing - this will demonstrate memory scaling!', 'system');
+                addMessage('📊 Generating large genetic datasets (1MB+ each)...', 'system');
+
+                // Generate and send multiple large sequences for big-data mode
+                const largeSequences = generateLargeGeneticDatasets();
+
+                largeSequences.forEach((sequence, index) => {
+                    setTimeout(() => {
+                        const message = JSON.stringify({
+                            mode: 'big-data',
+                            sequence: sequence,
+                            size: sequence.length,
+                            resourceProfile: 'high-memory',
+                            timestamp: Date.now(),
+                            sessionId: 'bigdata-demo-' + Date.now() + '-' + index
+                        });
+
+                        socket.send(message);
+                        addMessage(`📤 Sent big data sequence ${index + 1}/5 (${(sequence.length / 1024 / 1024).toFixed(1)}MB)`, 'sent');
+                    }, index * 3000); // 3 second intervals
+                });
+
+                addMessage('⏳ Monitor scaling metrics above - pods should scale up within 1-2 minutes', 'system');
+                addMessage('💰 Watch memory usage increase as pods handle large sequences', 'system');
+            }
+        }
+
+        // Generate large genetic datasets for big-data mode (memory scaling)
+        function generateLargeGeneticDatasets() {
+            const baseSequences = ['ATCG', 'GGCC', 'TTAA', 'CCGG', 'ATAT', 'GCGC'];
+            const largeSequences = [];
+
+            for (let i = 0; i < 5; i++) {
+                // Generate 1MB+ sequences to trigger memory pressure
+                let largeSequence = '';
+                for (let j = 0; j < 250000; j++) { // 1MB sequence
+                    largeSequence += baseSequences[j % baseSequences.length];
+                }
+                largeSequences.push(largeSequence);
+            }
+
+            return largeSequences;
+        }
+
+        // Generate node-scale datasets for cluster autoscaler (node scaling)
+        function generateNodeScaleDatasets() {
+            const baseSequences = ['ATCG', 'GGCC', 'TTAA', 'CCGG', 'ATAT', 'GCGC'];
+            const nodeScaleSequences = [];
+
+            for (let i = 0; i < 3; i++) {
+                // Generate 100KB sequences - optimal for node scaling without memory issues
+                let nodeScaleSequence = '';
+                for (let j = 0; j < 25000; j++) { // 100KB sequence
+                    nodeScaleSequence += baseSequences[j % baseSequences.length];
+                }
+                nodeScaleSequences.push(nodeScaleSequence);
+            }
+
+            return nodeScaleSequences;
+        }
+
+        // Real-time scaling metrics monitoring
+        function startScalingMetricsMonitor() {
+            scalingMetricsInterval = setInterval(updateScalingMetrics, 2000); // Update every 2 seconds for real-time feedback
+            updateScalingMetrics(); // Initial update
+        }
+
+        async function updateScalingMetrics() {
+            try {
+                // Fetch real VEP service status from our API
+                await updateVepServiceStatus();
+
+                // Keep some simulated metrics for ML pods and nodes (until we add real APIs)
+                const baseActivity = Math.min(messageCount, 10);
+                let mlPods, nodes;
+
+                if (currentMode === 'big-data') {
+                    mlPods = Math.min(Math.floor(baseActivity * 1.2) + 1, 6);
+                    nodes = baseActivity > 5 ? 4 + Math.floor(baseActivity / 6) : 3;
+                } else {
+                    mlPods = Math.min(Math.floor(baseActivity * 0.6), 2);
+                    nodes = 3; // No node scaling in normal mode
+                }
+
+                // Update ML pods and nodes (VEP pods updated by updateVepServiceStatus)
+                document.getElementById('ml-pod-count').textContent = mlPods;
+                document.getElementById('node-count').textContent = nodes;
+
+                // Calculate cost based on resources
+                let costPerHour = 0.15; // Base cluster cost
+                costPerHour += vepPods * 0.08; // VEP pod cost
+                costPerHour += mlPods * 0.12; // ML pod cost
+                if (nodes > 3) {
+                    costPerHour += (nodes - 3) * 0.50; // Additional node cost
+                }
+
+                // Update UI elements
+                document.getElementById('vep-pod-count').textContent = vepPods;
+                document.getElementById('ml-pod-count').textContent = mlPods;
+                document.getElementById('node-count').textContent = nodes;
+                document.getElementById('queue-depth').textContent = queueDepth;
+
+                // Update cost with styling
+                const costElement = document.getElementById('cost-estimate');
+                costElement.textContent = `$${costPerHour.toFixed(2)}`;
+
+                // Update cost styling based on amount
+                if (costPerHour > 1.5) {
+                    costElement.className = 'cost-high';
+                } else if (costPerHour > 0.75) {
+                    costElement.className = 'cost-medium';
+                } else {
+                    costElement.className = 'cost-low';
+                }
+
+                // Update scaling status based on activity
+                if (currentMode === 'big-data' && (vepPods > 4 || mlPods > 2)) {
+                    updateScalingStatus('🔴 Node Scaling Active - High Cost Impact', 'status-bigdata');
+                } else if (vepPods > 2 || mlPods > 1) {
+                    updateScalingStatus('🟡 Pod Scaling Active', 'status-scaling');
+                } else if (currentMode === 'big-data') {
+                    updateScalingStatus('🟡 Big Data Mode - Ready for Node Scaling', 'status-scaling');
+                } else {
+                    updateScalingStatus('🟢 Normal Mode - Scale-to-Zero Active', 'status-normal');
+                }
+
+            } catch (error) {
+                console.log('Metrics update error:', error);
+            }
+        }
+
+        async function updateVepServiceStatus() {
+            try {
+                const response = await fetch('/api/scaling/vep-status');
+                const data = await response.json();
+
+                if (data.success && data.data.vepService) {
+                    const vepService = data.data.vepService;
+
+                    // Update VEP pod count with status indicator
+                    const vepPodElement = document.getElementById('vep-pod-count');
+                    const podStatus = vepService.currentPods > 0 ? '🟢' : '🔴';
+                    vepPodElement.innerHTML = `${podStatus} ${vepService.currentPods}/${vepService.maxPods}`;
+
+                    // Update queue depth (Kafka lag)
+                    const queueElement = document.getElementById('queue-depth');
+                    const queueStatus = vepService.kafkaLag > 5 ? '🟡' : '🟢';
+                    queueElement.innerHTML = `${queueStatus} ${vepService.kafkaLag}`;
+
+                    // Update scaling status with VEP-specific information
+                    if (vepService.currentPods === 0) {
+                        updateScalingStatus('🔴 VEP Service Scaled to Zero - Send sequence to trigger scaling', 'status-normal');
+                        // Only show startup message once when pods are scaling up
+                        if (vepService.kafkaLag > 0) {
+                            addMessage(`⏳ VEP service starting up... Estimated time: ${vepService.estimatedWaitTime}`, 'system');
+                        }
+                    } else if (vepService.kedaActive && vepService.kafkaLag > 5) {
+                        updateScalingStatus(`🟡 VEP Service Scaling - ${vepService.currentPods} pods processing ${vepService.kafkaLag} messages`, 'status-scaling');
+                    } else if (vepService.currentPods > 0) {
+                        updateScalingStatus(`🟢 VEP Service Active - ${vepService.currentPods} pods ready`, 'status-normal');
+                    }
+                }
+            } catch (error) {
+                console.warn('Failed to fetch VEP service status:', error);
+                // Fallback to simulated data if API is not available
+                const baseActivity = Math.min(messageCount, 10);
+                const vepPods = currentMode === 'big-data' ? Math.min(Math.floor(baseActivity * 1.5) + 2, 8) : Math.min(Math.floor(baseActivity * 0.8), 3);
+                const queueDepth = Math.floor(Math.random() * 5) + Math.floor(baseActivity / 2);
+
+                document.getElementById('vep-pod-count').innerHTML = `🟡 ${vepPods}/20`;
+                document.getElementById('queue-depth').innerHTML = `🟡 ${queueDepth}`;
+            }
+        }
+
+        // Allow Enter key to send message
+        document.getElementById('geneticSequence').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter' && e.ctrlKey) {
+                sendMessage();
+            }
+        });
+
+        // Initialize application on page load
+        window.onload = function() {
+            // Set WebSocket URL based on current location
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}/genetics`;
+            document.getElementById('wsUrl').value = wsUrl;
+
+            // Initialize normal mode
+            setNormalMode();
+
+            // Welcome messages
+            addMessage('🧬 Healthcare ML Genetic Predictor Ready', 'system');
+            addMessage(`🔗 WebSocket URL: ${wsUrl}`, 'system');
+            addMessage('💡 Choose scaling mode and connect to start demonstration', 'system');
+            addMessage('🎯 Normal Mode: Pod scaling with KEDA | Big Data Mode: Node scaling with Cluster Autoscaler', 'system');
+            addMessage('🤖 Powered by OpenShift AI for enterprise ML inference', 'system');
+        };
+    </script>
 </body>
 </html>
