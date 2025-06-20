@@ -2,7 +2,9 @@
 
 ## Overview
 
-This tutorial demonstrates **event-driven scaling** using KEDA's Kafka consumer lag monitoring. Unlike CPU/memory-based scaling, this approach scales pods based on the number of unprocessed messages in Kafka topics, providing responsive scaling for message-driven workloads.
+This tutorial demonstrates **event-driven scaling** using KEDA's Kafka consumer lag monitoring. Unlike CPU/memory-based scaling, this approach scales pods based on the **number of unprocessed messages** in Kafka topics, providing responsive scaling for message-driven workloads.
+
+**🔑 Key Concept**: Scaling is triggered by **consumer lag** (message count), NOT by message size or genetic sequence length. A batch of 15 small messages will trigger scaling, but a single large message will not.
 
 ## What You'll Learn
 
@@ -146,12 +148,12 @@ curl -X POST https://quarkus-websocket-service-healthcare-ml-demo.apps.b9892ub1.
 }
 ```
 
-### Step 3: Generate Realistic Genetic Data
+### Step 3: Generate Test Data for Lag Demonstration
 
-Use the genetic sequence generator for appropriate test data:
+**Important**: To trigger Kafka lag scaling, you need **multiple messages**, not large messages.
 
 ```bash
-# Generate 1KB sequence for lag demonstration
+# Generate 1KB sequence for each message (appropriate size)
 node scripts/generate-genetic-sequence.js kafka-lag --save kafka-lag-sequence.txt
 
 # View sequence information
@@ -159,17 +161,29 @@ ls -lh kafka-lag-sequence.txt
 head -c 100 kafka-lag-sequence.txt
 ```
 
+**Scaling Trigger Logic:**
+- ✅ **15 messages × 1KB each** = 15 message lag → **Triggers scaling** (15 > 10 threshold)
+- ❌ **1 message × 1MB** = 1 message lag → **No scaling** (1 < 10 threshold)
+
 ### Step 4: Trigger Kafka Lag Demo
 
 #### Option A: Using WebSocket Client (Recommended)
 
+**Single Message Test (Will NOT trigger scaling):**
 ```bash
-# Test with auto-generated sequence
+# Single message = 1 lag (< 10 threshold) = No scaling
 node scripts/test-websocket-client.js kafka-lag --generate 120
+```
 
-# Or test with saved sequence
-SEQUENCE=$(cat kafka-lag-sequence.txt)
-node scripts/test-websocket-client.js kafka-lag "$SEQUENCE" 120
+**Batch Message Test (WILL trigger scaling):**
+```bash
+# Send 15 messages rapidly to create lag > 10 threshold
+for i in {1..15}; do
+  echo "Sending message $i/15..."
+  SEQUENCE=$(node scripts/generate-genetic-sequence.js kafka-lag)
+  node scripts/test-websocket-client.js kafka-lag "$SEQUENCE" 10 &
+  sleep 0.1  # Small delay between sends
+done
 ```
 
 #### Option B: Using Web UI
@@ -177,6 +191,8 @@ node scripts/test-websocket-client.js kafka-lag "$SEQUENCE" 120
 1. Open: https://quarkus-websocket-service-healthcare-ml-demo.apps.b9892ub1.eastus.aroapp.io/genetic-client.html
 2. Select: "🔄 Kafka Lag Mode (KEDA Consumer Lag)"
 3. Click: "🔄 Trigger Kafka Lag Demo"
+
+**Note**: The UI trigger button should send **multiple messages in batch** to create sufficient consumer lag. If it only sends a single message, scaling will not occur.
 
 ### Step 5: Monitor Scaling Behavior
 
@@ -207,12 +223,14 @@ watch 'oc get hpa kafka-lag-demo-hpa -n healthcare-ml-demo'
 ## Expected Scaling Timeline
 
 ### Phase 1: Message Accumulation (0-15 seconds)
+**Batch of 15 messages sent rapidly:**
 ```
 CONSUMER GROUP LAG:
 genetic-lag-consumer-group genetic-lag-demo-raw 0    0    15   15
 genetic-lag-consumer-group genetic-lag-demo-raw 1    0    12   12
 genetic-lag-consumer-group genetic-lag-demo-raw 2    0    13   13
 
+Total Lag: 40 messages (exceeds 10 message threshold)
 PODS: 0/0 (no consumers running)
 KEDA: Ready=True, Active=False
 ```
@@ -267,22 +285,37 @@ KEDA: Ready=True, Active=False
 
 ### No Scaling Observed
 
-1. **Check KEDA Scaler Status:**
+**Most Common Issue: Insufficient Message Count**
+
+1. **Check Consumer Lag (Most Important):**
+```bash
+oc exec genetic-data-cluster-kafka-0 -n healthcare-ml-demo -- \
+  bin/kafka-consumer-groups.sh --bootstrap-server localhost:9092 \
+  --describe --group genetic-lag-consumer-group
+```
+
+**Expected for Scaling**: Total lag > 10 messages
+**Common Problem**: Only 1-2 messages sent (lag < 10 threshold)
+
+2. **Verify Message Count in Topic:**
+```bash
+oc exec genetic-data-cluster-kafka-0 -n healthcare-ml-demo -- \
+  bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 \
+  --topic genetic-lag-demo-raw --from-beginning --max-messages 20
+```
+
+3. **Check KEDA Scaler Status:**
 ```bash
 oc describe scaledobject kafka-lag-scaler -n healthcare-ml-demo
 ```
 
-2. **Verify Consumer Group:**
+**Fix**: Send multiple messages in batch:
 ```bash
-oc exec genetic-data-cluster-kafka-0 -n healthcare-ml-demo -- \
-  bin/kafka-consumer-groups.sh --bootstrap-server localhost:9092 --list
-```
-
-3. **Check Topic Messages:**
-```bash
-oc exec genetic-data-cluster-kafka-0 -n healthcare-ml-demo -- \
-  bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 \
-  --topic genetic-lag-demo-raw --from-beginning --max-messages 5
+# Send 15 messages to guarantee scaling
+for i in {1..15}; do
+  SEQUENCE=$(node scripts/generate-genetic-sequence.js kafka-lag)
+  # Send via your preferred method (WebSocket/API)
+done
 ```
 
 ### Scaling Too Aggressive
@@ -313,17 +346,29 @@ oc exec deployment/vep-service-kafka-lag -n healthcare-ml-demo -- \
 
 ### Batch Load Testing
 
-Generate sustained lag for extended scaling demonstration:
+**Correct Approach - Generate sustained lag for extended scaling demonstration:**
 
 ```bash
-# Generate multiple sequences
+# Send 20 messages rapidly to create sustained lag
+echo "🔄 Creating sustained consumer lag with 20 messages..."
 for i in {1..20}; do
   SEQUENCE=$(node scripts/generate-genetic-sequence.js kafka-lag)
-  echo "Sending sequence $i..."
-  node scripts/test-websocket-client.js kafka-lag "$SEQUENCE" 10
-  sleep 2
+  echo "📤 Sending message $i/20 (1KB each)..."
+  node scripts/test-websocket-client.js kafka-lag "$SEQUENCE" 5 &
+  sleep 0.2  # Send faster than processing (5s delay per message)
 done
+
+echo "⏳ Waiting for lag accumulation..."
+sleep 5
+
+# Check consumer lag
+echo "📊 Checking consumer lag:"
+oc exec genetic-data-cluster-kafka-0 -n healthcare-ml-demo -- \
+  bin/kafka-consumer-groups.sh --bootstrap-server localhost:9092 \
+  --describe --group genetic-lag-consumer-group
 ```
+
+**Expected Result**: 20 message lag → Triggers aggressive scaling
 
 ### Performance Validation
 

@@ -8,6 +8,8 @@
 
 **Answer to the core question**: **Kafka Lag Mode will typically NOT trigger node autoscaling** in the healthcare ML system. KEDA's Kafka consumer lag scaling operates at the pod level through HPA (Horizontal Pod Autoscaler) and will only trigger cluster autoscaler node scaling under specific resource constraint conditions.
 
+**Important Clarification**: Kafka lag scaling is based on **consumer lag** (number of unprocessed messages), NOT message size or genetic sequence length. Scaling triggers when the message count exceeds the threshold (10 messages), regardless of individual message size.
+
 ## Key Findings
 
 ### 1. KEDA Architecture and Scaling Mechanism
@@ -96,13 +98,20 @@ Kafka Lag Detected → KEDA Scaler → HPA Metrics → Pod Scaling Decision
 
 ### Expected Kafka Lag Mode Behavior
 
+**Scaling Trigger Mechanism:**
+- **Trigger**: Consumer lag (number of unprocessed messages) > 10 messages
+- **NOT Triggered By**: Message size, genetic sequence length, or content
+- **Example**: 15 small messages (1KB each) will trigger scaling, but 1 large message (1MB) will not
+
 **Normal Operation (Most Common):**
-1. ✅ **Lag Detected**: KEDA detects consumer lag > 10 messages
-2. ✅ **Pod Scaling**: HPA scales from 0 → 3+ pods within 15-30 seconds
-3. ✅ **Pod Scheduling**: Pods scheduled on existing cluster nodes
-4. ✅ **Lag Processing**: Pods consume and process messages
-5. ✅ **Scale Down**: Pods scale back to 0 when lag cleared
-6. ❌ **Node Scaling**: No new nodes added (existing capacity sufficient)
+1. ✅ **Multiple Messages Sent**: Batch of 10+ messages sent rapidly to genetic-lag-demo-raw topic
+2. ✅ **Lag Accumulates**: Consumer lag builds up (no active consumers initially)
+3. ✅ **Lag Detected**: KEDA detects consumer lag > 10 messages
+4. ✅ **Pod Scaling**: HPA scales from 0 → 3+ pods within 15-30 seconds
+5. ✅ **Pod Scheduling**: Pods scheduled on existing cluster nodes
+6. ✅ **Lag Processing**: Pods consume and process messages (5s delay per message)
+7. ✅ **Scale Down**: Pods scale back to 0 when lag cleared
+8. ❌ **Node Scaling**: No new nodes added (existing capacity sufficient)
 
 **Resource-Constrained Operation (Less Common):**
 1. ✅ **Lag Detected**: KEDA detects consumer lag
@@ -143,7 +152,27 @@ watch 'oc adm top nodes'
 watch 'oc get pods --field-selector=status.phase=Pending'
 ```
 
-### 3. Force Node Scaling (If Desired)
+### 3. Testing Kafka Lag Scaling Correctly
+
+**To trigger Kafka lag scaling (send multiple messages):**
+```bash
+# Correct: Send 15 messages to create lag > 10 threshold
+for i in {1..15}; do
+  SEQUENCE=$(node scripts/generate-genetic-sequence.js kafka-lag)
+  echo "Sending message $i..."
+  node scripts/test-websocket-client.js kafka-lag "$SEQUENCE" 10 &
+done
+```
+
+**What will NOT trigger scaling (single large message):**
+```bash
+# Incorrect: Single 1MB message = 1 message lag (< 10 threshold)
+LARGE_SEQUENCE=$(node scripts/generate-genetic-sequence.js node-scale)  # 1MB
+node scripts/test-websocket-client.js kafka-lag "$LARGE_SEQUENCE" 120
+# Result: No scaling (lag = 1 message < 10 threshold)
+```
+
+### 4. Force Node Scaling (If Desired)
 
 **To demonstrate node scaling with Kafka lag mode:**
 1. **Increase Resource Requests**: Modify vep-service-kafka-lag to request more CPU/memory
