@@ -141,6 +141,11 @@
             color: white;
         }
 
+        .mode-btn.kafka {
+            background: #9C27B0;
+            color: white;
+        }
+
         .mode-btn.active {
             box-shadow: 0 0 15px rgba(255,255,255,0.5);
             transform: scale(1.05);
@@ -198,6 +203,7 @@
         .status-normal { background: #d4edda; color: #155724; }
         .status-scaling { background: #fff3cd; color: #856404; }
         .status-bigdata { background: #f8d7da; color: #721c24; }
+        .status-kafka { background: #e1bee7; color: #4a148c; }
         .message.system {
             background-color: #fff3e0;
             border-left: 4px solid #ff9800;
@@ -251,9 +257,20 @@
             <button id="nodeScaleModeBtn" onclick="setNodeScaleMode()" class="mode-btn bigdata">
                 ⚡ Node Scale Mode (Cluster Autoscaler)
             </button>
-            <button id="triggerScalingBtn" onclick="triggerBigDataScaling()" class="mode-btn bigdata" disabled>
-                🔥 Trigger Scaling Demo
+            <button id="kafkaLagModeBtn" onclick="setKafkaLagMode()" class="mode-btn kafka">
+                🔄 Kafka Lag Mode (KEDA Consumer Lag)
             </button>
+            <div style="margin-top: 15px;">
+                <button id="triggerBigDataBtn" onclick="triggerBigDataScaling()" class="mode-btn bigdata" disabled>
+                    🚀 Trigger Big Data Demo
+                </button>
+                <button id="triggerNodeScaleBtn" onclick="triggerNodeScaling()" class="mode-btn bigdata" disabled>
+                    ⚡ Trigger Node Scale Demo
+                </button>
+                <button id="triggerKafkaLagBtn" onclick="triggerKafkaLagDemo()" class="mode-btn kafka" disabled>
+                    🔄 Trigger Kafka Lag Demo
+                </button>
+            </div>
         </div>
 
         <!-- Real-time Scaling Monitor -->
@@ -319,6 +336,15 @@
                 <button class="sample-btn" onclick="generateLargeSequence(10000)">10KB Sequence</button>
                 <button class="sample-btn" onclick="generateLargeSequence(100000)">100KB Sequence</button>
                 <button class="sample-btn" onclick="generateLargeSequence(1000000)">1MB Sequence</button>
+            </div>
+            <div id="kafka-samples" style="display: none;">
+                <p style="font-size: 14px; color: #666; margin-bottom: 10px;">
+                    <strong>Kafka Lag Mode:</strong> Batch sequences for consumer lag demonstration
+                </p>
+                <button class="sample-btn" onclick="generateKafkaBatch(10)">10 Messages</button>
+                <button class="sample-btn" onclick="generateKafkaBatch(50)">50 Messages</button>
+                <button class="sample-btn" onclick="generateKafkaBatch(100)">100 Messages</button>
+                <button class="sample-btn" onclick="generateKafkaBatch(500)">500 Messages</button>
             </div>
             <p style="font-size: 12px; color: #666; margin-top: 10px;">
                 💡 Sequences are processed through VEP annotation → OpenShift AI ML inference → Results delivery
@@ -462,6 +488,9 @@
                 } else if (currentMode === 'node-scale') {
                     addMessage('⚡ Processing with cluster autoscaler pipeline...', 'system');
                     addMessage('⏳ Triggering node scaling and distributed processing...', 'system');
+                } else if (currentMode === 'kafka-lag') {
+                    addMessage('🔄 Processing with Kafka lag-based KEDA scaling pipeline...', 'system');
+                    addMessage('⏳ Triggering consumer lag and KEDA HPA scaling...', 'system');
                 } else {
                     addMessage('🔬 Processing with VEP annotation → OpenShift AI pipeline...', 'system');
                     addMessage('⏳ Analyzing variants and generating ML predictions...', 'system');
@@ -480,10 +509,15 @@
             currentMode = 'normal';
             document.getElementById('normalModeBtn').classList.add('active');
             document.getElementById('bigDataModeBtn').classList.remove('active');
-            document.getElementById('triggerScalingBtn').disabled = true;
+            document.getElementById('nodeScaleModeBtn').classList.remove('active');
+            document.getElementById('kafkaLagModeBtn').classList.remove('active');
+            document.getElementById('triggerBigDataBtn').disabled = true;
+            document.getElementById('triggerNodeScaleBtn').disabled = true;
+            document.getElementById('triggerKafkaLagBtn').disabled = true;
             document.getElementById('scaling-mode').textContent = 'Normal';
             document.getElementById('normal-samples').style.display = 'block';
             document.getElementById('bigdata-samples').style.display = 'none';
+            document.getElementById('kafka-samples').style.display = 'none';
             updateScalingStatus('🟢 Normal Mode - Pod Scaling Only', 'status-normal');
             addMessage('📊 Normal Mode activated - pod scaling demonstration', 'system');
         }
@@ -493,10 +527,14 @@
             document.getElementById('normalModeBtn').classList.remove('active');
             document.getElementById('bigDataModeBtn').classList.add('active');
             document.getElementById('nodeScaleModeBtn').classList.remove('active');
-            document.getElementById('triggerScalingBtn').disabled = false;
+            document.getElementById('kafkaLagModeBtn').classList.remove('active');
+            document.getElementById('triggerBigDataBtn').disabled = false;
+            document.getElementById('triggerNodeScaleBtn').disabled = true;
+            document.getElementById('triggerKafkaLagBtn').disabled = true;
             document.getElementById('scaling-mode').textContent = 'Big Data';
             document.getElementById('normal-samples').style.display = 'none';
             document.getElementById('bigdata-samples').style.display = 'block';
+            document.getElementById('kafka-samples').style.display = 'none';
             updateScalingStatus('🟡 Big Data Mode - Memory Scaling Enabled', 'status-scaling');
             addMessage('🚀 Big Data Mode activated - high-memory processing ready', 'system');
         }
@@ -506,13 +544,35 @@
             document.getElementById('normalModeBtn').classList.remove('active');
             document.getElementById('bigDataModeBtn').classList.remove('active');
             document.getElementById('nodeScaleModeBtn').classList.add('active');
-            document.getElementById('triggerScalingBtn').disabled = false;
+            document.getElementById('kafkaLagModeBtn').classList.remove('active');
+            document.getElementById('triggerBigDataBtn').disabled = true;
+            document.getElementById('triggerNodeScaleBtn').disabled = false;
+            document.getElementById('triggerKafkaLagBtn').disabled = true;
             document.getElementById('scaling-mode').textContent = 'Node Scale';
             document.getElementById('normal-samples').style.display = 'none';
             document.getElementById('bigdata-samples').style.display = 'block';
+            document.getElementById('kafka-samples').style.display = 'none';
             updateScalingStatus('🔴 Node Scale Mode - Cluster Autoscaler Enabled', 'status-bigdata');
             addMessage('⚡ Node Scale Mode activated - cluster autoscaler demonstration ready', 'system');
-            addMessage('💡 Click "🔥 Trigger Scaling Demo" to create compute-intensive nodes', 'system');
+            addMessage('💡 Click "⚡ Trigger Node Scale Demo" to create compute-intensive nodes', 'system');
+        }
+
+        function setKafkaLagMode() {
+            currentMode = 'kafka-lag';
+            document.getElementById('normalModeBtn').classList.remove('active');
+            document.getElementById('bigDataModeBtn').classList.remove('active');
+            document.getElementById('nodeScaleModeBtn').classList.remove('active');
+            document.getElementById('kafkaLagModeBtn').classList.add('active');
+            document.getElementById('triggerBigDataBtn').disabled = true;
+            document.getElementById('triggerNodeScaleBtn').disabled = true;
+            document.getElementById('triggerKafkaLagBtn').disabled = false;
+            document.getElementById('scaling-mode').textContent = 'Kafka Lag';
+            document.getElementById('normal-samples').style.display = 'none';
+            document.getElementById('bigdata-samples').style.display = 'none';
+            document.getElementById('kafka-samples').style.display = 'block';
+            updateScalingStatus('🟣 Kafka Lag Mode - KEDA Consumer Lag Enabled', 'status-kafka');
+            addMessage('🔄 Kafka Lag Mode activated - KEDA consumer lag demonstration ready', 'system');
+            addMessage('💡 Click "� Trigger Kafka Lag Demo" to create Kafka lag and trigger KEDA scaling', 'system');
         }
 
         function updateScalingStatus(message, className) {
@@ -532,63 +592,84 @@
             addMessage(`📊 Generated ${(size/1000).toFixed(1)}KB genetic sequence for big data processing`, 'system');
         }
 
-        // Trigger scaling demonstration based on current mode
+        // Generate Kafka batch sequences for consumer lag demonstration
+        function generateKafkaBatch(messageCount) {
+            const bases = ['A', 'T', 'C', 'G'];
+            let sequence = '';
+            // Generate medium-sized sequences (1KB each) for Kafka lag demo
+            for (let i = 0; i < 1000; i++) {
+                sequence += bases[Math.floor(Math.random() * 4)];
+            }
+            document.getElementById('geneticSequence').value = sequence;
+            addMessage(`🔄 Generated batch sequence for ${messageCount} Kafka messages (1KB each)`, 'system');
+            addMessage(`📊 Total batch size: ${messageCount}KB - will create consumer lag for KEDA scaling`, 'system');
+        }
+
+        // Trigger big data scaling demonstration (memory scaling)
         function triggerBigDataScaling() {
             if (!connected) {
                 addMessage('❌ Connect to service first', 'system');
                 return;
             }
 
-            if (currentMode === 'node-scale') {
-                updateScalingStatus('🔴 Triggering Node Scaling Demo', 'status-bigdata');
-                addMessage('⚡ Triggering node scaling demo - this will create compute-intensive nodes!', 'system');
-                addMessage('📊 Generating large genetic sequences for cluster autoscaler...', 'system');
+            updateScalingStatus('🔴 Triggering Big Data Demo', 'status-bigdata');
+            addMessage('🚀 Triggering big data processing - this will demonstrate memory scaling!', 'system');
+            addMessage('📊 Generating large genetic datasets (1MB+ each)...', 'system');
 
-                // Generate node-scale sequences (100KB each for reliable node scaling)
-                const nodeScaleSequences = generateNodeScaleDatasets();
+            // Generate and send multiple large sequences for big-data mode
+            const largeSequences = generateLargeGeneticDatasets();
 
-                nodeScaleSequences.forEach((sequence, index) => {
-                    setTimeout(() => {
-                        const message = JSON.stringify({
-                            mode: 'node-scale',
-                            sequence: sequence,
-                            size: sequence.length,
-                            timestamp: Date.now(),
-                            sessionId: 'node-scale-demo-' + Date.now() + '-' + index
-                        });
+            largeSequences.forEach((sequence, index) => {
+                setTimeout(() => {
+                    const message = JSON.stringify({
+                        mode: 'big-data',
+                        sequence: sequence,
+                        size: sequence.length,
+                        resourceProfile: 'high-memory',
+                        timestamp: Date.now(),
+                        sessionId: 'bigdata-demo-' + Date.now() + '-' + index
+                    });
 
-                        socket.send(message);
-                        addMessage(`⚡ Sent node-scale sequence ${index + 1}/${nodeScaleSequences.length} (${sequence.length} chars)`, 'sent');
-                    }, index * 2000); // 2 second delay between sequences
-                });
+                    socket.send(message);
+                    addMessage(`📤 Sent big data sequence ${index + 1}/5 (${(sequence.length / 1024 / 1024).toFixed(1)}MB)`, 'sent');
+                }, index * 3000); // 3 second intervals
+            });
 
-            } else {
-                updateScalingStatus('🔴 Triggering Big Data Demo', 'status-bigdata');
-                addMessage('🚀 Triggering big data processing - this will demonstrate memory scaling!', 'system');
-                addMessage('📊 Generating large genetic datasets (1MB+ each)...', 'system');
+            addMessage('⏳ Monitor scaling metrics above - pods should scale up within 1-2 minutes', 'system');
+            addMessage('💰 Watch memory usage increase as pods handle large sequences', 'system');
+        }
 
-                // Generate and send multiple large sequences for big-data mode
-                const largeSequences = generateLargeGeneticDatasets();
-
-                largeSequences.forEach((sequence, index) => {
-                    setTimeout(() => {
-                        const message = JSON.stringify({
-                            mode: 'big-data',
-                            sequence: sequence,
-                            size: sequence.length,
-                            resourceProfile: 'high-memory',
-                            timestamp: Date.now(),
-                            sessionId: 'bigdata-demo-' + Date.now() + '-' + index
-                        });
-
-                        socket.send(message);
-                        addMessage(`📤 Sent big data sequence ${index + 1}/5 (${(sequence.length / 1024 / 1024).toFixed(1)}MB)`, 'sent');
-                    }, index * 3000); // 3 second intervals
-                });
-
-                addMessage('⏳ Monitor scaling metrics above - pods should scale up within 1-2 minutes', 'system');
-                addMessage('💰 Watch memory usage increase as pods handle large sequences', 'system');
+        // Trigger node scaling demonstration (cluster autoscaler)
+        function triggerNodeScaling() {
+            if (!connected) {
+                addMessage('❌ Connect to service first', 'system');
+                return;
             }
+
+            updateScalingStatus('🔴 Triggering Node Scaling Demo', 'status-bigdata');
+            addMessage('⚡ Triggering node scaling demo - this will create compute-intensive nodes!', 'system');
+            addMessage('📊 Generating large genetic sequences for cluster autoscaler...', 'system');
+
+            // Generate node-scale sequences (100KB each for reliable node scaling)
+            const nodeScaleSequences = generateNodeScaleDatasets();
+
+            nodeScaleSequences.forEach((sequence, index) => {
+                setTimeout(() => {
+                    const message = JSON.stringify({
+                        mode: 'node-scale',
+                        sequence: sequence,
+                        size: sequence.length,
+                        timestamp: Date.now(),
+                        sessionId: 'node-scale-demo-' + Date.now() + '-' + index
+                    });
+
+                    socket.send(message);
+                    addMessage(`⚡ Sent node-scale sequence ${index + 1}/${nodeScaleSequences.length} (${sequence.length} chars)`, 'sent');
+                }, index * 2000); // 2 second delay between sequences
+            });
+
+            addMessage('⏳ Monitor scaling metrics above - cluster autoscaler should create new nodes within 3-5 minutes', 'system');
+            addMessage('💰 Watch for node scaling and increased cost attribution', 'system');
         }
 
         // Generate large genetic datasets for big-data mode (memory scaling)
@@ -623,6 +704,66 @@
             }
 
             return nodeScaleSequences;
+        }
+
+        // Trigger Kafka lag demonstration for KEDA consumer lag scaling
+        function triggerKafkaLagDemo() {
+            if (!connected) {
+                addMessage('❌ Connect to service first', 'system');
+                return;
+            }
+
+            updateScalingStatus('🟣 Triggering Kafka Lag Demo', 'status-kafka');
+            addMessage('🔄 Triggering Kafka consumer lag demo - this will demonstrate KEDA lag-based scaling!', 'system');
+            addMessage('📊 Generating batch messages to create consumer lag...', 'system');
+
+            // Generate multiple batches to create sustained consumer lag
+            const kafkaBatches = generateKafkaLagBatches();
+
+            kafkaBatches.forEach((batch, index) => {
+                setTimeout(() => {
+                    const message = JSON.stringify({
+                        mode: 'kafka-lag',
+                        sequence: batch.sequence,
+                        size: batch.sequence.length,
+                        batchId: batch.batchId,
+                        messageCount: batch.messageCount,
+                        timestamp: Date.now(),
+                        sessionId: 'kafka-lag-demo-' + Date.now() + '-' + index
+                    });
+
+                    socket.send(message);
+                    addMessage(`🔄 Sent Kafka batch ${index + 1}/${kafkaBatches.length} (${batch.messageCount} messages)`, 'sent');
+                }, index * 1000); // 1 second delay between batches
+            });
+
+            addMessage('⏳ Monitor consumer lag above - KEDA should scale pods based on lag thresholds', 'system');
+            addMessage('📈 Watch for lag accumulation and subsequent pod scaling', 'system');
+        }
+
+        // Generate Kafka lag batches for sustained consumer lag demonstration
+        function generateKafkaLagBatches() {
+            const baseSequences = ['ATCG', 'GGCC', 'TTAA', 'CCGG', 'ATAT', 'GCGC'];
+            const kafkaBatches = [];
+
+            // Generate 5 batches with increasing message counts to create sustained lag
+            const batchSizes = [50, 100, 150, 200, 100]; // Messages per batch
+
+            batchSizes.forEach((messageCount, index) => {
+                // Generate 1KB sequence per message
+                let batchSequence = '';
+                for (let j = 0; j < 1000; j++) { // 1KB per message
+                    batchSequence += baseSequences[j % baseSequences.length];
+                }
+
+                kafkaBatches.push({
+                    batchId: `batch-${index + 1}`,
+                    messageCount: messageCount,
+                    sequence: batchSequence
+                });
+            });
+
+            return kafkaBatches;
         }
 
         // Real-time scaling metrics monitoring
@@ -682,10 +823,14 @@
                 // Update scaling status based on activity
                 if (currentMode === 'big-data' && (vepPods > 4 || mlPods > 2)) {
                     updateScalingStatus('🔴 Node Scaling Active - High Cost Impact', 'status-bigdata');
+                } else if (currentMode === 'kafka-lag' && vepPods > 2) {
+                    updateScalingStatus('🟣 KEDA Kafka Lag Scaling Active', 'status-kafka');
                 } else if (vepPods > 2 || mlPods > 1) {
                     updateScalingStatus('🟡 Pod Scaling Active', 'status-scaling');
                 } else if (currentMode === 'big-data') {
                     updateScalingStatus('🟡 Big Data Mode - Ready for Node Scaling', 'status-scaling');
+                } else if (currentMode === 'kafka-lag') {
+                    updateScalingStatus('🟣 Kafka Lag Mode - Ready for Consumer Lag Demo', 'status-kafka');
                 } else {
                     updateScalingStatus('🟢 Normal Mode - Scale-to-Zero Active', 'status-normal');
                 }
