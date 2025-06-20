@@ -7,7 +7,7 @@
 
 ## 📚 Documentation Framework
 
-This documentation follows the **Diátaxis framework** to provide comprehensive coverage for developers, operators, and users of the Healthcare ML Genetic Prediction system. The documentation is optimized for **Augment Code** environments with context-aware recommendations and AI-assisted development workflows.
+This documentation follows the **Diátaxis framework** to provide comprehensive coverage for developers, operators, and users of the Healthcare ML Genetic Prediction system. 
 
 ## 🎯 Documentation Types
 
@@ -159,7 +159,6 @@ graph TB
 - **🤝 [Complete Contributing Guide](../CONTRIBUTING.md)** - Comprehensive contribution opportunities
 - **🎯 High Priority Areas**: Cost management console access, security enhancements, ML model expansion
 - **🚀 Quick Start**: Fork repository, create feature branch, test changes, submit PR
-- **🧠 Augment Workflow**: Follow the [Augment Code integration guide](augment-code-integration-guide.md) for optimal development
 - **🔧 Development**: Use project's Maven wrapper (`./mvnw`) and test with Podman
 - **☕ Java 17**: Ensure all changes are compatible with Java 17 (hard requirement)
 - **✅ Quality**: Follow the [quality assurance framework](quality-assurance-framework-augment.md) standards
