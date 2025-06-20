@@ -60,6 +60,9 @@ public class ScalingTestController {
 
     @Channel("genetic-nodescale-raw-out")
     Emitter<String> geneticNodeScaleEmitter;
+
+    @Channel("genetic-lag-demo-raw-out")
+    Emitter<String> geneticLagDemoEmitter;
     
     @Inject
     ObjectMapper objectMapper;
@@ -81,19 +84,36 @@ public class ScalingTestController {
             
             this.currentMode = request.getMode();
             
-            String modeMessage = request.isBigDataMode() ? 
-                "🚀 Big Data Mode activated - node scaling demonstration" :
-                "📊 Normal Mode activated - pod scaling demonstration";
+            String modeMessage;
+            if (request.isBigDataMode()) {
+                modeMessage = "🚀 Big Data Mode activated - memory-intensive scaling demonstration";
+            } else if (request.isNodeScaleMode()) {
+                modeMessage = "⚡ Node Scale Mode activated - cluster autoscaler demonstration";
+            } else if (request.isKafkaLagMode()) {
+                modeMessage = "🔄 Kafka Lag Mode activated - consumer lag scaling demonstration";
+            } else {
+                modeMessage = "📊 Normal Mode activated - standard pod scaling demonstration";
+            }
             
             Map<String, Object> responseData = new HashMap<>();
             responseData.put("mode", request.getMode());
             responseData.put("previousMode", currentMode);
             responseData.put("description", request.getDescription());
             
+            String expectedScaling;
+            if (request.isBigDataMode()) {
+                expectedScaling = "1→10+ pods (memory-intensive)";
+            } else if (request.isNodeScaleMode()) {
+                expectedScaling = "1→10+ pods, 6→7+ nodes (cluster autoscaler)";
+            } else if (request.isKafkaLagMode()) {
+                expectedScaling = "0→10+ pods (consumer lag-based)";
+            } else {
+                expectedScaling = "1→2+ pods (standard scaling)";
+            }
+
             ApiResponse<Map<String, Object>> response = ApiResponse.success(modeMessage, responseData)
                 .addMetadata("scalingMode", request.getMode())
-                .addMetadata("expectedScaling", request.isBigDataMode() ?
-                    "1→10+ pods, 6→7+ nodes" : "1→2+ pods");
+                .addMetadata("expectedScaling", expectedScaling);
             
             return Response.ok(response).build();
             
@@ -157,6 +177,10 @@ public class ScalingTestController {
                     eventType = "com.redhat.healthcare.genetic.sequence.nodescale";
                     kafkaTopic = "genetic-nodescale-raw";
                     break;
+                case "kafka-lag":
+                    eventType = "com.redhat.healthcare.genetic.sequence.kafkalag";
+                    kafkaTopic = "genetic-lag-demo-raw";
+                    break;
                 default: // "normal"
                     eventType = "com.redhat.healthcare.genetic.sequence.raw";
                     kafkaTopic = "genetic-data-raw";
@@ -189,6 +213,9 @@ public class ScalingTestController {
                 case "node-scale":
                 case "nodescale":
                     geneticNodeScaleEmitter.send(cloudEventJson);
+                    break;
+                case "kafka-lag":
+                    geneticLagDemoEmitter.send(cloudEventJson);
                     break;
                 default: // "normal"
                     geneticDataEmitter.send(cloudEventJson);

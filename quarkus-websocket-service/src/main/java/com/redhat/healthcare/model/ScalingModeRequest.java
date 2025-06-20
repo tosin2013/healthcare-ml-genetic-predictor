@@ -12,7 +12,7 @@ public class ScalingModeRequest {
     
     @JsonProperty("mode")
     @NotBlank(message = "Mode is required")
-    @Pattern(regexp = "normal|bigdata", message = "Mode must be 'normal' or 'bigdata'")
+    @Pattern(regexp = "normal|bigdata|node-scale|kafka-lag", message = "Mode must be 'normal', 'bigdata', 'node-scale', or 'kafka-lag'")
     private String mode;
     
     @JsonProperty("description")
@@ -48,9 +48,17 @@ public class ScalingModeRequest {
     public boolean isNormalMode() {
         return "normal".equals(mode);
     }
-    
+
     public boolean isBigDataMode() {
         return "bigdata".equals(mode);
+    }
+
+    public boolean isNodeScaleMode() {
+        return "node-scale".equals(mode);
+    }
+
+    public boolean isKafkaLagMode() {
+        return "kafka-lag".equals(mode);
     }
     
     @Override
