@@ -91,3 +91,61 @@ spec:
       topic: genetic-data-annotated
       lagThreshold: "10"
       offsetResetPolicy: latest
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: kafka-lag-scaler
+  labels:
+    app: vep-service
+    mode: kafka-lag
+    component: vep-processor
+    github-issue: "21"
+  annotations:
+    description: "KEDA scaler for Kafka consumer lag demonstration with genetic-lag-demo-raw topic"
+    github-issue: "21"
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: vep-service-kafka-lag
+  pollingInterval: 5   # Aggressive polling for lag demonstration
+  cooldownPeriod: 30   # Fast cooldown for responsive demo
+  idleReplicaCount: 0  # Scale to zero when no lag
+  minReplicaCount: 0
+  maxReplicaCount: 10  # Moderate max for lag demonstration
+  fallback:
+    failureThreshold: 3
+    replicas: 1
+  advanced:
+    restoreToOriginalReplicaCount: false
+    horizontalPodAutoscalerConfig:
+      name: kafka-lag-demo-hpa
+      behavior:
+        scaleDown:
+          stabilizationWindowSeconds: 30
+          policies:
+          - type: Percent
+            value: 50
+            periodSeconds: 15
+        scaleUp:
+          stabilizationWindowSeconds: 0  # Immediate scale up for lag demo
+          policies:
+          - type: Percent
+            value: 100  # Double pods quickly
+            periodSeconds: 5
+          - type: Pods
+            value: 3    # Add 3 pods at once for lag clearing
+            periodSeconds: 5
+          selectPolicy: Max
+  triggers:
+  # Kafka Consumer Lag Trigger for genetic-lag-demo-raw
+  - type: kafka
+    metadata:
+      bootstrapServers: genetic-data-cluster-kafka-bootstrap.healthcare-ml-demo.svc.cluster.local:9092
+      consumerGroup: genetic-lag-consumer-group
+      topic: genetic-lag-demo-raw
+      lagThreshold: "10"  # Scale when lag > 10 messages
+      offsetResetPolicy: latest
+      allowIdleConsumers: 'false'
+      scaleToZeroOnInvalidOffset: 'true'

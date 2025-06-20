@@ -107,28 +107,36 @@ spec:
           initialDelaySeconds: 5
           periodSeconds: 5
 
+# Note: vep-service-nodescale deployment already exists in cluster
+# Skipping to avoid selector conflicts
+
 ---
-# Node Scale Mode VEP Service (Cluster Autoscaler Triggering)
+# Kafka Lag Mode VEP Service (KEDA Consumer Lag Demonstration)
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: vep-service-nodescale
+  name: vep-service-kafka-lag
   labels:
     app: vep-service
-    mode: nodescale
+    mode: kafka-lag
     component: vep-annotation
+    github-issue: "21"
+  annotations:
+    description: "VEP service for Kafka consumer lag demonstration with KEDA scaling"
+    github-issue: "21"
 spec:
   replicas: 0
   selector:
     matchLabels:
       app: vep-service
-      mode: nodescale
+      mode: kafka-lag
   template:
     metadata:
       labels:
         app: vep-service
-        mode: nodescale
+        mode: kafka-lag
         component: vep-annotation
+        scaling-type: consumer-lag
     spec:
       containers:
       - name: vep-service
@@ -139,14 +147,22 @@ spec:
         - name: KAFKA_BOOTSTRAP_SERVERS
           value: "genetic-data-cluster-kafka-bootstrap.healthcare-ml-demo.svc.cluster.local:9092"
         - name: VEP_MODE
-          value: "nodescale"
+          value: "kafka-lag"
+        - name: KAFKA_CONSUMER_GROUP
+          value: "genetic-lag-consumer-group"
+        - name: KAFKA_TOPIC
+          value: "genetic-lag-demo-raw"
+        - name: PROCESSING_DELAY_MS
+          value: "5000"  # 5 second delay to create controlled lag
+        - name: LAG_SIMULATION_ENABLED
+          value: "true"
         resources:
           requests:
-            memory: "2Gi"
-            cpu: "1000m"
+            memory: "512Mi"
+            cpu: "250m"
           limits:
-            memory: "4Gi"
-            cpu: "2000m"
+            memory: "1Gi"
+            cpu: "500m"
         livenessProbe:
           httpGet:
             path: /q/health/live
@@ -159,11 +175,11 @@ spec:
             port: 8080
           initialDelaySeconds: 5
           periodSeconds: 5
-      # Node affinity to prefer scheduling on different nodes
+      # Prefer scheduling on different nodes for lag distribution
       affinity:
         podAntiAffinity:
           preferredDuringSchedulingIgnoredDuringExecution:
-          - weight: 100
+          - weight: 50
             podAffinityTerm:
               labelSelector:
                 matchExpressions:

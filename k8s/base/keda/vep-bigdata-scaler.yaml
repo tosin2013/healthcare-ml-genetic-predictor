@@ -17,7 +17,7 @@ spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
-    name: vep-service  # Same deployment, different topic trigger
+    name: vep-service-bigdata  # Dedicated bigdata deployment
   pollingInterval: 10  # More aggressive polling for big data
   cooldownPeriod: 30   # Faster cooldown for big data workloads
   idleReplicaCount: 0  # Scale to zero when no big data processing
@@ -86,7 +86,7 @@ spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
-    name: vep-service  # Same deployment, different topic trigger
+    name: vep-service-nodescale  # Dedicated nodescale deployment
   pollingInterval: 5   # Very aggressive polling for node scaling
   cooldownPeriod: 60   # Longer cooldown to allow node provisioning
   idleReplicaCount: 0  # Scale to zero when no node-scale processing

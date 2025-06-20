@@ -1,0 +1,35 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+metadata:
+  name: vep-service-multi-mode
+  annotations:
+    config.kubernetes.io/local-config: "true"
+    description: "Multi-mode VEP service deployments for different scaling patterns"
+
+# Multi-Mode VEP Service Resources
+resources:
+  - multi-mode-deployments.yaml
+
+# Multi-mode specific labels
+commonLabels:
+  app.kubernetes.io/component: vep-service
+  app.kubernetes.io/name: vep-annotation-service
+  app.kubernetes.io/version: "1.0.0"
+  deployment-type: "multi-mode"
+
+# Multi-mode specific annotations
+commonAnnotations:
+  app.openshift.io/runtime: quarkus
+  app.openshift.io/runtime-version: "3.8"
+  insights.openshift.io/billing-model: chargeback
+  insights.openshift.io/cost-center: genomics-research
+  insights.openshift.io/project: vep-multi-mode-v1
+  deployment-method: "multi-mode-kustomize"
+  github-issue: "21"
+
+# VEP service image configuration for all modes
+images:
+  - name: vep-service
+    newName: image-registry.openshift-image-registry.svc:5000/healthcare-ml-demo/vep-service
+    newTag: latest

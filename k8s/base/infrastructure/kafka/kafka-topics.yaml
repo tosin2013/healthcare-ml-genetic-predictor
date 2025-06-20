@@ -77,3 +77,127 @@ spec:
     unclean.leader.election.enable: false
     # Message size limits for ML results
     max.message.bytes: 2097152  # 2MB (larger for ML results with metadata)
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: genetic-lag-demo-raw
+  namespace: healthcare-ml-demo
+  labels:
+    strimzi.io/cluster: genetic-data-cluster
+    app.kubernetes.io/name: genetic-lag-demo-raw
+    app.kubernetes.io/part-of: healthcare-ml-demo
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/component: kafka-topic
+    cost-center: "genomics-research"
+    project: "risk-predictor-v1"
+    topic-type: "input"
+    data-classification: "genetic-lag-demo"
+    scaling-mode: "kafka-lag"
+  annotations:
+    cost-center: "genomics-research"
+    project: "risk-predictor-v1"
+    deployment-method: "kustomize"
+    topic-purpose: "Kafka consumer lag demonstration for KEDA scaling"
+    github-issue: "21"
+spec:
+  partitions: 3
+  replicas: 1
+  config:
+    # Retention policy optimized for lag demonstration
+    retention.ms: 3600000  # 1 hour (shorter for demo purposes)
+    retention.bytes: 536870912  # 512MB per partition
+    # Segment configuration for lag visibility
+    segment.ms: 300000  # 5 minutes (shorter segments for faster lag detection)
+    segment.bytes: 67108864  # 64MB (smaller segments for demo)
+    # Cleanup policy
+    cleanup.policy: delete
+    # Compression for genetic data
+    compression.type: snappy
+    # Performance tuning for lag demonstration
+    min.insync.replicas: 1
+    unclean.leader.election.enable: false
+    # Message size limits for batch genetic sequences
+    max.message.bytes: 1048576  # 1MB (same as genetic-data-raw)
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: genetic-bigdata-raw
+  namespace: healthcare-ml-demo
+  labels:
+    strimzi.io/cluster: genetic-data-cluster
+    app.kubernetes.io/name: genetic-bigdata-raw
+    app.kubernetes.io/part-of: healthcare-ml-demo
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/component: kafka-topic
+    cost-center: "genomics-research"
+    project: "risk-predictor-v1"
+    topic-type: "input"
+    data-classification: "genetic-bigdata"
+    scaling-mode: "bigdata"
+  annotations:
+    cost-center: "genomics-research"
+    project: "risk-predictor-v1"
+    deployment-method: "kustomize"
+    topic-purpose: "Big data genetic sequences for memory-intensive processing"
+spec:
+  partitions: 3
+  replicas: 1
+  config:
+    # Retention policy for big data processing
+    retention.ms: 604800000  # 7 days
+    retention.bytes: 2147483648  # 2GB per partition (larger for big data)
+    # Segment configuration for large messages
+    segment.ms: 86400000  # 1 day
+    segment.bytes: 268435456  # 256MB (larger segments for big data)
+    # Cleanup policy
+    cleanup.policy: delete
+    # Compression for large genetic data
+    compression.type: snappy
+    # Performance tuning for big data workloads
+    min.insync.replicas: 1
+    unclean.leader.election.enable: false
+    # Message size limits for large genetic sequences
+    max.message.bytes: 10485760  # 10MB (larger for big data sequences)
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: genetic-nodescale-raw
+  namespace: healthcare-ml-demo
+  labels:
+    strimzi.io/cluster: genetic-data-cluster
+    app.kubernetes.io/name: genetic-nodescale-raw
+    app.kubernetes.io/part-of: healthcare-ml-demo
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/component: kafka-topic
+    cost-center: "genomics-research"
+    project: "risk-predictor-v1"
+    topic-type: "input"
+    data-classification: "genetic-nodescale"
+    scaling-mode: "nodescale"
+  annotations:
+    cost-center: "genomics-research"
+    project: "risk-predictor-v1"
+    deployment-method: "kustomize"
+    topic-purpose: "Node-scale genetic sequences for cluster autoscaler triggering"
+spec:
+  partitions: 3
+  replicas: 1
+  config:
+    # Retention policy for node scaling workloads
+    retention.ms: 604800000  # 7 days
+    retention.bytes: 5368709120  # 5GB per partition (largest for node scaling)
+    # Segment configuration for compute-intensive processing
+    segment.ms: 86400000  # 1 day
+    segment.bytes: 536870912  # 512MB (large segments for node scaling)
+    # Cleanup policy
+    cleanup.policy: delete
+    # Compression for compute-intensive data
+    compression.type: snappy
+    # Performance tuning for node scaling workloads
+    min.insync.replicas: 1
+    unclean.leader.election.enable: false
+    # Message size limits for compute-intensive sequences
+    max.message.bytes: 52428800  # 50MB (largest for node scaling sequences)
