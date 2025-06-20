@@ -157,10 +157,49 @@ public class VepAnnotationService {
     }
 
     /**
+     * Processes genetic sequences from the Kafka lag mode topic (consumer lag demonstration)
+     *
+     * @param cloudEventJson Kafka lag demo genetic sequence data from Kafka
+     * @return Annotated genetic data for downstream processing
+     */
+    @Incoming("genetic-lag-demo-raw")
+    @Outgoing("genetic-data-annotated")
+    public Uni<String> processKafkaLagGeneticSequence(String cloudEventJson) {
+        LOG.infof("🔥 KAFKA FLOW: Received message on genetic-lag-demo-raw, will publish to genetic-data-annotated");
+        return processGeneticSequenceInternal(cloudEventJson, "kafka-lag")
+            .onItem().invoke(result -> {
+                if (result != null && !result.isEmpty()) {
+                    LOG.infof("🎉 KAFKA FLOW: Successfully created result for genetic-data-annotated (size: %d chars)", result.length());
+
+                    // Log session ID for WebSocket compatibility
+                    try {
+                        if (result.contains("\"sessionId\"")) {
+                            String sessionId = extractSessionIdFromResult(result);
+                            LOG.infof("📋 WEBSOCKET COMPATIBILITY: Publishing result for session %s", sessionId);
+                        }
+                    } catch (Exception e) {
+                        LOG.warnf("Could not extract session ID for logging: %s", e.getMessage());
+                    }
+                } else {
+                    LOG.errorf("❌ KAFKA FLOW: Result is null or empty - will not publish to genetic-data-annotated!");
+                }
+            })
+            .onItem().delayIt().by(java.time.Duration.ofSeconds(5))
+            .onItem().invoke(result -> {
+                LOG.infof("🔄 KAFKA LAG: Allowing 5 seconds for controlled lag demonstration");
+                LOG.infof("✅ KAFKA LAG: Lag simulation delay ensures KEDA scaling behavior");
+                LOG.infof("🎯 KAFKA LAG: Message should now be available for WebSocket service consumption");
+            })
+            .onFailure().invoke(throwable -> {
+                LOG.errorf(throwable, "💥 KAFKA FLOW: Failed to process kafka-lag sequence - no message will be published");
+            });
+    }
+
+    /**
      * Internal method to process genetic sequences with mode-specific handling
      *
      * @param cloudEventJson Raw genetic sequence data from Kafka
-     * @param processingMode The processing mode (normal, big-data, node-scale)
+     * @param processingMode The processing mode (normal, big-data, node-scale, kafka-lag)
      * @return Annotated genetic data for downstream processing
      */
     private Uni<String> processGeneticSequenceInternal(String cloudEventJson, String processingMode) {
