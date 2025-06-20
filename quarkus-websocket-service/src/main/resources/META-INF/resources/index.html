@@ -339,12 +339,12 @@
             </div>
             <div id="kafka-samples" style="display: none;">
                 <p style="font-size: 14px; color: #666; margin-bottom: 10px;">
-                    <strong>Kafka Lag Mode:</strong> Batch sequences for consumer lag demonstration
+                    <strong>Kafka Lag Mode:</strong> Individual message testing (use trigger button for batch)
                 </p>
-                <button class="sample-btn" onclick="generateKafkaBatch(10)">10 Messages</button>
-                <button class="sample-btn" onclick="generateKafkaBatch(50)">50 Messages</button>
-                <button class="sample-btn" onclick="generateKafkaBatch(100)">100 Messages</button>
-                <button class="sample-btn" onclick="generateKafkaBatch(500)">500 Messages</button>
+                <button class="sample-btn" onclick="generateKafkaBatch(1)">1KB Sample</button>
+                <button class="sample-btn" onclick="generateKafkaBatch(15)" disabled>💡 Use Trigger Button</button>
+                <button class="sample-btn" onclick="generateKafkaBatch(50)" disabled>💡 Use Trigger Button</button>
+                <button class="sample-btn" onclick="generateKafkaBatch(100)" disabled>💡 Use Trigger Button</button>
             </div>
             <p style="font-size: 12px; color: #666; margin-top: 10px;">
                 💡 Sequences are processed through VEP annotation → OpenShift AI ML inference → Results delivery
@@ -592,17 +592,13 @@
             addMessage(`📊 Generated ${(size/1000).toFixed(1)}KB genetic sequence for big data processing`, 'system');
         }
 
-        // Generate Kafka batch sequences for consumer lag demonstration
+        // Generate single sequence for Kafka lag demonstration
         function generateKafkaBatch(messageCount) {
-            const bases = ['A', 'T', 'C', 'G'];
-            let sequence = '';
-            // Generate medium-sized sequences (1KB each) for Kafka lag demo
-            for (let i = 0; i < 1000; i++) {
-                sequence += bases[Math.floor(Math.random() * 4)];
-            }
+            const sequence = generateKafkaSequence(1024); // 1KB sequence
             document.getElementById('geneticSequence').value = sequence;
-            addMessage(`🔄 Generated batch sequence for ${messageCount} Kafka messages (1KB each)`, 'system');
-            addMessage(`📊 Total batch size: ${messageCount}KB - will create consumer lag for KEDA scaling`, 'system');
+            addMessage(`🔄 Generated 1KB sequence for manual testing`, 'system');
+            addMessage(`💡 Note: For lag scaling demo, use "🔄 Trigger Kafka Lag Demo" button (sends ${messageCount} messages)`, 'system');
+            addMessage(`📊 Single sequence = 1 message lag (< 10 threshold) = No scaling`, 'system');
         }
 
         // Trigger big data scaling demonstration (memory scaling)
@@ -715,55 +711,53 @@
 
             updateScalingStatus('🟣 Triggering Kafka Lag Demo', 'status-kafka');
             addMessage('🔄 Triggering Kafka consumer lag demo - this will demonstrate KEDA lag-based scaling!', 'system');
-            addMessage('📊 Generating batch messages to create consumer lag...', 'system');
+            addMessage('📊 Sending 15 individual messages to create consumer lag > 10 threshold...', 'system');
 
-            // Generate multiple batches to create sustained consumer lag
-            const kafkaBatches = generateKafkaLagBatches();
+            // Send 15 individual messages rapidly to create consumer lag
+            const totalMessages = 15;
+            const bases = ['A', 'T', 'C', 'G'];
 
-            kafkaBatches.forEach((batch, index) => {
+            for (let i = 1; i <= totalMessages; i++) {
                 setTimeout(() => {
+                    // Generate 1KB sequence for each message
+                    let sequence = '';
+                    for (let j = 0; j < 1024; j++) {
+                        sequence += bases[Math.floor(Math.random() * 4)];
+                    }
+
                     const message = JSON.stringify({
                         mode: 'kafka-lag',
-                        sequence: batch.sequence,
-                        size: batch.sequence.length,
-                        batchId: batch.batchId,
-                        messageCount: batch.messageCount,
+                        sequence: sequence,
+                        size: sequence.length,
+                        messageId: i,
+                        totalMessages: totalMessages,
                         timestamp: Date.now(),
-                        sessionId: 'kafka-lag-demo-' + Date.now() + '-' + index
+                        sessionId: 'kafka-lag-demo-' + Date.now() + '-' + i
                     });
 
                     socket.send(message);
-                    addMessage(`🔄 Sent Kafka batch ${index + 1}/${kafkaBatches.length} (${batch.messageCount} messages)`, 'sent');
-                }, index * 1000); // 1 second delay between batches
-            });
+                    addMessage(`📤 Sent message ${i}/${totalMessages} (1KB) → genetic-lag-demo-raw`, 'sent');
 
-            addMessage('⏳ Monitor consumer lag above - KEDA should scale pods based on lag thresholds', 'system');
-            addMessage('📈 Watch for lag accumulation and subsequent pod scaling', 'system');
+                    // Show progress and expectations
+                    if (i === 10) {
+                        addMessage('🎯 Reached 10 messages - KEDA threshold met, scaling should trigger soon!', 'system');
+                    } else if (i === totalMessages) {
+                        addMessage('✅ All messages sent! Consumer lag: 15 messages (> 10 threshold)', 'system');
+                        addMessage('⏳ Monitor scaling above - KEDA should scale vep-service-kafka-lag pods', 'system');
+                        addMessage('📈 Expected: 0 → 3+ pods within 15-30 seconds', 'system');
+                    }
+                }, i * 200); // 200ms between messages = faster than 5s processing delay
+            }
         }
 
-        // Generate Kafka lag batches for sustained consumer lag demonstration
-        function generateKafkaLagBatches() {
-            const baseSequences = ['ATCG', 'GGCC', 'TTAA', 'CCGG', 'ATAT', 'GCGC'];
-            const kafkaBatches = [];
-
-            // Generate 5 batches with increasing message counts to create sustained lag
-            const batchSizes = [50, 100, 150, 200, 100]; // Messages per batch
-
-            batchSizes.forEach((messageCount, index) => {
-                // Generate 1KB sequence per message
-                let batchSequence = '';
-                for (let j = 0; j < 1000; j++) { // 1KB per message
-                    batchSequence += baseSequences[j % baseSequences.length];
-                }
-
-                kafkaBatches.push({
-                    batchId: `batch-${index + 1}`,
-                    messageCount: messageCount,
-                    sequence: batchSequence
-                });
-            });
-
-            return kafkaBatches;
+        // Generate individual genetic sequence for Kafka lag demonstration
+        function generateKafkaSequence(length = 1024) {
+            const bases = ['A', 'T', 'C', 'G'];
+            let sequence = '';
+            for (let i = 0; i < length; i++) {
+                sequence += bases[Math.floor(Math.random() * 4)];
+            }
+            return sequence;
         }
 
         // Real-time scaling metrics monitoring
