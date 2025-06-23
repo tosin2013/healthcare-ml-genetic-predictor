@@ -4,6 +4,17 @@
 
 This validation system ensures that developers cannot accidentally break the critical mapping between UI buttons, backend modes, and Kafka topics in the Healthcare ML Genetic Predictor system. It provides pre-merge validation to maintain the separation of concerns between the 4 scaling modes.
 
+## Prerequisites
+
+- **Node.js**: Version 20.x or higher (matches CI/CD environment)
+- **npm**: Latest version (usually bundled with Node.js)
+- **Dependencies**: `js-yaml` package for YAML configuration parsing
+
+To check your Node.js version:
+```bash
+node --version  # Should show v20.x.x
+```
+
 ## The 4 Scaling Modes
 
 | Mode | UI Button | Backend Mode | Kafka Topic | Description |
