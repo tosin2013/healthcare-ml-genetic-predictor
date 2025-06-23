@@ -108,7 +108,7 @@ Expected VEP analysis results include:
 # Test normal mode with 20bp sequence
 node scripts/test-websocket-client.js normal --generate 50
 ````
-
+🔄 Kafka Lag Mode (KEDA Consumer Lag)
 
 **Expected Output**:
 ```

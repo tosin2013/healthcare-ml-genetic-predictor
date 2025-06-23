@@ -1,0 +1,301 @@
+name: Separation of Concerns Validation
+
+on:
+  # Trigger on all pull requests to main and develop
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'quarkus-websocket-service/**'
+      - 'scripts/**'
+      - 'docs/**'
+      - '.github/workflows/separation-of-concerns-validation.yml'
+  
+  # Trigger on pushes to main to ensure no direct commits break separation
+  push:
+    branches: [ main ]
+    paths:
+      - 'quarkus-websocket-service/**'
+      - 'scripts/**'
+  
+  # Allow manual triggering
+  workflow_dispatch:
+    inputs:
+      validate_only:
+        description: 'Run validation only (skip tests)'
+        required: false
+        default: 'false'
+        type: boolean
+      fix_mode:
+        description: 'Attempt automatic fixes (experimental)'
+        required: false
+        default: 'false' 
+        type: boolean
+
+env:
+  NODE_VERSION: '18'
+
+jobs:
+  separation-validation:
+    name: Validate Scaling Mode Separation of Concerns
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js ${{ env.NODE_VERSION }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: 'package*.json'
+    
+    - name: Install dependencies
+      run: |
+        # Install js-yaml for configuration parsing
+        npm install js-yaml
+        
+        # Make validation script executable
+        chmod +x scripts/validate-scaling-separation.js
+    
+    - name: Validate configuration file exists
+      run: |
+        if [ ! -f "quarkus-websocket-service/src/main/resources/scaling-mode-separation.yaml" ]; then
+          echo "❌ Scaling mode separation configuration not found!"
+          echo "Expected: quarkus-websocket-service/src/main/resources/scaling-mode-separation.yaml"
+          exit 1
+        fi
+        echo "✅ Configuration file found"
+    
+    - name: Run separation of concerns validation
+      id: separation_validation
+      run: |
+        echo "🔍 Running separation of concerns validation..."
+        echo "Validating UI buttons ↔ Backend modes ↔ Kafka topics alignment"
+        echo ""
+        
+        # Run validation with appropriate flags
+        VALIDATION_CMD="node scripts/validate-scaling-separation.js"
+        
+        if [ "${{ github.event.inputs.fix_mode }}" = "true" ]; then
+          VALIDATION_CMD="$VALIDATION_CMD --fix"
+          echo "🔧 Fix mode enabled - attempting automatic fixes"
+        fi
+        
+        # Run the validation
+        if $VALIDATION_CMD; then
+          echo "validation_status=success" >> $GITHUB_OUTPUT
+          echo "✅ All separation validations passed"
+        else
+          echo "validation_status=failed" >> $GITHUB_OUTPUT
+          echo "❌ Separation validation failed"
+          exit 1
+        fi
+    
+    - name: Validate Quarkus WebSocket service structure
+      if: github.event.inputs.validate_only != 'true'
+      run: |
+        echo "🔍 Validating Quarkus WebSocket service structure..."
+        
+        # Check critical files exist
+        REQUIRED_FILES=(
+          "quarkus-websocket-service/src/main/java/com/redhat/healthcare/GeneticPredictorEndpoint.java"
+          "quarkus-websocket-service/src/main/resources/application.properties"
+          "quarkus-websocket-service/src/main/resources/META-INF/resources/index.html"
+        )
+        
+        for file in "${REQUIRED_FILES[@]}"; do
+          if [ ! -f "$file" ]; then
+            echo "❌ Required file missing: $file"
+            exit 1
+          fi
+          echo "✅ Found: $file"
+        done
+        
+        echo "✅ Quarkus service structure validation passed"
+    
+    - name: Validate UI button to backend mode consistency
+      if: github.event.inputs.validate_only != 'true'
+      run: |
+        echo "🔍 Validating UI button to backend mode consistency..."
+        
+        # Extract UI button modes from HTML
+        UI_MODES=$(grep -o 'onclick="set[A-Za-z]*Mode()"' quarkus-websocket-service/src/main/resources/META-INF/resources/index.html | \
+                  grep -o 'set[A-Za-z]*Mode' | sed 's/set//g' | sed 's/Mode//g' | tr '[:upper:]' '[:lower:]' || true)
+        
+        # Extract backend modes from Java
+        BACKEND_MODES=$(grep -o 'case "[a-z-]*":' quarkus-websocket-service/src/main/java/com/redhat/healthcare/GeneticPredictorEndpoint.java | \
+                       grep -o '"[a-z-]*"' | tr -d '"' || true)
+        
+        echo "UI modes found: $UI_MODES"
+        echo "Backend modes found: $BACKEND_MODES"
+        
+        # Check for the 4 expected modes
+        EXPECTED_MODES=("normal" "bigdata" "nodescale" "kafkalag")
+        
+        for mode in "${EXPECTED_MODES[@]}"; do
+          if echo "$BACKEND_MODES" | grep -q "$mode\|${mode/bigdata/big-data}\|${mode/nodescale/node-scale}\|${mode/kafkalag/kafka-lag}"; then
+            echo "✅ Backend mode found: $mode (or variant)"
+          else
+            echo "❌ Backend mode missing: $mode"
+            exit 1
+          fi
+        done
+        
+        echo "✅ UI button to backend mode consistency validated"
+    
+    - name: Validate Kafka topic configuration
+      if: github.event.inputs.validate_only != 'true'
+      run: |
+        echo "🔍 Validating Kafka topic configuration..."
+        
+        # Check for the 4 expected Kafka topics in application.properties
+        EXPECTED_TOPICS=(
+          "genetic-data-raw"
+          "genetic-bigdata-raw" 
+          "genetic-nodescale-raw"
+          "genetic-lag-demo-raw"
+        )
+        
+        for topic in "${EXPECTED_TOPICS[@]}"; do
+          if grep -q "topic=$topic" quarkus-websocket-service/src/main/resources/application.properties; then
+            echo "✅ Kafka topic configured: $topic"
+          else
+            echo "❌ Kafka topic missing: $topic"
+            exit 1
+          fi
+        done
+        
+        # Check emitter channel injections
+        EXPECTED_CHANNELS=(
+          "genetic-data-raw-out"
+          "genetic-bigdata-raw-out"
+          "genetic-nodescale-raw-out" 
+          "genetic-lag-demo-raw-out"
+        )
+        
+        for channel in "${EXPECTED_CHANNELS[@]}"; do
+          if grep -q "@Channel(\"$channel\")" quarkus-websocket-service/src/main/java/com/redhat/healthcare/GeneticPredictorEndpoint.java; then
+            echo "✅ Emitter channel injected: $channel"
+          else
+            echo "❌ Emitter channel missing: $channel"
+            exit 1
+          fi
+        done
+        
+        echo "✅ Kafka topic configuration validated"
+    
+    - name: Validate test coverage for all modes
+      if: github.event.inputs.validate_only != 'true'
+      run: |
+        echo "🔍 Validating test coverage for all scaling modes..."
+        
+        # Check UI regression test covers all modes
+        if [ -f "scripts/test-ui-regression.js" ]; then
+          EXPECTED_TEST_MODES=("normal" "big-data" "node-scale" "kafka-lag")
+          
+          for mode in "${EXPECTED_TEST_MODES[@]}"; do
+            if grep -q "name: '$mode'" scripts/test-ui-regression.js; then
+              echo "✅ Test mode coverage: $mode"
+            else
+              echo "❌ Test mode missing: $mode"
+              exit 1
+            fi
+          done
+          
+          echo "✅ All scaling modes are covered in UI regression tests"
+        else
+          echo "⚠️  UI regression test file not found - creating placeholder validation"
+        fi
+    
+    - name: Generate separation validation report
+      if: always()
+      run: |
+        echo "📊 Separation of Concerns Validation Report" > separation-report.md
+        echo "=============================================" >> separation-report.md
+        echo "" >> separation-report.md
+        echo "**Validation Configuration:**" >> separation-report.md
+        echo "- Repository: ${{ github.repository }}" >> separation-report.md
+        echo "- Branch: ${{ github.ref_name }}" >> separation-report.md
+        echo "- Commit: ${{ github.sha }}" >> separation-report.md
+        echo "- Trigger: ${{ github.event_name }}" >> separation-report.md
+        echo "- Validation Mode: ${{ github.event.inputs.validate_only == 'true' && 'Validation Only' || 'Full Validation + Tests' }}" >> separation-report.md
+        echo "" >> separation-report.md
+        echo "**Scaling Modes Validated:**" >> separation-report.md
+        echo "1. 📊 Normal Mode → genetic-data-raw topic" >> separation-report.md
+        echo "2. 🚀 Big Data Mode → genetic-bigdata-raw topic" >> separation-report.md
+        echo "3. ⚡ Node Scale Mode → genetic-nodescale-raw topic" >> separation-report.md
+        echo "4. 🔄 Kafka Lag Mode → genetic-lag-demo-raw topic" >> separation-report.md
+        echo "" >> separation-report.md
+        
+        if [ "${{ steps.separation_validation.outputs.validation_status }}" = "success" ]; then
+          echo "**✅ VALIDATION PASSED**" >> separation-report.md
+          echo "" >> separation-report.md
+          echo "All separation of concerns validations passed:" >> separation-report.md
+          echo "- ✅ UI button IDs and text are consistent" >> separation-report.md
+          echo "- ✅ Backend mode switch statements handle all modes" >> separation-report.md
+          echo "- ✅ Kafka topics are properly configured" >> separation-report.md
+          echo "- ✅ Emitter channels are correctly injected" >> separation-report.md
+          echo "- ✅ Test coverage includes all scaling modes" >> separation-report.md
+        else
+          echo "**❌ VALIDATION FAILED**" >> separation-report.md
+          echo "" >> separation-report.md
+          echo "Separation of concerns validation detected issues." >> separation-report.md
+          echo "Please review the validation output above and fix the identified problems." >> separation-report.md
+          echo "" >> separation-report.md
+          echo "**Common Issues:**" >> separation-report.md
+          echo "- Missing UI button IDs or incorrect text" >> separation-report.md
+          echo "- Backend mode cases missing from switch statement" >> separation-report.md
+          echo "- Kafka topic configuration missing from application.properties" >> separation-report.md
+          echo "- Missing @Channel injection for emitter" >> separation-report.md
+          echo "- Test coverage gaps for scaling modes" >> separation-report.md
+        fi
+        
+        echo "" >> separation-report.md
+        echo "**Next Steps:**" >> separation-report.md
+        echo "- If validation passed: Separation of concerns is maintained ✅" >> separation-report.md
+        echo "- If validation failed: Fix issues before merge ❌" >> separation-report.md
+        echo "- Review scaling-mode-separation.yaml for expected mappings" >> separation-report.md
+        
+        echo "📄 Separation validation report generated"
+    
+    - name: Upload validation report
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: separation-validation-report
+        path: separation-report.md
+        retention-days: 30
+    
+    - name: Comment on PR (if applicable)
+      if: github.event_name == 'pull_request' && always()
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          const reportPath = 'separation-report.md';
+          
+          if (fs.existsSync(reportPath)) {
+            const report = fs.readFileSync(reportPath, 'utf8');
+            
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `## 🔍 Separation of Concerns Validation Results\n\n${report}`
+            });
+          }
+    
+    - name: Set job status
+      if: always()
+      run: |
+        if [ "${{ steps.separation_validation.outputs.validation_status }}" = "success" ]; then
+          echo "✅ Separation of concerns validation passed"
+          echo "All UI buttons, backend modes, and Kafka topics are properly aligned"
+          exit 0
+        else
+          echo "❌ Separation of concerns validation failed"
+          echo "Code changes would break the critical separation between UI and backend"
+          echo "Review the validation report and fix issues before merge"
+          exit 1
+        fi

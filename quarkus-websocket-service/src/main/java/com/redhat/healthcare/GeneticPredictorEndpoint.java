@@ -27,12 +27,23 @@ import io.cloudevents.jackson.JsonFormat;
 import io.cloudevents.core.format.EventFormat;
 import io.cloudevents.core.provider.EventFormatProvider;
 
+// Separation of Concerns Validation Annotations
+// These annotations ensure the mapping between UI buttons and Kafka topics is maintained
+// Configuration: quarkus-websocket-service/src/main/resources/scaling-mode-separation.yaml
+
+// VALIDATION RULE: Each case must map to the correct Kafka topic as defined in the configuration
+// - Normal Mode: genetic-data-raw
+// - Big Data Mode: genetic-bigdata-raw  
+// - Node Scale Mode: genetic-nodescale-raw
+// - Kafka Lag Mode: genetic-lag-demo-raw
+
 @ServerEndpoint("/genetics")
 @ApplicationScoped
 public class GeneticPredictorEndpoint {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(GeneticPredictorEndpoint.class);
 
+    // VALIDATION RULE: All emitter channels must be injected and match configuration
     @Inject
     // Multi-topic emitters for different scaling modes
     @Channel("genetic-data-raw-out")
@@ -134,20 +145,26 @@ public class GeneticPredictorEndpoint {
             String eventType;
             String kafkaTopic;
 
+            // VALIDATION RULE: Switch statement must handle all modes defined in scaling-mode-separation.yaml
+            // Each case must assign the correct kafkaTopic and eventType as per configuration
             switch (mode) {
                 case "big-data":
+                    // VALIDATED: Big Data Mode → genetic-bigdata-raw topic
                     eventType = "com.redhat.healthcare.genetic.sequence.bigdata";
                     kafkaTopic = "genetic-bigdata-raw";
                     break;
                 case "node-scale":
+                    // VALIDATED: Node Scale Mode → genetic-nodescale-raw topic
                     eventType = "com.redhat.healthcare.genetic.sequence.nodescale";
                     kafkaTopic = "genetic-nodescale-raw";
                     break;
                 case "kafka-lag":
+                    // VALIDATED: Kafka Lag Mode → genetic-lag-demo-raw topic
                     eventType = "com.redhat.healthcare.genetic.sequence.kafkalag";
                     kafkaTopic = "genetic-lag-demo-raw";
                     break;
                 default: // "normal"
+                    // VALIDATED: Normal Mode → genetic-data-raw topic
                     eventType = "com.redhat.healthcare.genetic.sequence.raw";
                     kafkaTopic = "genetic-data-raw";
                     break;

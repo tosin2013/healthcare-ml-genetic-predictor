@@ -1,0 +1,152 @@
+# Healthcare ML CI/CD Pipeline Issue Templates
+
+name: 🐛 CI/CD Pipeline Bug Report
+description: Report a bug in the CI/CD pipeline
+title: "[CI/CD Bug]: "
+labels: ["bug", "ci-cd", "needs-triage"]
+assignees:
+  - platform-team
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for reporting a CI/CD pipeline issue! This helps us maintain the quality of our healthcare ML deployment process.
+
+  - type: dropdown
+    id: workflow
+    attributes:
+      label: Which workflow is affected?
+      description: Select the GitHub Actions workflow experiencing issues
+      options:
+        - ci-cd-pipeline.yml (Main CI/CD)
+        - threading-validation.yml (Threading Tests)
+        - ui-regression-test.yml (UI Tests)
+        - Other workflow
+    validations:
+      required: true
+
+  - type: dropdown
+    id: job
+    attributes:
+      label: Which job failed?
+      description: Select the specific job that's failing
+      options:
+        - code-quality
+        - threading-validation
+        - test-services
+        - build-applications
+        - build-images
+        - validate-k8s
+        - healthcare-compliance
+        - deploy-dev
+        - deploy-staging
+        - deploy-production
+        - notification
+        - Other job
+    validations:
+      required: true
+
+  - type: dropdown
+    id: service
+    attributes:
+      label: Which service is affected?
+      description: Select the service component
+      options:
+        - quarkus-websocket-service
+        - vep-service
+        - Both services
+        - Infrastructure/K8s
+        - General pipeline
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug Description
+      description: Describe the issue you're experiencing
+      placeholder: |
+        Example: The threading validation job is failing for the WebSocket service, reporting event loop blocking when @Blocking annotations are present.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to Reproduce
+      description: How can we reproduce this issue?
+      placeholder: |
+        1. Push changes to 'develop' branch
+        2. Wait for CI/CD pipeline to start
+        3. Observe failure in 'threading-validation' job
+        4. Check logs for error message
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: What should happen instead?
+      placeholder: Threading validation should pass when proper @Blocking annotations are used
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Error Logs
+      description: Paste relevant error logs or failure messages
+      render: shell
+      placeholder: |
+        Paste error logs here...
+    validations:
+      required: false
+
+  - type: input
+    id: run-id
+    attributes:
+      label: GitHub Actions Run ID
+      description: Provide the GitHub Actions run ID where the failure occurred
+      placeholder: "Example: 1234567890"
+    validations:
+      required: false
+
+  - type: dropdown
+    id: frequency
+    attributes:
+      label: How often does this occur?
+      options:
+        - Always (100%)
+        - Often (75-99%)
+        - Sometimes (25-74%)
+        - Rarely (1-24%)
+        - First time
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Pre-submission Checklist
+      description: Please verify these items before submitting
+      options:
+        - label: I have checked if this issue already exists
+          required: true
+        - label: I have provided the GitHub Actions run ID (if available)
+          required: false
+        - label: I have included relevant error logs
+          required: false
+        - label: This is related to the healthcare ML genetic predictor project
+          required: true
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Context
+      description: Any other context about the problem
+      placeholder: |
+        - Related to specific Java version?
+        - Occurs only with certain dependency versions?
+        - Environment-specific issue (dev/staging/prod)?
+        - Related to threading patterns or Quarkus configuration?

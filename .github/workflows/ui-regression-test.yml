@@ -6,6 +6,8 @@ on:
     branches: [ main ]
     paths:
       - 'quarkus-websocket-service/**'
+      - 'vep-service/**'
+      - 'k8s/**'
       - 'scripts/**'
       - '.github/workflows/ui-regression-test.yml'
   
@@ -14,6 +16,8 @@ on:
     branches: [ main ]
     paths:
       - 'quarkus-websocket-service/**'
+      - 'vep-service/**'
+      - 'k8s/**'
       - 'scripts/**'
       - '.github/workflows/ui-regression-test.yml'
   
@@ -56,6 +60,12 @@ jobs:
     - name: Install dependencies
       run: |
         npm install ws
+        
+    - name: Validate Separation of Concerns (Pre-Test)
+      run: |
+        echo "🛡️ Validating separation of concerns before UI testing..."
+        chmod +x scripts/validate-separation-of-concerns.sh
+        ./scripts/validate-separation-of-concerns.sh
         
     - name: Set test configuration
       id: config
