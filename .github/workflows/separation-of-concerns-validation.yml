@@ -47,13 +47,16 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: ${{ env.NODE_VERSION }}
-        cache: 'npm'
-        cache-dependency-path: 'package*.json'
+        # Remove npm caching since we don't have package.json at root
+        # We'll install dependencies directly instead
     
     - name: Install dependencies
       run: |
-        # Install js-yaml for configuration parsing
-        npm install js-yaml
+        # Install js-yaml for configuration parsing (global install to avoid package.json issues)
+        npm install -g js-yaml
+        
+        # Verify js-yaml is available
+        node -e "console.log('js-yaml version:', require('js-yaml/package.json').version)"
         
         # Make validation script executable
         chmod +x scripts/validate-scaling-separation.js
