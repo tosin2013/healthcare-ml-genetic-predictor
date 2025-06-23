@@ -93,11 +93,17 @@ start_vep_service() {
 # Local testing configuration
 quarkus.http.port=$VEP_PORT
 
-# Use in-memory messaging for local testing
-mp.messaging.incoming.genetic-data-raw.connector=smallrye-in-memory
-mp.messaging.incoming.genetic-bigdata-raw.connector=smallrye-in-memory
-mp.messaging.incoming.genetic-nodescale-raw.connector=smallrye-in-memory
-mp.messaging.outgoing.genetic-data-annotated.connector=smallrye-in-memory
+# Local testing configuration - Mock scaling modes
+# Override Kafka bootstrap servers to use localhost for local testing
+kafka.bootstrap.servers=localhost:9092
+
+# Enable local mock mode for scaling demonstrations
+healthcare.ml.local.mock.enabled=true
+healthcare.ml.local.mock.node-scale.enabled=true
+healthcare.ml.local.mock.kafka-lag.enabled=true
+
+# Disable Kafka dev services for local testing
+quarkus.kafka.devservices.enabled=false
 
 # VEP API configuration (real Ensembl API)
 quarkus.rest-client.vep-api.url=https://rest.ensembl.org
@@ -142,11 +148,21 @@ start_websocket_service() {
 # Local testing configuration
 quarkus.http.port=$WEBSOCKET_PORT
 
-# Use in-memory messaging for local testing
-mp.messaging.outgoing.genetic-data-raw-out.connector=smallrye-in-memory
-mp.messaging.outgoing.genetic-bigdata-raw-out.connector=smallrye-in-memory
-mp.messaging.outgoing.genetic-nodescale-raw-out.connector=smallrye-in-memory
-mp.messaging.incoming.genetic-data-annotated-in.connector=smallrye-in-memory
+# Local testing configuration - Mock scaling modes
+# Override Kafka bootstrap servers to use localhost for local testing
+kafka.bootstrap.servers=localhost:9092
+
+# Enable local mock mode for scaling demonstrations
+healthcare.ml.local.mock.enabled=true
+healthcare.ml.local.mock.node-scale.enabled=true
+healthcare.ml.local.mock.kafka-lag.enabled=true
+
+# Feature flags for development phases
+healthcare.ml.features.kafka-lag-mode.enabled=true
+healthcare.ml.features.multi-dimensional-autoscaler.enabled=false
+
+# Disable Kafka dev services for local testing
+quarkus.kafka.devservices.enabled=false
 
 # Enhanced logging
 quarkus.log.category."com.redhat.healthcare".level=DEBUG

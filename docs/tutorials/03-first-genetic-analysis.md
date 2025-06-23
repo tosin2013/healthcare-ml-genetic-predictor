@@ -106,7 +106,7 @@ Expected VEP analysis results include:
 
 ````bash
 # Test normal mode with 20bp sequence
-node scripts/test-websocket-client.js normal "ATCGATCGATCGATCGATCG" 120
+node scripts/test-websocket-client.js normal --generate 50
 ````
 
 

@@ -49,23 +49,26 @@ spec:
           value: "nodescale"
         - name: JAVA_OPTS
           value: "-Xmx2g -Xms2g -XX:+UseG1GC -XX:MaxGCPauseMillis=200"
-        # Disable other topic consumers to focus only on genetic-nodescale-raw
-        # This ensures Node Scale Mode only processes its dedicated topic
+        # Configure ONLY genetic-nodescale-raw topic consumption
+        # This implements the original multi-topic architecture design
+        # Disable all other topic consumers completely
         - name: MP_MESSAGING_INCOMING_GENETIC_DATA_RAW_CONNECTOR
-          value: "smallrye-in-memory"
+          value: "disabled"
         - name: MP_MESSAGING_INCOMING_GENETIC_BIGDATA_RAW_CONNECTOR
-          value: "smallrye-in-memory"
+          value: "disabled"
         - name: MP_MESSAGING_INCOMING_GENETIC_LAG_DEMO_RAW_CONNECTOR
-          value: "smallrye-in-memory"
+          value: "disabled"
 
         # High resource requests to force cluster autoscaler activation
+        # Adjusted to fit within compute-intensive node capacity (7860m CPU available)
+        # Leaving headroom for system pods and other workloads
         resources:
           requests:
             memory: "16Gi"     # 16GB memory request per pod - forces node scaling
-            cpu: "8000m"       # 8 CPU cores - exceeds standard node capacity
+            cpu: "7000m"       # 7 CPU cores - fits comfortably within node capacity
           limits:
             memory: "20Gi"     # 20GB memory limit per pod
-            cpu: "10000m"      # 10 CPU cores per pod
+            cpu: "8000m"       # 8 CPU cores per pod
         
         # Health checks
         livenessProbe:

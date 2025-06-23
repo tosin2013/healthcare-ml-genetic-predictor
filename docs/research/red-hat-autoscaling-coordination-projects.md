@@ -1,4 +1,4 @@
-# Red Hat-Supported Open Source Projects for Kubernetes Autoscaling Coordination and HPA Conflict Resolution
+https://github.com/tosin2013/openshift-github-actions/blob/953095754176d341e515492efb77ddb91bd39b9c/.vscode/mcp.json?plain=1#L10# Red Hat-Supported Open Source Projects for Kubernetes Autoscaling Coordination and HPA Conflict Resolution
 
 **Research Date**: June 20, 2025  
 **Context**: Healthcare ML system experiencing HPA selector conflicts preventing proper Kafka lag scaling demonstration  

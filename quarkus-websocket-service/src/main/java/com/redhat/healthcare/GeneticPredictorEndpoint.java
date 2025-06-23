@@ -202,9 +202,14 @@ public class GeneticPredictorEndpoint {
                                     geneticSequence.length(), kafkaTopic));
                     break;
                 case "kafka-lag":
+                    // ADR-008: Multi-dimensional Pod Autoscaler (AEP-5342) - Development Phase
                     session.getAsyncRemote().sendText(
                         String.format("🔄 Kafka lag sequence (%d chars) queued for consumer lag demonstration → %s",
                                     geneticSequence.length(), kafkaTopic));
+                    session.getAsyncRemote().sendText(
+                        "⚠️ DEVELOPMENT PHASE: Kafka Lag Mode uses basic KEDA scaling (may have HPA conflicts)");
+                    session.getAsyncRemote().sendText(
+                        "🚧 Future: Multi-dimensional Pod Autoscaler (AEP-5342) will resolve coordination issues");
                     break;
                 default: // "normal"
                     session.getAsyncRemote().sendText(

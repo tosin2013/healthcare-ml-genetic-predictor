@@ -18,6 +18,7 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import org.eclipse.microprofile.reactive.messaging.Channel;
 import org.eclipse.microprofile.reactive.messaging.Emitter;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -69,6 +70,13 @@ public class ScalingTestController {
 
     @Inject
     ResourcePressureController resourcePressureController;
+
+    // Feature flags for development phases (ADR-008)
+    @ConfigProperty(name = "healthcare.ml.features.kafka-lag-mode.enabled", defaultValue = "true")
+    boolean kafkaLagModeEnabled;
+
+    @ConfigProperty(name = "healthcare.ml.features.multi-dimensional-autoscaler.enabled", defaultValue = "false")
+    boolean multiDimensionalAutoscalerEnabled;
     
     // Current scaling mode (shared state for API consistency)
     private volatile String currentMode = "normal";
@@ -93,7 +101,15 @@ public class ScalingTestController {
             } else if (request.isNodeScaleMode()) {
                 modeMessage = "⚡ Node Scale Mode activated - cluster autoscaler demonstration";
             } else if (request.isKafkaLagMode()) {
+                if (!kafkaLagModeEnabled) {
+                    return Response.status(Response.Status.BAD_REQUEST)
+                        .entity(ApiResponse.error("Kafka Lag Mode is disabled via feature flag"))
+                        .build();
+                }
                 modeMessage = "🔄 Kafka Lag Mode activated - consumer lag scaling demonstration";
+                if (!multiDimensionalAutoscalerEnabled) {
+                    modeMessage += " (Development Phase - ADR-008)";
+                }
             } else {
                 modeMessage = "📊 Normal Mode activated - standard pod scaling demonstration";
             }
