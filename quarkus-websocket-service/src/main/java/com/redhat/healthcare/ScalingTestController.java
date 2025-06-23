@@ -54,16 +54,16 @@ public class ScalingTestController {
     @Inject
     // Multi-topic emitters for different scaling modes (same as WebSocket implementation)
     @Channel("genetic-data-raw-out")
-    Emitter<String> geneticDataEmitter;
+    Emitter<String> geneticDataRawOutEmitter;
 
     @Channel("genetic-bigdata-raw-out")
-    Emitter<String> geneticBigDataEmitter;
+    Emitter<String> geneticBigdataRawOutEmitter;
 
     @Channel("genetic-nodescale-raw-out")
-    Emitter<String> geneticNodeScaleEmitter;
+    Emitter<String> geneticNodescaleRawOutEmitter;
 
     @Channel("genetic-lag-demo-raw-out")
-    Emitter<String> geneticLagDemoEmitter;
+    Emitter<String> geneticLagDemoRawOutEmitter;
     
     @Inject
     ObjectMapper objectMapper;
@@ -227,17 +227,17 @@ public class ScalingTestController {
             switch (processingMode) {
                 case "bigdata":
                 case "big-data":
-                    geneticBigDataEmitter.send(cloudEventJson);
+                    geneticBigdataRawOutEmitter.send(cloudEventJson);
                     break;
                 case "node-scale":
                 case "nodescale":
-                    geneticNodeScaleEmitter.send(cloudEventJson);
+                    geneticNodescaleRawOutEmitter.send(cloudEventJson);
                     break;
                 case "kafka-lag":
-                    geneticLagDemoEmitter.send(cloudEventJson);
+                    geneticLagDemoRawOutEmitter.send(cloudEventJson);
                     break;
                 default: // "normal"
-                    geneticDataEmitter.send(cloudEventJson);
+                    geneticDataRawOutEmitter.send(cloudEventJson);
                     break;
             }
 
@@ -548,18 +548,18 @@ public class ScalingTestController {
             switch (request.getMode()) {
                 case "bigdata":
                 case "big-data":
-                    geneticBigDataEmitter.send(cloudEventJson);
+                    geneticBigdataRawOutEmitter.send(cloudEventJson);
                     break;
                 case "node-scale":
                 case "nodescale":
-                    geneticNodeScaleEmitter.send(cloudEventJson);
+                    geneticNodescaleRawOutEmitter.send(cloudEventJson);
                     break;
                 case "kafka-lag":
                     // Send to kafka-lag topic for consumer lag demonstration
-                    geneticLagDemoEmitter.send(cloudEventJson);
+                    geneticLagDemoRawOutEmitter.send(cloudEventJson);
                     break;
                 default: // "normal"
-                    geneticDataEmitter.send(cloudEventJson);
+                    geneticDataRawOutEmitter.send(cloudEventJson);
                     break;
             }
 

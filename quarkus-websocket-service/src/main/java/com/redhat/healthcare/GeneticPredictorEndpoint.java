@@ -47,16 +47,16 @@ public class GeneticPredictorEndpoint {
     @Inject
     // Multi-topic emitters for different scaling modes
     @Channel("genetic-data-raw-out")
-    Emitter<String> geneticDataEmitter;
+    Emitter<String> geneticDataRawOutEmitter;
 
     @Channel("genetic-bigdata-raw-out")
-    Emitter<String> geneticBigDataEmitter;
+    Emitter<String> geneticBigdataRawOutEmitter;
 
     @Channel("genetic-nodescale-raw-out")
-    Emitter<String> geneticNodeScaleEmitter;
+    Emitter<String> geneticNodescaleRawOutEmitter;
 
     @Channel("genetic-lag-demo-raw-out")
-    Emitter<String> geneticLagDemoEmitter;
+    Emitter<String> geneticLagDemoRawOutEmitter;
 
     @Inject
     ObjectMapper objectMapper;
@@ -163,8 +163,13 @@ public class GeneticPredictorEndpoint {
                     eventType = "com.redhat.healthcare.genetic.sequence.kafkalag";
                     kafkaTopic = "genetic-lag-demo-raw";
                     break;
-                default: // "normal"
+                case "normal":
                     // VALIDATED: Normal Mode → genetic-data-raw topic
+                    eventType = "com.redhat.healthcare.genetic.sequence.raw";
+                    kafkaTopic = "genetic-data-raw";
+                    break;
+                default:
+                    // Default to normal mode for backward compatibility
                     eventType = "com.redhat.healthcare.genetic.sequence.raw";
                     kafkaTopic = "genetic-data-raw";
                     break;
@@ -191,16 +196,20 @@ public class GeneticPredictorEndpoint {
             // Send to appropriate topic based on mode
             switch (mode) {
                 case "big-data":
-                    geneticBigDataEmitter.send(cloudEventJson);
+                    geneticBigdataRawOutEmitter.send(cloudEventJson);
                     break;
                 case "node-scale":
-                    geneticNodeScaleEmitter.send(cloudEventJson);
+                    geneticNodescaleRawOutEmitter.send(cloudEventJson);
                     break;
                 case "kafka-lag":
-                    geneticLagDemoEmitter.send(cloudEventJson);
+                    geneticLagDemoRawOutEmitter.send(cloudEventJson);
                     break;
-                default: // "normal"
-                    geneticDataEmitter.send(cloudEventJson);
+                case "normal":
+                    geneticDataRawOutEmitter.send(cloudEventJson);
+                    break;
+                default:
+                    // Default to normal mode for backward compatibility
+                    geneticDataRawOutEmitter.send(cloudEventJson);
                     break;
             }
 
@@ -228,7 +237,13 @@ public class GeneticPredictorEndpoint {
                     session.getAsyncRemote().sendText(
                         "🚧 Future: Multi-dimensional Pod Autoscaler (AEP-5342) will resolve coordination issues");
                     break;
-                default: // "normal"
+                case "normal":
+                    session.getAsyncRemote().sendText(
+                        String.format("🧬 Genetic sequence (%d chars) queued for VEP annotation and ML analysis → %s",
+                                    geneticSequence.length(), kafkaTopic));
+                    break;
+                default:
+                    // Default to normal mode for backward compatibility
                     session.getAsyncRemote().sendText(
                         String.format("🧬 Genetic sequence (%d chars) queued for VEP annotation and ML analysis → %s",
                                     geneticSequence.length(), kafkaTopic));
