@@ -61,11 +61,13 @@ jobs:
       run: |
         echo "🔨 Compiling WebSocket Service..."
         cd quarkus-websocket-service
-        ./mvnw clean compile test-compile -B -q
+        # Use more verbose output to debug compilation issues
+        ./mvnw clean compile test-compile -B
 
         echo "🔨 Compiling VEP Service..."
         cd ../vep-service
-        ./mvnw clean compile test-compile -B -q
+        # Use more verbose output to debug compilation issues
+        ./mvnw clean compile test-compile -B
         
     - name: Run Threading Validation Tests
       id: threading-tests
@@ -75,36 +77,62 @@ jobs:
         # Initialize combined test output
         echo "=== WebSocket Service Threading Tests ===" > threading-test-output.log
 
-        # Run WebSocket service tests
+        # Run WebSocket service tests with better error handling
         cd quarkus-websocket-service
         echo "🧵 Testing WebSocket Service..."
-        ./mvnw test -Dtest=ScalingTestControllerTest -B -q \
+        if ./mvnw test -Dtest=ScalingTestControllerTest -B \
           -Dquarkus.log.level=INFO \
           -Dquarkus.log.category."com.redhat.healthcare".level=DEBUG \
           -Dmaven.test.failure.ignore=false \
-          >> ../threading-test-output.log 2>&1
+          >> ../threading-test-output.log 2>&1; then
+          WEBSOCKET_EXIT_CODE=0
+          echo "✅ WebSocket Service tests passed"
+        else
+          WEBSOCKET_EXIT_CODE=$?
+          echo "❌ WebSocket Service tests failed (exit code: $WEBSOCKET_EXIT_CODE)"
+          echo "Last 20 lines of output:" >> ../threading-test-output.log
+          tail -20 ../threading-test-output.log
+        fi
 
-        WEBSOCKET_EXIT_CODE=$?
-
-        # Run VEP service tests
+        # Run VEP service tests with better error handling
         echo "" >> ../threading-test-output.log
         echo "=== VEP Service Threading Tests ===" >> ../threading-test-output.log
         cd ../vep-service
         echo "🧬 Testing VEP Service..."
-        ./mvnw test -B -q \
+        if ./mvnw test -B \
           -Dquarkus.log.level=INFO \
           -Dquarkus.log.category."com.redhat.healthcare".level=DEBUG \
           -Dmaven.test.failure.ignore=false \
-          >> ../threading-test-output.log 2>&1
-
-        VEP_EXIT_CODE=$?
+          >> ../threading-test-output.log 2>&1; then
+          VEP_EXIT_CODE=0
+          echo "✅ VEP Service tests passed"
+        else
+          VEP_EXIT_CODE=$?
+          echo "❌ VEP Service tests failed (exit code: $VEP_EXIT_CODE)"
+          echo "Last 20 lines of output:" >> ../threading-test-output.log
+          tail -20 ../threading-test-output.log
+        fi
 
         # Move back to root and determine overall result
         cd ..
         if [ $WEBSOCKET_EXIT_CODE -eq 0 ] && [ $VEP_EXIT_CODE -eq 0 ]; then
           TEST_EXIT_CODE=0
+          echo "✅ All tests passed successfully"
         else
           TEST_EXIT_CODE=1
+          echo "❌ Some tests failed"
+
+          # Check if this is a compilation/setup issue vs actual test failure
+          if grep -q "BUILD FAILURE" threading-test-output.log; then
+            echo "⚠️  Build failure detected - may be environment issue, not threading issue"
+            echo "Checking for specific threading violations..."
+
+            # If no threading violations found, treat as environment issue
+            if ! grep -q "event.*loop.*block\|blocking.*detected" threading-test-output.log; then
+              echo "ℹ️  No threading violations detected in logs"
+              echo "This appears to be a build/environment issue, not a threading problem"
+            fi
+          fi
         fi
 
         echo "WebSocket Service Tests: Exit Code $WEBSOCKET_EXIT_CODE"
@@ -266,6 +294,18 @@ jobs:
 
         if [ "$TEST_EXIT_CODE" -ne 0 ]; then
           echo "❌ FAIL: Threading tests failed (exit code: $TEST_EXIT_CODE)"
+
+          # Check if this is a build failure vs threading issue
+          if [ -f threading-test-output.log ]; then
+            if grep -q "BUILD FAILURE\|compilation failure\|Cannot resolve dependencies" threading-test-output.log; then
+              echo "⚠️  Build/compilation failure detected - not a threading issue"
+              echo "This may be a temporary environment issue"
+              echo "Threading validation cannot be performed due to build failure"
+              # Still exit 1 but with different messaging
+            else
+              echo "This appears to be a genuine test failure"
+            fi
+          fi
           exit 1
         fi
 
