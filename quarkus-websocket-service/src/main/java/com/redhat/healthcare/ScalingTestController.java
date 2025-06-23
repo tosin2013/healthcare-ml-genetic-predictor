@@ -66,6 +66,9 @@ public class ScalingTestController {
     
     @Inject
     ObjectMapper objectMapper;
+
+    @Inject
+    ResourcePressureController resourcePressureController;
     
     // Current scaling mode (shared state for API consistency)
     private volatile String currentMode = "normal";
@@ -284,16 +287,22 @@ public class ScalingTestController {
                 if (request.isKafkaLagDemo()) {
                     analysisRequest.setMode("kafka-lag");
                     analysisRequest.setResourceProfile("standard");
+                    // Process the sequence (reuse the analyze logic)
+                    processSequenceForDemo(analysisRequest, i + 1, sequenceCount);
                 } else if (request.isNodeScalingDemo()) {
-                    analysisRequest.setMode("node-scale");
-                    analysisRequest.setResourceProfile("cluster-scale");
+                    // Node Scale Mode: Use resource pressure instead of Kafka messages
+                    LOGGER.info("Node Scale Mode: Triggering resource pressure workload instead of Kafka messages");
+                    Response resourceResponse = resourcePressureController.triggerResourcePressure(8); // 8 minutes
+                    if (resourceResponse.getStatus() != 200) {
+                        LOGGER.warn("Failed to trigger resource pressure for node scaling: {}", resourceResponse.getEntity());
+                    }
+                    break; // Exit loop - resource pressure handles the scaling, not individual messages
                 } else {
                     analysisRequest.setMode("bigdata");
                     analysisRequest.setResourceProfile("high-memory");
+                    // Process the sequence (reuse the analyze logic)
+                    processSequenceForDemo(analysisRequest, i + 1, sequenceCount);
                 }
-
-                // Process the sequence (reuse the analyze logic)
-                processSequenceForDemo(analysisRequest, i + 1, sequenceCount);
 
                 // Add delay between sequences to simulate realistic load
                 if (i < sequenceCount - 1) {
@@ -315,13 +324,19 @@ public class ScalingTestController {
             responseData.put("totalDataSize", String.format("%.1f MB", (sequenceSize * sequenceCount) / (1024.0 * 1024.0)));
             responseData.put("demoSessionId", demoSessionId);
 
-            String expectedScaling = request.isNodeScalingDemo() ?
-                "1→10+ pods, 6→7+ nodes" : "1→5+ pods";
+            String expectedScaling;
+            String successMessage;
 
-            ApiResponse<Map<String, Object>> response = ApiResponse.success(
-                String.format("⚡ %s demo triggered with %d sequences (%s each)",
-                             request.getDemoType(), sequenceCount, request.getSequenceSize()),
-                responseData)
+            if (request.isNodeScalingDemo()) {
+                expectedScaling = "Resource pressure → HPA scaling → Cluster autoscaler → New nodes";
+                successMessage = "⚡ node-scaling demo triggered with resource pressure workload";
+            } else {
+                expectedScaling = "1→5+ pods";
+                successMessage = String.format("⚡ %s demo triggered with %d sequences (%s each)",
+                                              request.getDemoType(), sequenceCount, request.getSequenceSize());
+            }
+
+            ApiResponse<Map<String, Object>> response = ApiResponse.success(successMessage, responseData)
                 .addMetadata("expectedScaling", expectedScaling)
                 .addMetadata("estimatedDuration", "2-5 minutes");
 

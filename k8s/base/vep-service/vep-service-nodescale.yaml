@@ -16,7 +16,7 @@ metadata:
     insights.openshift.io/cost-center: genomics-research
     insights.openshift.io/project: vep-nodescale-v1
 spec:
-  replicas: 0  # Start at 0, KEDA will scale up
+  replicas: 0  # Start at 0, resource pressure HPA will scale up
   selector:
     matchLabels:
       app: vep-service-nodescale
@@ -39,6 +39,8 @@ spec:
           name: http
           protocol: TCP
         env:
+        # Node Scale Mode: Process messages from genetic-nodescale-raw topic
+        # Scaling triggered by CPU/memory pressure, NOT Kafka lag
         - name: KAFKA_BOOTSTRAP_SERVERS
           value: "genetic-data-cluster-kafka-bootstrap.healthcare-ml-demo.svc.cluster.local:9092"
         - name: QUARKUS_PROFILE
@@ -47,15 +49,23 @@ spec:
           value: "nodescale"
         - name: JAVA_OPTS
           value: "-Xmx2g -Xms2g -XX:+UseG1GC -XX:MaxGCPauseMillis=200"
+        # Disable other topic consumers to focus only on genetic-nodescale-raw
+        # This ensures Node Scale Mode only processes its dedicated topic
+        - name: MP_MESSAGING_INCOMING_GENETIC_DATA_RAW_CONNECTOR
+          value: "smallrye-in-memory"
+        - name: MP_MESSAGING_INCOMING_GENETIC_BIGDATA_RAW_CONNECTOR
+          value: "smallrye-in-memory"
+        - name: MP_MESSAGING_INCOMING_GENETIC_LAG_DEMO_RAW_CONNECTOR
+          value: "smallrye-in-memory"
 
-        # Optimized resource requests to trigger compute-intensive node scaling
+        # High resource requests to force cluster autoscaler activation
         resources:
           requests:
-            memory: "3Gi"      # 3GB memory request per pod
-            cpu: "5000m"       # 5 CPU cores - exceeds smallest standard node capacity
+            memory: "16Gi"     # 16GB memory request per pod - forces node scaling
+            cpu: "8000m"       # 8 CPU cores - exceeds standard node capacity
           limits:
-            memory: "4Gi"      # 4GB memory limit per pod
-            cpu: "6000m"       # 6 CPU cores per pod
+            memory: "20Gi"     # 20GB memory limit per pod
+            cpu: "10000m"      # 10 CPU cores per pod
         
         # Health checks
         livenessProbe:
@@ -132,63 +142,29 @@ spec:
         effect: "NoExecute"
         tolerationSeconds: 300
 
----
-apiVersion: keda.sh/v1alpha1
-kind: ScaledObject
-metadata:
-  name: vep-service-nodescale-scaler
-  labels:
-    app: vep-service-nodescale
-    component: vep-processor
-    scaling-mode: nodescale
-  annotations:
-    description: "KEDA scaler for node-scale VEP processing with aggressive scaling"
-spec:
-  scaleTargetRef:
-    apiVersion: apps/v1
-    kind: Deployment
-    name: vep-service-nodescale
-  pollingInterval: 5   # Very aggressive polling
-  cooldownPeriod: 300  # 5 minutes cooldown to allow VEP processing to complete
-  idleReplicaCount: 0  # Scale to zero when idle
-  minReplicaCount: 0
-  maxReplicaCount: 20  # High max to force node scaling (20 pods * 5 CPU = 100 cores)
-  fallback:
-    failureThreshold: 3
-    replicas: 2
-  advanced:
-    restoreToOriginalReplicaCount: false
-    horizontalPodAutoscalerConfig:
-      name: vep-service-nodescale-hpa
-      behavior:
-        scaleDown:
-          stabilizationWindowSeconds: 300  # 5 minutes stabilization
-          policies:
-          - type: Percent
-            value: 25
-            periodSeconds: 60  # Slower scale-down
-        scaleUp:
-          stabilizationWindowSeconds: 0    # Immediate scale up
-          policies:
-          - type: Percent
-            value: 1000  # 1000% increase = 10x scaling
-            periodSeconds: 5
-          - type: Pods
-            value: 10    # Add 10 pods at once (10 * 5 CPU = 50 cores)
-            periodSeconds: 5
-          selectPolicy: Max
-  triggers:
-  # Primary trigger: Kafka topic lag for genetic-nodescale-raw
-  - type: kafka
-    metadata:
-      bootstrapServers: genetic-data-cluster-kafka-bootstrap.healthcare-ml-demo.svc.cluster.local:9092
-      consumerGroup: vep-nodescale-service-group
-      topic: genetic-nodescale-raw
-      lagThreshold: '1'  # Scale immediately on any lag
-      offsetResetPolicy: latest
-      allowIdleConsumers: 'false'
-      scaleToZeroOnInvalidOffset: 'true'
-      excludePersistentLag: 'false'
+# KEDA ScaledObject REMOVED for Node Scale Mode
+#
+# Architectural Separation: Node Scale Mode vs Kafka Lag Mode
+# =========================================================
+#
+# Node Scale Mode (this service):
+# - Processes messages from genetic-nodescale-raw topic
+# - Scaling triggered by CPU/Memory pressure from processing large messages
+# - Uses resource-pressure based HPA (CPU/Memory metrics)
+# - High resource requirements force cluster autoscaler to provision new nodes
+# - Demonstrates cluster-level scaling (node provisioning)
+#
+# Kafka Lag Mode (separate service):
+# - Processes messages from genetic-lag-demo-raw topic
+# - Scaling triggered by Kafka consumer lag (KEDA)
+# - Demonstrates pod-level scaling based on message queue backlog
+#
+# This separation eliminates confusion and provides clear demonstrations:
+# - Node Scale Mode: "Resource pressure → Cluster autoscaler → New nodes"
+# - Kafka Lag Mode: "Consumer lag → KEDA HPA → More pods"
+#
+# Future consideration: Multi-dimensional Pod Autoscaler (AEP-5342) when available
+# from Red Hat for advanced autoscaling coordination capabilities.
 
 ---
 apiVersion: v1
