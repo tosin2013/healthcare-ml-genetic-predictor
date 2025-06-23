@@ -52,12 +52,15 @@ jobs:
     
     - name: Install dependencies
       run: |
-        # Install js-yaml for configuration parsing (global install to avoid package.json issues)
-        npm install -g js-yaml
-        
+        # Create temporary package.json for js-yaml dependency
+        echo '{"name": "healthcare-ml-validation", "version": "1.0.0", "dependencies": {"js-yaml": "^4.1.0"}}' > package.json
+
+        # Install js-yaml locally
+        npm install
+
         # Verify js-yaml is available by testing its functionality
         node -e "const yaml = require('js-yaml'); console.log('✅ js-yaml loaded successfully'); console.log('Testing YAML parsing...'); console.log(yaml.load('test: true'));"
-        
+
         # Make validation script executable
         chmod +x scripts/validate-scaling-separation.js
     
