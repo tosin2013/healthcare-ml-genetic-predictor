@@ -13,6 +13,9 @@ import org.junit.jupiter.api.Test;
 import jakarta.annotation.Priority;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Alternative;
+import jakarta.inject.Inject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Map;
 import java.util.Set;
@@ -44,36 +47,33 @@ import java.util.Map;
 @TestProfile(ScalingTestControllerTest.TestProfileWithoutKafka.class)
 public class ScalingTestControllerTest {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(ScalingTestControllerTest.class);
+
+    @Inject
+    ScalingTestController scalingTestController;
+
     /**
-     * Test profile that disables Kafka and uses in-memory connectors for isolated testing
+     * Minimal test profile that only disables Kafka dev services
+     * This should allow REST endpoints to be discovered properly
      */
     public static class TestProfileWithoutKafka implements QuarkusTestProfile {
         @Override
         public Map<String, String> getConfigOverrides() {
             Map<String, String> config = new HashMap<>();
 
-            // Disable Kafka dev services
+            // Only disable Kafka dev services - let everything else work normally
             config.put("quarkus.kafka.devservices.enabled", "false");
 
-            // Override all outgoing channels to use in-memory connectors
+            // Use in-memory connectors for messaging (minimal configuration)
             config.put("mp.messaging.outgoing.genetic-data-raw-out.connector", "smallrye-in-memory");
             config.put("mp.messaging.outgoing.genetic-bigdata-raw-out.connector", "smallrye-in-memory");
             config.put("mp.messaging.outgoing.genetic-nodescale-raw-out.connector", "smallrye-in-memory");
             config.put("mp.messaging.outgoing.genetic-lag-demo-raw-out.connector", "smallrye-in-memory");
-
-            // Override incoming channel to use in-memory connector
             config.put("mp.messaging.incoming.genetic-data-annotated-in.connector", "smallrye-in-memory");
-
-            // Disable health checks that might depend on Kafka
-            config.put("quarkus.smallrye-health.check.\"io.smallrye.reactive.messaging.kafka.health.KafkaHealthCheck\".enabled", "false");
 
             // Enable feature flags for testing
             config.put("healthcare.ml.features.kafka-lag-mode.enabled", "true");
             config.put("healthcare.ml.features.multi-dimensional-autoscaler.enabled", "false");
-
-            // Ensure REST endpoints are enabled
-            config.put("quarkus.resteasy-reactive.path", "/");
-            config.put("quarkus.http.root-path", "/");
 
             return config;
         }
@@ -191,6 +191,27 @@ public class ScalingTestControllerTest {
     // Basic Test Infrastructure
 
     @Test
+    public void testCDIBeanDiscovery() {
+        // Test if ScalingTestController is being discovered as a CDI bean
+        LOGGER.info("Testing CDI bean discovery for ScalingTestController");
+
+        assertNotNull(scalingTestController, "ScalingTestController should be injected via CDI");
+        LOGGER.info("✅ ScalingTestController CDI bean discovered successfully");
+
+        // If CDI works, the REST endpoints should also work
+        // Test the health endpoint directly
+        given()
+            .when().get("/api/scaling/health")
+            .then()
+            .statusCode(200)
+            .contentType(ContentType.JSON)
+            .body("status", equalTo("success"))
+            .body("data.application", equalTo("ready"));
+
+        LOGGER.info("✅ REST endpoint /api/scaling/health working correctly");
+    }
+
+    @Test
     public void testTestConfigurationLoaded() {
         // Verify that test configuration is properly loaded
         // This test ensures our test setup is working correctly
@@ -201,7 +222,9 @@ public class ScalingTestControllerTest {
             .then()
             .statusCode(200);
 
-        // Then test our custom health endpoint
+        LOGGER.info("✅ Quarkus health endpoint working");
+
+        // Test our custom health endpoint
         given()
             .when().get("/api/scaling/health")
             .then()
@@ -209,6 +232,8 @@ public class ScalingTestControllerTest {
             .contentType(ContentType.JSON)
             .body("status", equalTo("success"))
             .body("data.application", equalTo("ready"));
+
+        LOGGER.info("✅ Custom health endpoint working");
     }
 
     // Genetic Analysis Endpoint Threading Tests
