@@ -31,19 +31,21 @@ import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * REST API Controller for Scaling Mode Testing and Validation.
- * 
+ *
  * Provides programmatic access to scaling functionality for automated testing,
  * CI/CD integration, and demo execution. Mirrors the functionality of the
  * genetic-client.html interface for consistent behavior.
- * 
+ *
  * Endpoints:
- * - POST /api/scaling/mode - Set scaling mode (normal/bigdata)
- * - POST /api/genetic/analyze - Process genetic sequences
- * - POST /api/scaling/trigger-demo - Trigger node scaling demo
- * - GET /api/scaling/status/{trackingId} - Monitor scaling status
- * - GET /api/scaling/health - Health check
+ * - POST /api/test/scaling/mode - Set scaling mode (normal/bigdata)
+ * - POST /api/test/genetic/analyze - Process genetic sequences
+ * - POST /api/test/scaling/trigger-demo - Trigger node scaling demo
+ * - GET /api/test/scaling/status/{trackingId} - Monitor scaling status
+ * - GET /api/test/scaling/health - Health check
+ *
+ * Note: Uses /api/test prefix to avoid conflicts with ResourcePressureController (/api/scaling)
  */
-@Path("/api")
+@Path("/api/test")
 @ApplicationScoped
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)

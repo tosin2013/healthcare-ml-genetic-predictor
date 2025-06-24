@@ -199,16 +199,16 @@ public class ScalingTestControllerTest {
         LOGGER.info("✅ ScalingTestController CDI bean discovered successfully");
 
         // If CDI works, the REST endpoints should also work
-        // Test the health endpoint directly
+        // Test the health endpoint directly (updated path to avoid conflicts)
         given()
-            .when().get("/api/scaling/health")
+            .when().get("/api/test/scaling/health")
             .then()
             .statusCode(200)
             .contentType(ContentType.JSON)
             .body("status", equalTo("success"))
             .body("data.application", equalTo("ready"));
 
-        LOGGER.info("✅ REST endpoint /api/scaling/health working correctly");
+        LOGGER.info("✅ REST endpoint /api/test/scaling/health working correctly");
     }
 
     @Test
@@ -224,9 +224,9 @@ public class ScalingTestControllerTest {
 
         LOGGER.info("✅ Quarkus health endpoint working");
 
-        // Test our custom health endpoint
+        // Test our custom health endpoint (updated path)
         given()
-            .when().get("/api/scaling/health")
+            .when().get("/api/test/scaling/health")
             .then()
             .statusCode(200)
             .contentType(ContentType.JSON)
