@@ -1,0 +1,120 @@
+---
+# Normal Mode VEP Service Deployment
+# SEPARATION OF CONCERNS: Dedicated to NORMAL scaling mode only
+# - UI Button: #normalModeBtn → setNormalMode()
+# - Kafka Topic: genetic-data-raw (exclusive)
+# - KEDA ScaledObject: vep-service-normal-scaler
+# - Consumer Group: vep-service-group (isolated)
+# - Purpose: Standard genetic sequence processing with pod scaling
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vep-service-normal
+  labels:
+    app: vep-service
+    mode: normal
+    component: vep-annotation
+    scaling-mode: normal
+    app.kubernetes.io/name: vep-annotation-service
+    app.kubernetes.io/component: genetic-processor
+    app.kubernetes.io/part-of: healthcare-ml-genetic-predictor
+    app.kubernetes.io/version: "1.0.0"
+    separation-of-concerns: "enforced"
+  annotations:
+    description: "Normal mode VEP service for standard genetic sequence processing"
+    separation-mode: "normal"
+    separation-rationale: "Dedicated to standard workloads with balanced resource usage"
+    insights.openshift.io/billing-model: "chargeback"
+    insights.openshift.io/cost-center: "genomics-research"
+    insights.openshift.io/project: "normal-mode-processing"
+spec:
+  replicas: 0  # Start at 0, KEDA will scale up when messages arrive
+  selector:
+    matchLabels:
+      app: vep-service
+      mode: normal
+  template:
+    metadata:
+      labels:
+        app: vep-service
+        mode: normal
+        component: vep-annotation
+        scaling-mode: normal
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: "/q/metrics"
+    spec:
+      containers:
+      - name: vep-service
+        image: image-registry.openshift-image-registry.svc:5000/healthcare-ml-demo/vep-service:latest
+        ports:
+        - containerPort: 8080
+          name: http
+          protocol: TCP
+        env:
+        - name: KAFKA_BOOTSTRAP_SERVERS
+          value: "genetic-data-cluster-kafka-bootstrap.healthcare-ml-demo.svc.cluster.local:9092"
+        - name: VEP_MODE
+          value: "normal"
+        - name: QUARKUS_PROFILE
+          value: "prod"
+        - name: SCALING_MODE
+          value: "normal"
+        # Standard resource allocation for normal workloads
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /q/health/live
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /q/health/ready
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+        startupProbe:
+          httpGet:
+            path: /q/health/ready
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 3
+          failureThreshold: 30
+
+---
+# Service for Normal Mode VEP
+apiVersion: v1
+kind: Service
+metadata:
+  name: vep-service-normal
+  labels:
+    app: vep-service
+    mode: normal
+    component: vep-annotation
+    scaling-mode: normal
+  annotations:
+    description: "Service for normal mode VEP processing"
+    separation-mode: "normal"
+spec:
+  selector:
+    app: vep-service
+    mode: normal
+  ports:
+  - name: http
+    port: 8080
+    targetPort: 8080
+    protocol: TCP
+  type: ClusterIP

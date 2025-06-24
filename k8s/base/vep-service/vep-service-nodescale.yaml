@@ -49,15 +49,9 @@ spec:
           value: "nodescale"
         - name: JAVA_OPTS
           value: "-Xmx2g -Xms2g -XX:+UseG1GC -XX:MaxGCPauseMillis=200"
-        # Configure ONLY genetic-nodescale-raw topic consumption
-        # This implements the original multi-topic architecture design
-        # Disable all other topic consumers completely
-        - name: MP_MESSAGING_INCOMING_GENETIC_DATA_RAW_CONNECTOR
-          value: "disabled"
-        - name: MP_MESSAGING_INCOMING_GENETIC_BIGDATA_RAW_CONNECTOR
-          value: "disabled"
-        - name: MP_MESSAGING_INCOMING_GENETIC_LAG_DEMO_RAW_CONNECTOR
-          value: "disabled"
+        # VEP service connects to all topics but only processes messages sent to genetic-nodescale-raw
+        # The WebSocket service routes messages to the correct topic based on scaling mode
+        # No need to disable other connectors - they will simply remain idle
 
         # High resource requests to force cluster autoscaler activation
         # Adjusted to fit within compute-intensive node capacity (7860m CPU available)
