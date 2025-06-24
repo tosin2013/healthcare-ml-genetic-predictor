@@ -411,14 +411,7 @@ jobs:
         for file in k8s/base/vep-service/*.yaml; do
           echo "Validating $file..."
           # Check YAML syntax (handle multi-document YAML files)
-          python3 -c "
-import yaml
-with open('$file', 'r') as f:
-    for doc in yaml.safe_load_all(f):
-        if doc is not None:
-            pass  # Document is valid
-print('YAML syntax valid')
-" || exit 1
+          python3 -c "import yaml; list(yaml.safe_load_all(open('$file'))); print('YAML syntax valid')" || exit 1
           # Simulate OpenShift dry-run (basic validation)
           if grep -q "kind: Deployment" "$file"; then
             echo "  ✅ Deployment manifest valid"
