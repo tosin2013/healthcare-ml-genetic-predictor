@@ -2,13 +2,20 @@ package com.redhat.healthcare;
 
 import com.redhat.healthcare.model.*;
 import io.quarkus.test.junit.QuarkusTest;
+import io.quarkus.test.junit.QuarkusTestProfile;
+import io.quarkus.test.junit.TestProfile;
 import io.restassured.RestAssured;
 import io.restassured.http.ContentType;
 import io.restassured.response.Response;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import jakarta.annotation.Priority;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.inject.Alternative;
+
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -21,11 +28,11 @@ import java.util.Map;
 
 /**
  * Comprehensive test class for ScalingTestController threading validation.
- * 
+ *
  * Tests validate that @Blocking annotations prevent event loop blocking,
  * REST endpoints respond correctly, and Kafka messaging works properly
  * in local test environment without external dependencies.
- * 
+ *
  * Key Testing Areas:
  * - @Blocking annotation effectiveness (thread validation)
  * - REST endpoint functionality and response validation
@@ -34,7 +41,68 @@ import java.util.Map;
  * - Thread safety and interruption handling
  */
 @QuarkusTest
+@TestProfile(ScalingTestControllerTest.TestProfileWithoutKafka.class)
 public class ScalingTestControllerTest {
+
+    /**
+     * Test profile that disables Kafka and uses in-memory connectors for isolated testing
+     */
+    public static class TestProfileWithoutKafka implements QuarkusTestProfile {
+        @Override
+        public Map<String, String> getConfigOverrides() {
+            Map<String, String> config = new HashMap<>();
+
+            // Disable Kafka dev services
+            config.put("quarkus.kafka.devservices.enabled", "false");
+
+            // Override all outgoing channels to use in-memory connectors
+            config.put("mp.messaging.outgoing.genetic-data-raw-out.connector", "smallrye-in-memory");
+            config.put("mp.messaging.outgoing.genetic-bigdata-raw-out.connector", "smallrye-in-memory");
+            config.put("mp.messaging.outgoing.genetic-nodescale-raw-out.connector", "smallrye-in-memory");
+            config.put("mp.messaging.outgoing.genetic-lag-demo-raw-out.connector", "smallrye-in-memory");
+
+            // Override incoming channel to use in-memory connector
+            config.put("mp.messaging.incoming.genetic-data-annotated-in.connector", "smallrye-in-memory");
+
+            // Disable health checks that might depend on Kafka
+            config.put("quarkus.smallrye-health.check.\"io.smallrye.reactive.messaging.kafka.health.KafkaHealthCheck\".enabled", "false");
+
+            // Enable feature flags for testing
+            config.put("healthcare.ml.features.kafka-lag-mode.enabled", "true");
+            config.put("healthcare.ml.features.multi-dimensional-autoscaler.enabled", "false");
+
+            // Ensure REST endpoints are enabled
+            config.put("quarkus.resteasy-reactive.path", "/");
+            config.put("quarkus.http.root-path", "/");
+
+            return config;
+        }
+
+        @Override
+        public Set<Class<?>> getEnabledAlternatives() {
+            return Set.of(MockResourcePressureController.class);
+        }
+    }
+
+    /**
+     * Mock implementation of ResourcePressureController for testing
+     */
+    @Alternative
+    @Priority(1)
+    @ApplicationScoped
+    public static class MockResourcePressureController extends ResourcePressureController {
+        @Override
+        public jakarta.ws.rs.core.Response triggerResourcePressure(int durationMinutes) {
+            Map<String, Object> responseData = new HashMap<>();
+            responseData.put("workloadActive", true);
+            responseData.put("durationMinutes", durationMinutes);
+            responseData.put("mock", true);
+
+            return jakarta.ws.rs.core.Response.ok(
+                ApiResponse.success("Mock resource pressure triggered", responseData)
+            ).build();
+        }
+    }
 
     // Thread capture utility for @Blocking validation
     private final Map<String, String> capturedThreadNames = new ConcurrentHashMap<>();
@@ -127,7 +195,13 @@ public class ScalingTestControllerTest {
         // Verify that test configuration is properly loaded
         // This test ensures our test setup is working correctly
 
-        // Verify test can make HTTP requests
+        // First test Quarkus health endpoint to ensure basic setup works
+        given()
+            .when().get("/q/health")
+            .then()
+            .statusCode(200);
+
+        // Then test our custom health endpoint
         given()
             .when().get("/api/scaling/health")
             .then()

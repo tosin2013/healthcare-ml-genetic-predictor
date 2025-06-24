@@ -111,14 +111,57 @@ podman-compose -f podman-compose.test.yml up -d
 print_status "Waiting for Kafka to be ready..."
 sleep 10
 
-# Create the required topics
-print_status "Creating Kafka topics..."
-podman exec test-kafka kafka-topics --create --topic genetic-data-raw --bootstrap-server localhost:9092 --partitions 3 --replication-factor 1
-podman exec test-kafka kafka-topics --create --topic genetic-data-annotated --bootstrap-server localhost:9092 --partitions 3 --replication-factor 1
+# Create the required topics for all 4 scaling modes (separation of concerns)
+print_status "Creating Kafka topics for all 4 scaling modes..."
 
-# Verify topics
-print_status "Verifying topics..."
-podman exec test-kafka kafka-topics --list --bootstrap-server localhost:9092
+# 4 Scaling Mode Topics (as per SEPARATION_VALIDATION_GUIDE.md)
+SCALING_TOPICS=(
+    "genetic-data-raw"           # Normal Mode
+    "genetic-bigdata-raw"        # Big Data Mode
+    "genetic-nodescale-raw"      # Node Scale Mode
+    "genetic-lag-demo-raw"       # Kafka Lag Mode
+)
+
+# VEP Processing Topics
+VEP_TOPICS=(
+    "genetic-data-annotated"     # VEP results
+)
+
+# Create scaling mode topics
+for topic in "${SCALING_TOPICS[@]}"; do
+    print_status "Creating topic: $topic"
+    if podman exec test-kafka kafka-topics --create --topic "$topic" --bootstrap-server localhost:9092 --partitions 3 --replication-factor 1; then
+        print_success "Created topic: $topic"
+    else
+        print_warning "Topic $topic may already exist"
+    fi
+done
+
+# Create VEP processing topics
+for topic in "${VEP_TOPICS[@]}"; do
+    print_status "Creating topic: $topic"
+    if podman exec test-kafka kafka-topics --create --topic "$topic" --bootstrap-server localhost:9092 --partitions 3 --replication-factor 1; then
+        print_success "Created topic: $topic"
+    else
+        print_warning "Topic $topic may already exist"
+    fi
+done
+
+# Verify all topics exist
+print_status "Verifying all topics exist..."
+TOPIC_LIST=$(podman exec test-kafka kafka-topics --list --bootstrap-server localhost:9092)
+echo "Available topics:"
+echo "$TOPIC_LIST"
+
+# Validate separation of concerns - ensure all 4 scaling mode topics exist
+for topic in "${SCALING_TOPICS[@]}"; do
+    if echo "$TOPIC_LIST" | grep -q "^$topic$"; then
+        print_success "✅ Scaling mode topic verified: $topic"
+    else
+        print_error "❌ Missing scaling mode topic: $topic"
+        exit 1
+    fi
+done
 
 print_success "Local Kafka cluster is ready!"
 print_status "Kafka UI available at: http://localhost:8090"
@@ -132,8 +175,11 @@ echo "   2. Start VEP service: cd vep-service && ./mvnw quarkus:dev -Dquarkus.ht
 echo "   3. Open browser: http://localhost:8080/genetic-client.html"
 echo "   4. Test the data flow!"
 echo ""
-echo "🔍 Monitor topics:"
-echo "   - Raw data: podman exec test-kafka kafka-console-consumer --topic genetic-data-raw --bootstrap-server localhost:9092"
-echo "   - Annotated data: podman exec test-kafka kafka-console-consumer --topic genetic-data-annotated --bootstrap-server localhost:9092"
+echo "🔍 Monitor topics (4 scaling modes + VEP results):"
+echo "   📊 Normal Mode: podman exec test-kafka kafka-console-consumer --topic genetic-data-raw --bootstrap-server localhost:9092"
+echo "   🚀 Big Data Mode: podman exec test-kafka kafka-console-consumer --topic genetic-bigdata-raw --bootstrap-server localhost:9092"
+echo "   ⚡ Node Scale Mode: podman exec test-kafka kafka-console-consumer --topic genetic-nodescale-raw --bootstrap-server localhost:9092"
+echo "   🔄 Kafka Lag Mode: podman exec test-kafka kafka-console-consumer --topic genetic-lag-demo-raw --bootstrap-server localhost:9092"
+echo "   🧬 VEP Results: podman exec test-kafka kafka-console-consumer --topic genetic-data-annotated --bootstrap-server localhost:9092"
 echo ""
 echo "🛑 To stop: podman-compose -f podman-compose.test.yml down"
