@@ -17,6 +17,9 @@ NC='\033[0m' # No Color
 NAMESPACE="healthcare-ml-demo"
 PROJECT_NAME="Healthcare ML Genetic Predictor"
 
+# Deployment options (can be overridden with environment variables)
+DEPLOY_COMPUTE_INTENSIVE_NODES=${DEPLOY_COMPUTE_INTENSIVE_NODES:-true}  # Set to false to skip
+
 # Logging functions
 log_info() {
     echo -e "${BLUE}[INFO]${NC} $1"
@@ -178,13 +181,30 @@ deploy_applications() {
     log_info "Deploying WebSocket service..."
     oc apply -k k8s/base/applications/quarkus-websocket -n $NAMESPACE
     
-    # Deploy VEP service
+    # Deploy VEP service (legacy single mode)
     log_info "Deploying VEP service..."
     oc apply -k k8s/base/applications/vep-service -n $NAMESPACE
+    
+    # Deploy new multi-mode VEP services
+    log_info "Deploying multi-mode VEP services..."
+    oc apply -k k8s/base/vep-service -n $NAMESPACE || log_warning "Multi-mode VEP services had deployment issues, continuing..."
+    
+    # Deploy frontend if available
+    if [ -d "k8s/base/applications/frontend" ]; then
+        log_info "Deploying frontend..."
+        oc apply -k k8s/base/applications/frontend -n $NAMESPACE || log_warning "Frontend deployment had issues, continuing..."
+    fi
+    
+    # Deploy ML inference service if available
+    if [ -d "k8s/base/applications/ml-inference" ]; then
+        log_info "Deploying ML inference service..."
+        oc apply -k k8s/base/applications/ml-inference -n $NAMESPACE || log_warning "ML inference deployment had issues, continuing..."
+    fi
     
     # Grant image pull permissions
     log_info "Granting image pull permissions..."
     oc policy add-role-to-user system:image-puller system:serviceaccount:$NAMESPACE:vep-service -n $NAMESPACE || true
+    oc policy add-role-to-user system:image-puller system:serviceaccount:$NAMESPACE:default -n $NAMESPACE || true
     
     log_success "Phase 4 completed: Applications deployed"
 }
@@ -228,15 +248,55 @@ build_and_verify() {
 deploy_keda_and_base_resources() {
     log_info "Phase 6: Deploying KEDA scaling and base resources..."
     
+    # Ensure KEDA controller is running (force reconciliation if needed)
+    log_info "Ensuring KEDA controller is active..."
+    if oc get kedacontroller keda -n openshift-keda &>/dev/null; then
+        log_info "Forcing KEDA controller reconciliation..."
+        oc apply -f k8s/base/operators/keda/kedacontroller.yaml || log_warning "KEDA controller apply failed, continuing..."
+        
+        # Restart the Custom Metrics Autoscaler operator to force reconciliation
+        log_info "Restarting Custom Metrics Autoscaler operator to force reconciliation..."
+        oc rollout restart deployment/custom-metrics-autoscaler-operator -n openshift-keda || log_warning "Failed to restart KEDA operator, continuing..."
+        
+        # Wait for operator to restart
+        log_info "Waiting for operator restart..."
+        oc rollout status deployment/custom-metrics-autoscaler-operator -n openshift-keda --timeout=60s || log_warning "Operator restart timeout, continuing..."
+        
+        # Wait for KEDA controller pods to be ready
+        log_info "Waiting for KEDA controller pods to start..."
+        local timeout=180
+        local elapsed=0
+        local keda_pods=0
+        while [ $elapsed -lt $timeout ]; do
+            keda_pods=$(oc get pods -n openshift-keda --no-headers 2>/dev/null | grep -E "(keda|custom-metrics)" | grep Running | wc -l)
+            if [ $keda_pods -gt 0 ]; then
+                log_success "KEDA controller pods are running ($keda_pods pods)"
+                break
+            fi
+            sleep 15
+            elapsed=$((elapsed + 15))
+            log_info "Waiting for KEDA controller... (${elapsed}s/${timeout}s)"
+        done
+        
+        # If still no pods, show debugging info
+        if [ $keda_pods -eq 0 ]; then
+            log_warning "KEDA controller pods not running yet. Checking operator status..."
+            oc get pods -n openshift-keda | grep custom-metrics || true
+            oc logs deployment/custom-metrics-autoscaler-operator -n openshift-keda --tail=10 || true
+        fi
+    else
+        log_warning "KEDA controller not found, continuing without KEDA verification..."
+    fi
+    
     # Deploy base resources that were missed (buildconfigs, scaled objects, etc.)
     log_info "Deploying base kustomization resources..."
     oc apply -k k8s/base -n $NAMESPACE || log_warning "Some base resources may have conflicts, continuing..."
     
-    # Deploy KEDA scaling configurations specifically
-    if [ -d "k8s/base/keda" ]; then
-        log_info "Deploying KEDA ScaledObjects..."
-        oc apply -k k8s/base/keda -n $NAMESPACE || log_warning "KEDA scaling deployment had issues, but continuing..."
-    fi
+    # Deploy KEDA scaling configurations specifically - USING SEPARATION OF CONCERNS
+    # NOTE: k8s/base/keda contains legacy multi-topic ScaledObjects that violate separation
+    # We now use k8s/base/vep-service for proper 1:1 mode→deployment→scaler mapping
+    log_info "KEDA ScaledObjects will be deployed via k8s/base/vep-service (separation of concerns)"
+    log_info "Skipping legacy k8s/base/keda to prevent conflicts"
     
     # Deploy eventing configurations
     if [ -d "k8s/base/eventing" ]; then
@@ -272,19 +332,91 @@ deploy_openshift_ai() {
     log_success "Phase 7 completed: OpenShift AI components processed"
 }
 
-# Phase 8: Deploy cluster autoscaler (MISSING COMPONENT)
+# Phase 8: Deploy cluster autoscaler and node management (MISSING COMPONENT)
 deploy_cluster_autoscaler() {
-    log_info "Phase 8: Deploying cluster autoscaler..."
+    log_info "Phase 8: Deploying cluster autoscaler and node management..."
     
     # Check if we have cluster-admin permissions for cluster autoscaler
     if oc auth can-i create clusterautoscaler &>/dev/null; then
         log_info "Deploying cluster autoscaler..."
         oc apply -f k8s/base/autoscaler/cluster-autoscaler.yaml || log_warning "Cluster autoscaler deployment failed, but continuing..."
+        
+        # Deploy node management components if available
+        if [ -d "k8s/base/node-management" ]; then
+            log_info "Deploying node management components..."
+            oc apply -k k8s/base/node-management || log_warning "Node management deployment had issues, continuing..."
+        fi
     else
         log_warning "Insufficient permissions for cluster autoscaler, skipping..."
     fi
     
-    log_success "Phase 8 completed: Cluster autoscaler processed"
+    log_success "Phase 8 completed: Cluster autoscaler and node management processed"
+}
+
+# Phase 8.5: Deploy compute-intensive machine sets for node scaling demo
+deploy_compute_intensive_nodes() {
+    if [ "$DEPLOY_COMPUTE_INTENSIVE_NODES" != "true" ]; then
+        log_info "Phase 8.5: Skipping compute-intensive nodes (DEPLOY_COMPUTE_INTENSIVE_NODES=false)"
+        log_info "Node scaling demo will use existing nodes only"
+        return 0
+    fi
+    
+    log_info "Phase 8.5: Setting up compute-intensive nodes for node scaling demo..."
+    
+    # Check if we have permissions to create machine sets
+    if oc auth can-i create machineset -n openshift-machine-api &>/dev/null; then
+        log_info "Deploying cost-optimized compute-intensive machine set for node scaling..."
+        
+        # Run the compute-intensive machine set deployment script
+        if [ -f "scripts/deploy-compute-intensive-machineset.sh" ]; then
+            log_info "Running compute-intensive machine set deployment..."
+            ./scripts/deploy-compute-intensive-machineset.sh || log_warning "Compute-intensive machine set deployment had issues, continuing..."
+        else
+            log_warning "Compute-intensive machine set script not found, deploying manually..."
+            
+            # Fallback: Deploy template directly with auto-detection
+            if [ -f "k8s/base/autoscaler/compute-intensive-machineset.yaml" ]; then
+                # Auto-detect cluster configuration
+                local cluster_name=$(oc get infrastructure cluster -o jsonpath='{.status.infrastructureName}' 2>/dev/null)
+                local region=$(oc get infrastructure cluster -o jsonpath='{.status.platformStatus.azure.region}' 2>/dev/null)
+                local resource_group=$(oc get machineset -n openshift-machine-api -o jsonpath='{.items[0].spec.template.spec.providerSpec.value.resourceGroup}' 2>/dev/null)
+                local network_resource_group=$(oc get machineset -n openshift-machine-api -o jsonpath='{.items[0].spec.template.spec.providerSpec.value.networkResourceGroup}' 2>/dev/null)
+                local vnet_name=$(oc get machineset -n openshift-machine-api -o jsonpath='{.items[0].spec.template.spec.providerSpec.value.vnet}' 2>/dev/null)
+                
+                if [ -n "$cluster_name" ] && [ -n "$region" ]; then
+                    log_info "Auto-detected cluster: $cluster_name in $region"
+                    
+                    # Create temporary file with substituted values
+                    local temp_file=$(mktemp)
+                    sed "s/{{CLUSTER_NAME}}/$cluster_name/g; s/{{REGION}}/$region/g; s/{{RESOURCE_GROUP}}/$resource_group/g; s/{{NETWORK_RESOURCE_GROUP}}/$network_resource_group/g; s/{{VNET_NAME}}/$vnet_name/g" \
+                        k8s/base/autoscaler/compute-intensive-machineset.yaml > "$temp_file"
+                    
+                    # Deploy the machine set
+                    if oc apply -f "$temp_file"; then
+                        log_success "Compute-intensive machine set deployed successfully!"
+                    else
+                        log_warning "Failed to deploy compute-intensive machine set"
+                    fi
+                    
+                    # Clean up
+                    rm "$temp_file"
+                else
+                    log_warning "Could not auto-detect cluster configuration for compute-intensive nodes"
+                fi
+            else
+                log_warning "Compute-intensive machine set template not found"
+            fi
+        fi
+    else
+        log_warning "Insufficient permissions for machine set creation, skipping compute-intensive nodes..."
+        log_info "Node scaling demo will use existing nodes only"
+    fi
+    
+    # Show node scaling status
+    log_info "Node scaling configuration status:"
+    oc get machineautoscaler -n openshift-machine-api | grep -E "(compute-intensive|worker)" || log_info "No machine autoscalers found"
+    
+    log_success "Phase 8.5 completed: Compute-intensive node scaling configured"
 }
 
 # Show access information
@@ -308,9 +440,16 @@ show_access_info() {
     echo "  oc get ksvc -n $NAMESPACE"
     echo "  oc logs -f deployment/quarkus-websocket-service -n $NAMESPACE"
     echo ""
+    echo "🚀 Node Scaling Monitoring:"
+    echo "  oc get nodes -l workload-type=compute-intensive"
+    echo "  oc get machines -n openshift-machine-api | grep compute-intensive"
+    echo "  oc get machineautoscaler -n openshift-machine-api"
+    echo "  watch oc get pods -l app=vep-service-nodescale -n $NAMESPACE"
+    echo ""
     echo "🧪 Testing Commands:"
     echo "  curl https://$route_url/q/health"
     echo "  ./scripts/test-api-endpoints.sh"
+    echo "  ./scripts/test-keda-scaling-behavior.sh"
     echo ""
     echo "📚 Next Steps:"
     echo "  1. Open https://$route_url/genetic-client.html in your browser"
@@ -328,6 +467,8 @@ show_deployment_summary() {
     echo "✅ Kafka Cluster: $(oc get kafka -n $NAMESPACE --no-headers 2>/dev/null | wc -l) cluster(s)"
     echo "✅ Kafka Topics: $(oc get kafkatopic -n $NAMESPACE --no-headers 2>/dev/null | wc -l) topic(s)"
     echo "✅ Worker Nodes: $(oc get nodes --no-headers | grep worker | wc -l) labeled for workloads"
+    echo "✅ Compute-Intensive Nodes: $(oc get nodes -l workload-type=compute-intensive --no-headers 2>/dev/null | wc -l) available for node scaling"
+    echo "✅ Machine Autoscalers: $(oc get machineautoscaler -n openshift-machine-api --no-headers 2>/dev/null | wc -l) configured"
     echo "✅ Applications: $(oc get deployment -n $NAMESPACE --no-headers 2>/dev/null | wc -l) deployment(s)"
     echo "✅ Builds: $(oc get builds -n $NAMESPACE --no-headers 2>/dev/null | grep Complete | wc -l) completed successfully"
     echo "✅ Routes: $(oc get routes -n $NAMESPACE --no-headers 2>/dev/null | wc -l) exposed"
@@ -337,7 +478,10 @@ show_deployment_summary() {
     # Check for specific components
     log_info "Component Status:"
     echo "  🔄 WebSocket Service: $(oc get deployment quarkus-websocket-service -n $NAMESPACE -o jsonpath='{.status.readyReplicas}' 2>/dev/null || echo 0)/$(oc get deployment quarkus-websocket-service -n $NAMESPACE -o jsonpath='{.spec.replicas}' 2>/dev/null || echo 0) ready"
-    echo "  🔬 VEP Service: $(oc get deployment vep-service -n $NAMESPACE -o jsonpath='{.status.readyReplicas}' 2>/dev/null || echo 0)/$(oc get deployment vep-service -n $NAMESPACE -o jsonpath='{.spec.replicas}' 2>/dev/null || echo 0) ready"
+    echo "  🔬 VEP Service (Normal): $(oc get deployment vep-service-normal -n $NAMESPACE -o jsonpath='{.status.readyReplicas}' 2>/dev/null || echo 0)/$(oc get deployment vep-service-normal -n $NAMESPACE -o jsonpath='{.spec.replicas}' 2>/dev/null || echo 0) ready"
+    echo "  🧠 VEP Service (BigData): $(oc get deployment vep-service-bigdata -n $NAMESPACE -o jsonpath='{.status.readyReplicas}' 2>/dev/null || echo 0)/$(oc get deployment vep-service-bigdata -n $NAMESPACE -o jsonpath='{.spec.replicas}' 2>/dev/null || echo 0) ready"
+    echo "  🚀 VEP Service (NodeScale): $(oc get deployment vep-service-nodescale -n $NAMESPACE -o jsonpath='{.status.readyReplicas}' 2>/dev/null || echo 0)/$(oc get deployment vep-service-nodescale -n $NAMESPACE -o jsonpath='{.spec.replicas}' 2>/dev/null || echo 0) ready"
+    echo "  📈 VEP Service (KafkaLag): $(oc get deployment vep-service-kafka-lag -n $NAMESPACE -o jsonpath='{.status.readyReplicas}' 2>/dev/null || echo 0)/$(oc get deployment vep-service-kafka-lag -n $NAMESPACE -o jsonpath='{.spec.replicas}' 2>/dev/null || echo 0) ready"
     echo "  ☕ Kafka Brokers: $(oc get pods -n $NAMESPACE --no-headers 2>/dev/null | grep kafka | grep Running | wc -l)/3 running"
     echo ""
 }
@@ -360,6 +504,7 @@ main() {
     deploy_keda_and_base_resources
     deploy_openshift_ai
     deploy_cluster_autoscaler
+    deploy_compute_intensive_nodes
     show_deployment_summary
     show_access_info
     

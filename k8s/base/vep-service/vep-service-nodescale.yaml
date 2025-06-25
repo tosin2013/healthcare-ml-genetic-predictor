@@ -53,16 +53,16 @@ spec:
         # The WebSocket service routes messages to the correct topic based on scaling mode
         # No need to disable other connectors - they will simply remain idle
 
-        # High resource requests to force cluster autoscaler activation
-        # Adjusted to fit within compute-intensive node capacity (7860m CPU available)
-        # Leaving headroom for system pods and other workloads
+        # COST-OPTIMIZED resource requests for cluster autoscaler demo
+        # Reduced from 16Gi/7000m to fit D4s_v3 instances (4 vCPU, 16GB RAM)
+        # Still high enough to trigger autoscaler when multiple pods are needed
         resources:
           requests:
-            memory: "16Gi"     # 16GB memory request per pod - forces node scaling
-            cpu: "7000m"       # 7 CPU cores - fits comfortably within node capacity
+            memory: "6Gi"      # 6GB memory request per pod - fits within D4s_v3
+            cpu: "2000m"       # 2 CPU cores - allows 1-2 pods per node
           limits:
-            memory: "20Gi"     # 20GB memory limit per pod
-            cpu: "8000m"       # 8 CPU cores per pod
+            memory: "8Gi"      # 8GB memory limit per pod
+            cpu: "3000m"       # 3 CPU cores per pod
         
         # Health checks
         livenessProbe:
@@ -92,30 +92,29 @@ spec:
           timeoutSeconds: 5
           failureThreshold: 30
       
-      # Node affinity for compute-intensive workloads (STRICT)
+      # Node affinity optimized for cluster autoscaler demo
       affinity:
         nodeAffinity:
-          # REQUIRE compute-intensive nodes (no fallback to standard)
-          requiredDuringSchedulingIgnoredDuringExecution:
-            nodeSelectorTerms:
-            - matchExpressions:
+          # Prefer compute-intensive nodes but allow standard nodes for cluster autoscaler demo
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            preference:
+              matchExpressions:
               - key: workload-type
                 operator: In
                 values: ["compute-intensive"]
-          # Prefer high-memory resource profile
-          preferredDuringSchedulingIgnoredDuringExecution:
-          - weight: 100
+          - weight: 80
             preference:
               matchExpressions:
               - key: resource-profile
                 operator: In
                 values: ["high-memory"]
-          - weight: 80
+          - weight: 60
             preference:
               matchExpressions:
-              - key: environment
+              - key: workload-type
                 operator: In
-                values: ["demo"]
+                values: ["standard"]
         podAntiAffinity:
           preferredDuringSchedulingIgnoredDuringExecution:
           - weight: 100
