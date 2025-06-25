@@ -89,28 +89,12 @@ spec:
       offsetResetPolicy: latest
 
 ---
-# WebSocket Service Scaler (Handles all annotated results)
-apiVersion: keda.sh/v1alpha1
-kind: ScaledObject
-metadata:
-  name: websocket-service-scaler
-  labels:
-    app: quarkus-websocket-service
-    component: websocket
-spec:
-  scaleTargetRef:
-    apiVersion: apps/v1
-    kind: Deployment
-    name: quarkus-websocket-service
-  pollingInterval: 15
-  cooldownPeriod: 120
-  minReplicaCount: 1
-  maxReplicaCount: 10
-  triggers:
-  - type: kafka
-    metadata:
-      bootstrapServers: genetic-data-cluster-kafka-bootstrap.healthcare-ml-demo.svc.cluster.local:9092
-      consumerGroup: websocket-results-service-group
-      topic: genetic-data-annotated
-      lagThreshold: "10"
-      offsetResetPolicy: latest
+# WebSocket Service Scaler REMOVED - WebSocket services must NOT be autoscaled
+# Reason: WebSocket connections are stateful and require session consistency.
+# Autoscaling causes:
+# - Session loss during pod termination
+# - Connection routing issues between multiple pods
+# - Inconsistent state management
+# - Poor user experience with connection drops
+#
+# WebSocket service MUST remain at exactly 1 replica for proper operation.

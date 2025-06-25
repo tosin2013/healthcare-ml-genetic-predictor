@@ -1,0 +1,390 @@
+name: Performance Monitoring & Optimization
+
+on:
+  schedule:
+    # Run performance analysis weekly on Sundays at 2 AM UTC
+    - cron: '0 2 * * 0'
+  workflow_dispatch:
+    inputs:
+      analysis_type:
+        description: 'Type of performance analysis'
+        required: true
+        default: 'full'
+        type: choice
+        options:
+          - full
+          - build-time
+          - test-performance
+          - resource-usage
+      baseline_comparison:
+        description: 'Compare against baseline'
+        required: false
+        default: true
+        type: boolean
+
+env:
+  JAVA_VERSION: '17'
+  MAVEN_OPTS: '-Xmx2048m'
+
+jobs:
+  build-performance-analysis:
+    name: Build Performance Analysis
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    if: github.event.inputs.analysis_type == 'full' || github.event.inputs.analysis_type == 'build-time' || github.event_name == 'schedule'
+    
+    strategy:
+      matrix:
+        service: [websocket, vep]
+        include:
+          - service: websocket
+            path: quarkus-websocket-service
+          - service: vep
+            path: vep-service
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up JDK ${{ env.JAVA_VERSION }}
+      uses: actions/setup-java@v4
+      with:
+        java-version: ${{ env.JAVA_VERSION }}
+        distribution: 'temurin'
+        cache: maven
+        
+    - name: Measure build performance
+      id: build-perf
+      run: |
+        cd ${{ matrix.path }}
+        echo "BUILD_START=$(date +%s)" >> $GITHUB_OUTPUT
+        
+        # Warm up build (exclude from timing)
+        ./mvnw clean -q
+        
+        # Measure actual build time
+        START_TIME=$(date +%s)
+        ./mvnw clean package -DskipTests -q
+        END_TIME=$(date +%s)
+        
+        BUILD_TIME=$((END_TIME - START_TIME))
+        echo "build_time=${BUILD_TIME}" >> $GITHUB_OUTPUT
+        echo "BUILD_END=$(date +%s)" >> $GITHUB_OUTPUT
+        
+        # Measure dependency resolution time
+        START_DEPS=$(date +%s)
+        ./mvnw dependency:resolve -q
+        END_DEPS=$(date +%s)
+        DEPS_TIME=$((END_DEPS - START_DEPS))
+        echo "deps_time=${DEPS_TIME}" >> $GITHUB_OUTPUT
+        
+        # Analyze build artifacts size
+        if [ -f "target/quarkus-app/quarkus-run.jar" ]; then
+          ARTIFACT_SIZE=$(du -sh target/quarkus-app/quarkus-run.jar | cut -f1)
+          echo "artifact_size=${ARTIFACT_SIZE}" >> $GITHUB_OUTPUT
+        fi
+        
+    - name: Generate performance report
+      run: |
+        echo "## 🏗️ Build Performance Report - ${{ matrix.service }} Service" >> build-perf-${{ matrix.service }}.md
+        echo "" >> build-perf-${{ matrix.service }}.md
+        echo "- **Build Time**: ${{ steps.build-perf.outputs.build_time }} seconds" >> build-perf-${{ matrix.service }}.md
+        echo "- **Dependency Resolution**: ${{ steps.build-perf.outputs.deps_time }} seconds" >> build-perf-${{ matrix.service }}.md
+        echo "- **Artifact Size**: ${{ steps.build-perf.outputs.artifact_size }}" >> build-perf-${{ matrix.service }}.md
+        echo "- **Timestamp**: $(date)" >> build-perf-${{ matrix.service }}.md
+        
+        # Performance thresholds
+        if [ "${{ steps.build-perf.outputs.build_time }}" -gt 180 ]; then
+          echo "" >> build-perf-${{ matrix.service }}.md
+          echo "⚠️ **Warning**: Build time exceeds 3 minutes threshold" >> build-perf-${{ matrix.service }}.md
+        fi
+        
+    - name: Upload performance data
+      uses: actions/upload-artifact@v4
+      with:
+        name: build-performance-${{ matrix.service }}
+        path: build-perf-${{ matrix.service }}.md
+        retention-days: 30
+
+  test-performance-analysis:
+    name: Test Performance Analysis
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    if: github.event.inputs.analysis_type == 'full' || github.event.inputs.analysis_type == 'test-performance' || github.event_name == 'schedule'
+    
+    strategy:
+      matrix:
+        service: [websocket, vep]
+        include:
+          - service: websocket
+            path: quarkus-websocket-service
+          - service: vep
+            path: vep-service
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up JDK ${{ env.JAVA_VERSION }}
+      uses: actions/setup-java@v4
+      with:
+        java-version: ${{ env.JAVA_VERSION }}
+        distribution: 'temurin'
+        cache: maven
+        
+    - name: Measure test performance
+      id: test-perf
+      run: |
+        cd ${{ matrix.path }}
+        
+        # Measure test execution time
+        START_TIME=$(date +%s)
+        ./mvnw clean test -Dquarkus.test.profile=test
+        END_TIME=$(date +%s)
+        
+        TEST_TIME=$((END_TIME - START_TIME))
+        echo "test_time=${TEST_TIME}" >> $GITHUB_OUTPUT
+        
+        # Count number of tests
+        if [ -f "target/surefire-reports/TEST-*.xml" ]; then
+          TEST_COUNT=$(grep -h "tests=" target/surefire-reports/TEST-*.xml | sed 's/.*tests="\([0-9]*\)".*/\1/' | awk '{sum += $1} END {print sum}')
+          echo "test_count=${TEST_COUNT}" >> $GITHUB_OUTPUT
+          
+          # Calculate average test time
+          if [ "$TEST_COUNT" -gt 0 ]; then
+            AVG_TIME=$(echo "scale=2; $TEST_TIME / $TEST_COUNT" | bc)
+            echo "avg_test_time=${AVG_TIME}" >> $GITHUB_OUTPUT
+          fi
+        fi
+        
+    - name: Generate test performance report
+      run: |
+        echo "## 🧪 Test Performance Report - ${{ matrix.service }} Service" >> test-perf-${{ matrix.service }}.md
+        echo "" >> test-perf-${{ matrix.service }}.md
+        echo "- **Total Test Time**: ${{ steps.test-perf.outputs.test_time }} seconds" >> test-perf-${{ matrix.service }}.md
+        echo "- **Number of Tests**: ${{ steps.test-perf.outputs.test_count }}" >> test-perf-${{ matrix.service }}.md
+        echo "- **Average Test Time**: ${{ steps.test-perf.outputs.avg_test_time }} seconds" >> test-perf-${{ matrix.service }}.md
+        echo "- **Timestamp**: $(date)" >> test-perf-${{ matrix.service }}.md
+        
+        # Performance alerts
+        if [ "${{ steps.test-perf.outputs.test_time }}" -gt 120 ]; then
+          echo "" >> test-perf-${{ matrix.service }}.md
+          echo "⚠️ **Warning**: Test execution exceeds 2 minutes threshold" >> test-perf-${{ matrix.service }}.md
+        fi
+        
+    - name: Upload test performance data
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-performance-${{ matrix.service }}
+        path: test-perf-${{ matrix.service }}.md
+        retention-days: 30
+
+  resource-usage-analysis:
+    name: Resource Usage Analysis
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    if: github.event.inputs.analysis_type == 'full' || github.event.inputs.analysis_type == 'resource-usage' || github.event_name == 'schedule'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Analyze CI/CD resource usage
+      run: |
+        echo "📊 Analyzing CI/CD resource usage patterns..."
+        
+        # Simulate resource analysis (in real scenario, this would query GitHub API)
+        echo "## 💻 Resource Usage Analysis" > resource-usage.md
+        echo "" >> resource-usage.md
+        echo "### GitHub Actions Usage" >> resource-usage.md
+        echo "- **Runner Type**: ubuntu-latest" >> resource-usage.md
+        echo "- **Typical CPU Usage**: 2 cores" >> resource-usage.md
+        echo "- **Memory Usage**: 7GB available" >> resource-usage.md
+        echo "- **Storage Usage**: 14GB available" >> resource-usage.md
+        echo "" >> resource-usage.md
+        
+        # Analyze workflow efficiency
+        echo "### Workflow Efficiency Metrics" >> resource-usage.md
+        echo "- **Parallel Jobs**: Optimized for build matrix" >> resource-usage.md
+        echo "- **Cache Hit Rate**: Maven dependencies cached" >> resource-usage.md
+        echo "- **Artifact Storage**: 7-30 day retention" >> resource-usage.md
+        echo "" >> resource-usage.md
+        
+        # Cost optimization recommendations
+        echo "### 💰 Cost Optimization Recommendations" >> resource-usage.md
+        echo "- Use conditional job execution based on file changes" >> resource-usage.md
+        echo "- Optimize cache strategies for dependencies" >> resource-usage.md
+        echo "- Consider self-hosted runners for frequent builds" >> resource-usage.md
+        echo "- Monitor artifact storage usage and cleanup" >> resource-usage.md
+        echo "" >> resource-usage.md
+        echo "**Analysis Date**: $(date)" >> resource-usage.md
+        
+    - name: Upload resource usage analysis
+      uses: actions/upload-artifact@v4
+      with:
+        name: resource-usage-analysis
+        path: resource-usage.md
+        retention-days: 90
+
+  pipeline-optimization-recommendations:
+    name: Pipeline Optimization Recommendations
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: [build-performance-analysis, test-performance-analysis, resource-usage-analysis]
+    if: always() && (github.event_name == 'schedule' || github.event.inputs.analysis_type == 'full')
+    
+    steps:
+    - name: Download all performance data
+      uses: actions/download-artifact@v4
+      with:
+        pattern: '*-performance-*'
+        merge-multiple: true
+        
+    - name: Download resource usage data
+      uses: actions/download-artifact@v4
+      with:
+        name: resource-usage-analysis
+        
+    - name: Generate optimization recommendations
+      run: |
+        echo "# 🚀 Healthcare ML CI/CD Pipeline Optimization Report" > optimization-report.md
+        echo "" >> optimization-report.md
+        echo "**Generated**: $(date)" >> optimization-report.md
+        echo "**Analysis Type**: ${{ github.event.inputs.analysis_type || 'scheduled' }}" >> optimization-report.md
+        echo "" >> optimization-report.md
+        
+        # Consolidate build performance data
+        echo "## 🏗️ Build Performance Summary" >> optimization-report.md
+        echo "" >> optimization-report.md
+        if [ -f "build-perf-websocket.md" ]; then
+          echo "### WebSocket Service" >> optimization-report.md
+          cat build-perf-websocket.md | grep -E "Build Time|Dependency Resolution|Artifact Size" >> optimization-report.md
+          echo "" >> optimization-report.md
+        fi
+        if [ -f "build-perf-vep.md" ]; then
+          echo "### VEP Service" >> optimization-report.md
+          cat build-perf-vep.md | grep -E "Build Time|Dependency Resolution|Artifact Size" >> optimization-report.md
+          echo "" >> optimization-report.md
+        fi
+        
+        # Consolidate test performance data
+        echo "## 🧪 Test Performance Summary" >> optimization-report.md
+        echo "" >> optimization-report.md
+        if [ -f "test-perf-websocket.md" ]; then
+          echo "### WebSocket Service Tests" >> optimization-report.md
+          cat test-perf-websocket.md | grep -E "Total Test Time|Number of Tests|Average Test Time" >> optimization-report.md
+          echo "" >> optimization-report.md
+        fi
+        if [ -f "test-perf-vep.md" ]; then
+          echo "### VEP Service Tests" >> optimization-report.md
+          cat test-perf-vep.md | grep -E "Total Test Time|Number of Tests|Average Test Time" >> optimization-report.md
+          echo "" >> optimization-report.md
+        fi
+        
+        # Healthcare ML specific recommendations
+        echo "## 🏥 Healthcare ML Specific Optimizations" >> optimization-report.md
+        echo "" >> optimization-report.md
+        echo "### Threading Performance" >> optimization-report.md
+        echo "- Monitor virtual thread usage in Java 21+ for better throughput" >> optimization-report.md
+        echo "- Optimize @Blocking annotation placement for I/O operations" >> optimization-report.md
+        echo "- Consider reactive streams for high-throughput genetic data processing" >> optimization-report.md
+        echo "" >> optimization-report.md
+        
+        echo "### Container Optimization" >> optimization-report.md
+        echo "- Use multi-stage builds to reduce image size" >> optimization-report.md
+        echo "- Optimize Quarkus native builds for production deployments" >> optimization-report.md
+        echo "- Consider distroless base images for security and size" >> optimization-report.md
+        echo "" >> optimization-report.md
+        
+        echo "### OpenShift Integration" >> optimization-report.md
+        echo "- Optimize KEDA scaling configurations based on Kafka lag" >> optimization-report.md
+        echo "- Use OpenShift BuildConfigs for source-to-image builds" >> optimization-report.md
+        echo "- Monitor cost attribution and resource utilization" >> optimization-report.md
+        echo "" >> optimization-report.md
+        
+        # Action items
+        echo "## 📋 Recommended Action Items" >> optimization-report.md
+        echo "" >> optimization-report.md
+        echo "### High Priority" >> optimization-report.md
+        echo "- [ ] Review and optimize slow-running tests" >> optimization-report.md
+        echo "- [ ] Implement parallel test execution where possible" >> optimization-report.md
+        echo "- [ ] Optimize Maven dependency resolution" >> optimization-report.md
+        echo "" >> optimization-report.md
+        
+        echo "### Medium Priority" >> optimization-report.md
+        echo "- [ ] Evaluate caching strategies for build artifacts" >> optimization-report.md
+        echo "- [ ] Consider workflow job parallelization improvements" >> optimization-report.md
+        echo "- [ ] Monitor and optimize container image sizes" >> optimization-report.md
+        echo "" >> optimization-report.md
+        
+        echo "### Low Priority" >> optimization-report.md
+        echo "- [ ] Investigate alternative testing frameworks" >> optimization-report.md
+        echo "- [ ] Evaluate self-hosted runner cost-benefit" >> optimization-report.md
+        echo "- [ ] Consider workflow template optimization" >> optimization-report.md
+        
+    - name: Upload optimization report
+      uses: actions/upload-artifact@v4
+      with:
+        name: pipeline-optimization-report
+        path: optimization-report.md
+        retention-days: 90
+        
+    - name: Add optimization summary to job summary
+      run: |
+        echo "## 🚀 Pipeline Optimization Analysis Complete" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 📊 Analysis Results" >> $GITHUB_STEP_SUMMARY
+        echo "- Build performance data collected for both services" >> $GITHUB_STEP_SUMMARY
+        echo "- Test performance metrics analyzed" >> $GITHUB_STEP_SUMMARY
+        echo "- Resource usage patterns evaluated" >> $GITHUB_STEP_SUMMARY
+        echo "- Healthcare ML specific optimizations identified" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 📋 Next Steps" >> $GITHUB_STEP_SUMMARY
+        echo "1. Review the optimization report artifact" >> $GITHUB_STEP_SUMMARY
+        echo "2. Prioritize recommended action items" >> $GITHUB_STEP_SUMMARY
+        echo "3. Implement high-priority optimizations" >> $GITHUB_STEP_SUMMARY
+        echo "4. Schedule follow-up performance analysis" >> $GITHUB_STEP_SUMMARY
+
+  baseline-comparison:
+    name: Baseline Performance Comparison
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [pipeline-optimization-recommendations]
+    if: github.event.inputs.baseline_comparison == 'true' || github.event_name == 'schedule'
+    
+    steps:
+    - name: Create baseline comparison
+      run: |
+        echo "## 📈 Baseline Performance Comparison" > baseline-comparison.md
+        echo "" >> baseline-comparison.md
+        echo "**Comparison Date**: $(date)" >> baseline-comparison.md
+        echo "" >> baseline-comparison.md
+        
+        # This would typically compare against stored baseline metrics
+        # For now, we'll create a template for tracking improvements
+        echo "### Build Time Trends" >> baseline-comparison.md
+        echo "| Service | Current | Previous | Change | Status |" >> baseline-comparison.md
+        echo "|---------|---------|----------|--------|--------|" >> baseline-comparison.md
+        echo "| WebSocket | TBD | TBD | TBD | 📊 |" >> baseline-comparison.md
+        echo "| VEP | TBD | TBD | TBD | 📊 |" >> baseline-comparison.md
+        echo "" >> baseline-comparison.md
+        
+        echo "### Test Execution Trends" >> baseline-comparison.md
+        echo "| Service | Current | Previous | Change | Status |" >> baseline-comparison.md
+        echo "|---------|---------|----------|--------|--------|" >> baseline-comparison.md
+        echo "| WebSocket | TBD | TBD | TBD | 📊 |" >> baseline-comparison.md
+        echo "| VEP | TBD | TBD | TBD | 📊 |" >> baseline-comparison.md
+        echo "" >> baseline-comparison.md
+        
+        echo "### 💡 Improvement Opportunities" >> baseline-comparison.md
+        echo "- Establish performance baselines for future comparisons" >> baseline-comparison.md
+        echo "- Implement automated performance regression detection" >> baseline-comparison.md
+        echo "- Track performance metrics over time" >> baseline-comparison.md
+        echo "- Set up alerts for performance degradation" >> baseline-comparison.md
+        
+    - name: Upload baseline comparison
+      uses: actions/upload-artifact@v4
+      with:
+        name: baseline-comparison
+        path: baseline-comparison.md
+        retention-days: 365

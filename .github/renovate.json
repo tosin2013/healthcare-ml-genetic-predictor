@@ -1,0 +1,80 @@
+{
+  "version": "2.1",
+  "extends": ["config:base"],
+  "schedule": ["before 6am on monday"],
+  "labels": ["dependencies", "renovate"],
+  "assignees": ["platform-team"],
+  "reviewers": ["security-team"],
+  "commitMessagePrefix": "deps: ",
+  "commitMessageAction": "update",
+  "commitMessageTopic": "{{depName}}",
+  "commitMessageExtra": "to {{#if isPinDigest}}{{{newDigestShort}}}{{else}}{{#if isMajor}}{{prettyNewMajor}}{{else}}{{#if isSingleVersion}}{{prettyNewVersion}}{{else}}{{#if newValue}}{{{newValue}}}{{else}}{{{newDigestShort}}}{{/if}}{{/if}}{{/if}}{{/if}}",
+  "prTitle": "deps: update {{depName}} {{#if isPinDigest}}digest{{else}}{{#if isMajor}}major{{else}}{{#if isMinor}}minor{{else}}patch{{/if}}{{/if}}{{/if}}",
+  "packageRules": [
+    {
+      "description": "Healthcare ML: Quarkus updates",
+      "matchPackagePatterns": ["^io\\.quarkus"],
+      "groupName": "quarkus",
+      "prPriority": 10,
+      "labels": ["quarkus", "dependencies"]
+    },
+    {
+      "description": "Healthcare ML: Security updates",
+      "matchPackagePatterns": ["security", "auth", "jwt", "oauth"],
+      "prPriority": 20,
+      "labels": ["security", "dependencies"],
+      "assignees": ["security-team"],
+      "reviewers": ["security-team", "platform-team"]
+    },
+    {
+      "description": "Healthcare ML: CloudEvents updates",
+      "matchPackagePatterns": ["^io\\.cloudevents"],
+      "groupName": "cloudevents",
+      "prPriority": 5,
+      "labels": ["cloudevents", "dependencies"]
+    },
+    {
+      "description": "Healthcare ML: Testing dependencies",
+      "matchPackagePatterns": ["junit", "mockito", "testcontainers", "rest-assured"],
+      "groupName": "testing",
+      "prPriority": 1,
+      "labels": ["testing", "dependencies"]
+    },
+    {
+      "description": "Healthcare ML: OpenJDK base images",
+      "matchDatasources": ["docker"],
+      "matchPackagePatterns": ["openjdk", "ubi8"],
+      "groupName": "base-images",
+      "prPriority": 15,
+      "labels": ["docker", "base-image", "security"]
+    },
+    {
+      "description": "Healthcare ML: Major version updates require manual review",
+      "matchUpdateTypes": ["major"],
+      "dependencyDashboardApproval": true,
+      "prPriority": 25,
+      "labels": ["major-update", "manual-review"]
+    }
+  ],
+  "vulnerabilityAlerts": {
+    "enabled": true,
+    "assignees": ["security-team"],
+    "labels": ["security", "vulnerability"]
+  },
+  "lockFileMaintenance": {
+    "enabled": true,
+    "schedule": ["before 6am on the first day of the month"]
+  },
+  "maven": {
+    "enabled": true,
+    "ignoreDeps": []
+  },
+  "docker": {
+    "enabled": true,
+    "pinDigests": true
+  },
+  "github-actions": {
+    "enabled": true,
+    "pinDigests": true
+  }
+}

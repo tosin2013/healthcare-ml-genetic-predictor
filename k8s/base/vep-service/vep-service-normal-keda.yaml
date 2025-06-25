@@ -1,0 +1,122 @@
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: vep-service-normal-scaler
+  namespace: healthcare-ml-demo
+  labels:
+    app: vep-service
+    mode: normal
+    component: keda-scaler
+    scaling-mode: normal
+    scaling-type: kafka-lag
+    app.kubernetes.io/name: healthcare-ml-scalers
+    app.kubernetes.io/component: keda-scaler
+    app.kubernetes.io/part-of: healthcare-ml-genetic-predictor
+    app.kubernetes.io/version: "1.0.0"
+  annotations:
+    description: "KEDA scaler for normal mode VEP processing - standard pod scaling"
+    deployment-method: "keda-kustomize"
+    insights.openshift.io/billing-model: "chargeback"
+    insights.openshift.io/cost-center: "genomics-research"
+    insights.openshift.io/project: "normal-mode-scaling"
+    separation-of-concerns: "normal-mode"
+    # SEPARATION OF CONCERNS: This ScaledObject is dedicated to NORMAL mode only
+    # - Topic: genetic-data-raw (exclusive to normal mode)
+    # - Deployment: vep-service-normal (dedicated normal mode service)
+    # - Consumer Group: vep-service-group (isolated from other modes)
+    # - Max Replicas: 10 (standard workload capacity)
+    # - Lag Threshold: 2 (balanced responsiveness)
+    # DO NOT modify these mappings without updating docs/KEDA_SEPARATION_OF_CONCERNS.md
+    separation-mode: "normal"
+    separation-rationale: "Dedicated to standard genetic sequence processing workloads"
+spec:
+  # Target the normal mode deployment (proper separation of concerns)
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: vep-service-normal
+  
+  # Scaling configuration for normal mode
+  minReplicaCount: 0        # Start at 0 pods (scale-to-zero)
+  maxReplicaCount: 10       # Standard scaling for normal workloads
+  idleReplicaCount: 0       # Scale down to 0 when no messages
+  
+  # Polling and cooldown settings
+  pollingInterval: 10       # Check every 10 seconds
+  cooldownPeriod: 30        # Wait 30 seconds before scaling down (faster than node scale)
+  
+  # Fallback configuration
+  fallback:
+    failureThreshold: 3
+    replicas: 1
+  
+  # Standard HPA configuration for normal scaling
+  advanced:
+    horizontalPodAutoscalerConfig:
+      name: vep-service-normal-hpa
+      behavior:
+        scaleUp:
+          stabilizationWindowSeconds: 5    # Quick scale up
+          selectPolicy: Max                 # Use most aggressive policy
+          policies:
+          - type: Percent
+            value: 200                      # Scale up by 200% (3x)
+            periodSeconds: 5                # Every 5 seconds
+          - type: Pods
+            value: 5                        # Or add 5 pods at once
+            periodSeconds: 5                # Every 5 seconds
+        scaleDown:
+          stabilizationWindowSeconds: 30    # Wait 30 seconds before scale down
+          selectPolicy: Min                 # Use conservative scale down
+          policies:
+          - type: Percent
+            value: 50                       # Scale down by 50%
+            periodSeconds: 30               # Every 30 seconds
+  
+  # SEPARATION OF CONCERNS: Kafka trigger for NORMAL mode ONLY
+  # This trigger EXCLUSIVELY monitors genetic-data-raw topic
+  # Other modes monitor their own dedicated topics:
+  # - Big data mode: genetic-bigdata-raw
+  # - Node scale mode: genetic-nodescale-raw
+  # - Kafka lag mode: genetic-lag-demo-raw
+  triggers:
+  - type: kafka
+    metadata:
+      # Kafka connection (shared infrastructure)
+      bootstrapServers: genetic-data-cluster-kafka-bootstrap.healthcare-ml-demo.svc.cluster.local:9092
+
+      # CRITICAL: Topic dedicated to normal mode only
+      topic: genetic-data-raw
+
+      # CRITICAL: Consumer group isolated from other modes
+      consumerGroup: vep-service-group
+
+      # Normal mode specific thresholds
+      lagThreshold: "2"                     # Standard responsiveness (2 messages trigger scaling)
+                                           # Balanced between responsiveness and resource efficiency
+      offsetResetPolicy: latest             # Start from latest messages
+      allowIdleConsumers: "false"           # Don't scale if no active consumers
+      excludePersistentLag: "false"         # Include all lag in calculations
+      scaleToZeroOnInvalidOffset: "true"    # Scale to zero on offset issues
+
+---
+# ServiceMonitor for Normal Mode KEDA metrics
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: vep-service-normal-keda-metrics
+  namespace: healthcare-ml-demo
+  labels:
+    app: vep-service
+    mode: normal
+    component: keda-monitoring
+spec:
+  selector:
+    matchLabels:
+      app: vep-service
+      mode: normal
+  endpoints:
+  - port: http
+    path: /q/metrics
+    interval: 30s
+    scrapeTimeout: 10s

@@ -1,0 +1,178 @@
+name: 🚀 CI/CD Enhancement Request
+description: Request an enhancement to the CI/CD pipeline
+title: "[CI/CD Enhancement]: "
+labels: ["enhancement", "ci-cd", "needs-triage"]
+assignees:
+  - platform-team
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for suggesting improvements to our healthcare ML CI/CD pipeline! Your ideas help us continuously improve our deployment processes.
+
+  - type: dropdown
+    id: category
+    attributes:
+      label: Enhancement Category
+      description: What type of enhancement are you requesting?
+      options:
+        - Performance Optimization
+        - Security Improvement
+        - Healthcare Compliance
+        - Testing Enhancement
+        - Deployment Strategy
+        - Monitoring & Observability
+        - Developer Experience
+        - Cost Optimization
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: scope
+    attributes:
+      label: Enhancement Scope
+      description: Which part of the pipeline would be affected?
+      options:
+        - quarkus-websocket-service
+        - vep-service
+        - Both services
+        - Infrastructure/K8s
+        - General pipeline
+        - Security scanning
+        - Testing framework
+        - Deployment process
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem Statement
+      description: What problem or limitation are you trying to solve?
+      placeholder: |
+        Example: The current threading validation takes too long and could be optimized to run more efficiently while maintaining the same level of quality assurance.
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution
+      description: Describe your proposed enhancement in detail
+      placeholder: |
+        Example: Implement parallel execution of threading tests across services and add caching for Maven dependencies to reduce build time by an estimated 30%.
+    validations:
+      required: true
+
+  - type: textarea
+    id: benefits
+    attributes:
+      label: Expected Benefits
+      description: What benefits would this enhancement provide?
+      placeholder: |
+        - Faster feedback for developers
+        - Reduced CI/CD costs
+        - Improved security posture
+        - Better healthcare compliance
+        - Enhanced developer experience
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternative Solutions
+      description: Have you considered any alternative approaches?
+      placeholder: Describe any alternative solutions you've considered
+    validations:
+      required: false
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority Level
+      description: How important is this enhancement?
+      options:
+        - Critical (blocking development)
+        - High (significantly improves workflow)
+        - Medium (nice to have improvement)
+        - Low (minor enhancement)
+    validations:
+      required: true
+
+  - type: dropdown
+    id: complexity
+    attributes:
+      label: Estimated Complexity
+      description: How complex do you think this enhancement would be to implement?
+      options:
+        - Low (simple configuration change)
+        - Medium (moderate workflow changes)
+        - High (significant architecture changes)
+        - Unknown (requires investigation)
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: requirements
+    attributes:
+      label: Special Requirements
+      description: Does this enhancement have special requirements?
+      options:
+        - label: Requires healthcare compliance validation
+        - label: Needs security review
+        - label: Impacts cost management
+        - label: Affects OpenShift deployment
+        - label: Changes threading validation
+        - label: Modifies container security
+        - label: Updates monitoring/observability
+
+  - type: textarea
+    id: implementation
+    attributes:
+      label: Implementation Ideas
+      description: Do you have specific ideas about how to implement this?
+      placeholder: |
+        Example workflow changes, new tools, or configuration modifications...
+    validations:
+      required: false
+
+  - type: textarea
+    id: testing
+    attributes:
+      label: Testing Strategy
+      description: How should this enhancement be tested?
+      placeholder: |
+        - Unit tests for new functionality
+        - Integration tests with existing pipeline
+        - Performance benchmarks
+        - Security validation
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Pre-submission Checklist
+      description: Please verify these items before submitting
+      options:
+        - label: I have searched for similar enhancement requests
+          required: true
+        - label: This enhancement aligns with healthcare ML project goals
+          required: true
+        - label: I have considered the impact on both services (WebSocket & VEP)
+          required: true
+        - label: I understand this may require platform team review
+          required: true
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Context
+      description: Any other context or information
+      placeholder: |
+        - Links to relevant documentation
+        - Examples from other projects
+        - Specific tools or technologies to consider
+        - Timeline considerations

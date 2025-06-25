@@ -1,0 +1,135 @@
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: kafka-lag-scaler
+  namespace: healthcare-ml-demo
+  labels:
+    app: vep-service
+    mode: kafka-lag
+    component: keda-scaler
+    scaling-mode: kafka-lag
+    scaling-type: consumer-lag
+    app.kubernetes.io/name: healthcare-ml-scalers
+    app.kubernetes.io/component: keda-scaler
+    app.kubernetes.io/part-of: healthcare-ml-genetic-predictor
+    app.kubernetes.io/version: "1.0.0"
+    separation-of-concerns: "enforced"
+  annotations:
+    description: "KEDA scaler for Kafka lag demonstration with consumer lag metrics"
+    deployment-method: "keda-kustomize"
+    insights.openshift.io/billing-model: "chargeback"
+    insights.openshift.io/cost-center: "genomics-research"
+    insights.openshift.io/project: "kafka-lag-demo"
+    github-issue: "21"
+    # SEPARATION OF CONCERNS: This ScaledObject is dedicated to KAFKA LAG mode only
+    # - Topic: genetic-lag-demo-raw (exclusive to kafka lag mode)
+    # - Deployment: vep-service-kafka-lag (dedicated kafka lag service)
+    # - Consumer Group: vep-kafka-lag-service-group (isolated from other modes)
+    # - Max Replicas: 8 (moderate capacity for lag demonstration)
+    # - Lag Threshold: 3 (higher to demonstrate lag accumulation)
+    # DO NOT modify these mappings without updating docs/KEDA_SEPARATION_OF_CONCERNS.md
+    separation-mode: "kafka-lag"
+    separation-rationale: "Dedicated to demonstrating consumer lag-based scaling patterns"
+    future-experiments: "Red Hat autoscaling coordination projects (docs/research/red-hat-autoscaling-coordination-projects.md)"
+spec:
+  # SEPARATION OF CONCERNS: Target the dedicated kafka lag deployment
+  # This ScaledObject ONLY manages vep-service-kafka-lag deployment
+  # Other modes have their own dedicated ScaledObjects:
+  # - Normal mode: vep-service-normal-scaler → vep-service-normal
+  # - Big data mode: vep-service-bigdata-scaler → vep-service-bigdata
+  # - Node scale mode: vep-service-nodescale-scaler → vep-service-nodescale
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: vep-service-kafka-lag
+  
+  # Scaling configuration optimized for KAFKA LAG demonstration
+  minReplicaCount: 0        # Start at 0 pods (scale-to-zero capability)
+  maxReplicaCount: 8        # Moderate max for lag demonstration (8 * 500MB = 4GB memory)
+  idleReplicaCount: 0       # Scale down to 0 when no messages (cost optimization)
+  
+  # Polling and cooldown settings optimized for lag demonstration
+  pollingInterval: 10       # Check every 10 seconds
+  cooldownPeriod: 60        # Wait 60 seconds before scaling down (allow lag to accumulate)
+  
+  # Fallback configuration
+  fallback:
+    failureThreshold: 3
+    replicas: 1
+  
+  # Advanced HPA configuration for lag-based scaling
+  advanced:
+    horizontalPodAutoscalerConfig:
+      name: kafka-lag-demo-hpa
+      behavior:
+        scaleUp:
+          stabilizationWindowSeconds: 10   # Slightly slower scale up to demonstrate lag
+          selectPolicy: Max                 # Use most aggressive policy
+          policies:
+          - type: Percent
+            value: 100                      # Scale up by 100% (2x)
+            periodSeconds: 10               # Every 10 seconds
+          - type: Pods
+            value: 3                        # Or add 3 pods at once
+            periodSeconds: 10               # Every 10 seconds
+        scaleDown:
+          stabilizationWindowSeconds: 60    # Wait 60 seconds before scale down
+          selectPolicy: Min                 # Use conservative scale down
+          policies:
+          - type: Percent
+            value: 25                       # Scale down by 25%
+            periodSeconds: 30               # Every 30 seconds
+  
+  # SEPARATION OF CONCERNS: Kafka trigger for KAFKA LAG mode ONLY
+  # This trigger EXCLUSIVELY monitors genetic-lag-demo-raw topic
+  # Other modes monitor their own dedicated topics:
+  # - Normal mode: genetic-data-raw
+  # - Big data mode: genetic-bigdata-raw
+  # - Node scale mode: genetic-nodescale-raw
+  triggers:
+  - type: kafka
+    metadata:
+      # Kafka connection (shared infrastructure)
+      bootstrapServers: genetic-data-cluster-kafka-bootstrap.healthcare-ml-demo.svc.cluster.local:9092
+      
+      # CRITICAL: Topic dedicated to kafka lag mode only
+      topic: genetic-lag-demo-raw
+      
+      # CRITICAL: Consumer group isolated from other modes
+      consumerGroup: vep-kafka-lag-service-group
+      
+      # Kafka lag specific thresholds
+      lagThreshold: "3"                     # Higher threshold to demonstrate lag accumulation
+                                           # Allows more messages to queue before scaling
+      offsetResetPolicy: latest             # Start from latest messages
+      allowIdleConsumers: "false"           # Don't scale if no active consumers
+      excludePersistentLag: "false"         # Include all lag in calculations
+      scaleToZeroOnInvalidOffset: "true"    # Scale to zero on offset issues
+  
+  # Additional CPU-based trigger for lag processing
+  - type: cpu
+    metricType: Utilization
+    metadata:
+      value: "70"                           # Scale up when CPU > 70% (higher threshold for lag demo)
+
+---
+# ServiceMonitor for Kafka Lag Mode KEDA metrics
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: vep-service-kafka-lag-keda-metrics
+  namespace: healthcare-ml-demo
+  labels:
+    app: vep-service
+    mode: kafka-lag
+    component: keda-monitoring
+spec:
+  selector:
+    matchLabels:
+      app: vep-service
+      mode: kafka-lag
+  endpoints:
+  - port: http
+    path: /q/metrics
+    interval: 15s
+    scrapeTimeout: 10s

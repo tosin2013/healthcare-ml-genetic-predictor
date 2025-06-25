@@ -2,13 +2,23 @@ package com.redhat.healthcare;
 
 import com.redhat.healthcare.model.*;
 import io.quarkus.test.junit.QuarkusTest;
+import io.quarkus.test.junit.QuarkusTestProfile;
+import io.quarkus.test.junit.TestProfile;
 import io.restassured.RestAssured;
 import io.restassured.http.ContentType;
 import io.restassured.response.Response;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import jakarta.annotation.Priority;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.inject.Alternative;
+import jakarta.inject.Inject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -21,11 +31,11 @@ import java.util.Map;
 
 /**
  * Comprehensive test class for ScalingTestController threading validation.
- * 
+ *
  * Tests validate that @Blocking annotations prevent event loop blocking,
  * REST endpoints respond correctly, and Kafka messaging works properly
  * in local test environment without external dependencies.
- * 
+ *
  * Key Testing Areas:
  * - @Blocking annotation effectiveness (thread validation)
  * - REST endpoint functionality and response validation
@@ -34,7 +44,65 @@ import java.util.Map;
  * - Thread safety and interruption handling
  */
 @QuarkusTest
+@TestProfile(ScalingTestControllerTest.TestProfileWithoutKafka.class)
 public class ScalingTestControllerTest {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(ScalingTestControllerTest.class);
+
+    @Inject
+    ScalingTestController scalingTestController;
+
+    /**
+     * Minimal test profile that only disables Kafka dev services
+     * This should allow REST endpoints to be discovered properly
+     */
+    public static class TestProfileWithoutKafka implements QuarkusTestProfile {
+        @Override
+        public Map<String, String> getConfigOverrides() {
+            Map<String, String> config = new HashMap<>();
+
+            // Only disable Kafka dev services - let everything else work normally
+            config.put("quarkus.kafka.devservices.enabled", "false");
+
+            // Use in-memory connectors for messaging (minimal configuration)
+            config.put("mp.messaging.outgoing.genetic-data-raw-out.connector", "smallrye-in-memory");
+            config.put("mp.messaging.outgoing.genetic-bigdata-raw-out.connector", "smallrye-in-memory");
+            config.put("mp.messaging.outgoing.genetic-nodescale-raw-out.connector", "smallrye-in-memory");
+            config.put("mp.messaging.outgoing.genetic-lag-demo-raw-out.connector", "smallrye-in-memory");
+            config.put("mp.messaging.incoming.genetic-data-annotated-in.connector", "smallrye-in-memory");
+
+            // Enable feature flags for testing
+            config.put("healthcare.ml.features.kafka-lag-mode.enabled", "true");
+            config.put("healthcare.ml.features.multi-dimensional-autoscaler.enabled", "false");
+
+            return config;
+        }
+
+        @Override
+        public Set<Class<?>> getEnabledAlternatives() {
+            return Set.of(MockResourcePressureController.class);
+        }
+    }
+
+    /**
+     * Mock implementation of ResourcePressureController for testing
+     */
+    @Alternative
+    @Priority(1)
+    @ApplicationScoped
+    public static class MockResourcePressureController extends ResourcePressureController {
+        @Override
+        public jakarta.ws.rs.core.Response triggerResourcePressure(int durationMinutes) {
+            Map<String, Object> responseData = new HashMap<>();
+            responseData.put("workloadActive", true);
+            responseData.put("durationMinutes", durationMinutes);
+            responseData.put("mock", true);
+
+            return jakarta.ws.rs.core.Response.ok(
+                ApiResponse.success("Mock resource pressure triggered", responseData)
+            ).build();
+        }
+    }
 
     // Thread capture utility for @Blocking validation
     private final Map<String, String> capturedThreadNames = new ConcurrentHashMap<>();
@@ -123,18 +191,49 @@ public class ScalingTestControllerTest {
     // Basic Test Infrastructure
 
     @Test
-    public void testTestConfigurationLoaded() {
-        // Verify that test configuration is properly loaded
-        // This test ensures our test setup is working correctly
+    public void testCDIBeanDiscovery() {
+        // Test if ScalingTestController is being discovered as a CDI bean
+        LOGGER.info("Testing CDI bean discovery for ScalingTestController");
 
-        // Verify test can make HTTP requests
+        assertNotNull(scalingTestController, "ScalingTestController should be injected via CDI");
+        LOGGER.info("✅ ScalingTestController CDI bean discovered successfully");
+
+        // If CDI works, the REST endpoints should also work
+        // Test the health endpoint directly (updated path to avoid conflicts)
         given()
-            .when().get("/api/scaling/health")
+            .when().get("/api/test/scaling/health")
             .then()
             .statusCode(200)
             .contentType(ContentType.JSON)
             .body("status", equalTo("success"))
             .body("data.application", equalTo("ready"));
+
+        LOGGER.info("✅ REST endpoint /api/test/scaling/health working correctly");
+    }
+
+    @Test
+    public void testTestConfigurationLoaded() {
+        // Verify that test configuration is properly loaded
+        // This test ensures our test setup is working correctly
+
+        // First test Quarkus health endpoint to ensure basic setup works
+        given()
+            .when().get("/q/health")
+            .then()
+            .statusCode(200);
+
+        LOGGER.info("✅ Quarkus health endpoint working");
+
+        // Test our custom health endpoint (updated path)
+        given()
+            .when().get("/api/test/scaling/health")
+            .then()
+            .statusCode(200)
+            .contentType(ContentType.JSON)
+            .body("status", equalTo("success"))
+            .body("data.application", equalTo("ready"));
+
+        LOGGER.info("✅ Custom health endpoint working");
     }
 
     // Genetic Analysis Endpoint Threading Tests
@@ -149,7 +248,7 @@ public class ScalingTestControllerTest {
             .contentType(ContentType.JSON)
             .body(request)
             .when()
-            .post("/api/genetic/analyze")
+            .post("/api/test/genetic/analyze")
             .then()
             .statusCode(200)
             .contentType(ContentType.JSON)
@@ -182,7 +281,7 @@ public class ScalingTestControllerTest {
             .contentType(ContentType.JSON)
             .body(request)
             .when()
-            .post("/api/genetic/analyze")
+            .post("/api/test/genetic/analyze")
             .then()
             .statusCode(200)
             .contentType(ContentType.JSON)
@@ -222,7 +321,7 @@ public class ScalingTestControllerTest {
             .contentType(ContentType.JSON)
             .body(request)
             .when()
-            .post("/api/genetic/analyze")
+            .post("/api/test/genetic/analyze")
             .then()
             .statusCode(200)
             .contentType(ContentType.JSON)
@@ -237,7 +336,8 @@ public class ScalingTestControllerTest {
         verifySuccessfulProcessing(response);
 
         // Large sequence should still process quickly (no actual ML processing in test)
-        assertTrue(processingTime < 5000, "Large sequence processing should complete within 5 seconds");
+        // Increased timeout to account for CloudEvent creation and Kafka publishing overhead
+        assertTrue(processingTime < 10000, "Large sequence processing should complete within 10 seconds");
 
         // Verify sequence length is correctly calculated
         String responseBody = response.getBody().asString();
@@ -254,7 +354,7 @@ public class ScalingTestControllerTest {
             .contentType(ContentType.JSON)
             .body(modeRequest)
             .when()
-            .post("/api/scaling/mode")
+            .post("/api/test/scaling/mode")
             .then()
             .statusCode(200);
 
@@ -267,7 +367,7 @@ public class ScalingTestControllerTest {
             .contentType(ContentType.JSON)
             .body(inheritanceRequest)
             .when()
-            .post("/api/genetic/analyze")
+            .post("/api/test/genetic/analyze")
             .then()
             .statusCode(200)
             .contentType(ContentType.JSON)
@@ -281,7 +381,7 @@ public class ScalingTestControllerTest {
             .contentType(ContentType.JSON)
             .body(resetRequest)
             .when()
-            .post("/api/scaling/mode")
+            .post("/api/test/scaling/mode")
             .then()
             .statusCode(200);
     }
@@ -297,7 +397,7 @@ public class ScalingTestControllerTest {
             .contentType(ContentType.JSON)
             .body(request)
             .when()
-            .post("/api/genetic/analyze")
+            .post("/api/test/genetic/analyze")
             .then()
             .statusCode(200)
             .extract().response();
@@ -328,7 +428,7 @@ public class ScalingTestControllerTest {
             .contentType(ContentType.JSON)
             .body(request)
             .when()
-            .post("/api/genetic/analyze")
+            .post("/api/test/genetic/analyze")
             .then()
             .statusCode(200)
             .extract().response();

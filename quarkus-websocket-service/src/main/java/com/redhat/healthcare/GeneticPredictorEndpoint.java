@@ -27,25 +27,36 @@ import io.cloudevents.jackson.JsonFormat;
 import io.cloudevents.core.format.EventFormat;
 import io.cloudevents.core.provider.EventFormatProvider;
 
+// Separation of Concerns Validation Annotations
+// These annotations ensure the mapping between UI buttons and Kafka topics is maintained
+// Configuration: quarkus-websocket-service/src/main/resources/scaling-mode-separation.yaml
+
+// VALIDATION RULE: Each case must map to the correct Kafka topic as defined in the configuration
+// - Normal Mode: genetic-data-raw
+// - Big Data Mode: genetic-bigdata-raw  
+// - Node Scale Mode: genetic-nodescale-raw
+// - Kafka Lag Mode: genetic-lag-demo-raw
+
 @ServerEndpoint("/genetics")
 @ApplicationScoped
 public class GeneticPredictorEndpoint {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(GeneticPredictorEndpoint.class);
 
+    // VALIDATION RULE: All emitter channels must be injected and match configuration
     @Inject
     // Multi-topic emitters for different scaling modes
     @Channel("genetic-data-raw-out")
-    Emitter<String> geneticDataEmitter;
+    Emitter<String> geneticDataRawOutEmitter;
 
     @Channel("genetic-bigdata-raw-out")
-    Emitter<String> geneticBigDataEmitter;
+    Emitter<String> geneticBigdataRawOutEmitter;
 
     @Channel("genetic-nodescale-raw-out")
-    Emitter<String> geneticNodeScaleEmitter;
+    Emitter<String> geneticNodescaleRawOutEmitter;
 
     @Channel("genetic-lag-demo-raw-out")
-    Emitter<String> geneticLagDemoEmitter;
+    Emitter<String> geneticLagDemoRawOutEmitter;
 
     @Inject
     ObjectMapper objectMapper;
@@ -134,20 +145,31 @@ public class GeneticPredictorEndpoint {
             String eventType;
             String kafkaTopic;
 
+            // VALIDATION RULE: Switch statement must handle all modes defined in scaling-mode-separation.yaml
+            // Each case must assign the correct kafkaTopic and eventType as per configuration
             switch (mode) {
                 case "big-data":
+                    // VALIDATED: Big Data Mode → genetic-bigdata-raw topic
                     eventType = "com.redhat.healthcare.genetic.sequence.bigdata";
                     kafkaTopic = "genetic-bigdata-raw";
                     break;
                 case "node-scale":
+                    // VALIDATED: Node Scale Mode → genetic-nodescale-raw topic
                     eventType = "com.redhat.healthcare.genetic.sequence.nodescale";
                     kafkaTopic = "genetic-nodescale-raw";
                     break;
                 case "kafka-lag":
+                    // VALIDATED: Kafka Lag Mode → genetic-lag-demo-raw topic
                     eventType = "com.redhat.healthcare.genetic.sequence.kafkalag";
                     kafkaTopic = "genetic-lag-demo-raw";
                     break;
-                default: // "normal"
+                case "normal":
+                    // VALIDATED: Normal Mode → genetic-data-raw topic
+                    eventType = "com.redhat.healthcare.genetic.sequence.raw";
+                    kafkaTopic = "genetic-data-raw";
+                    break;
+                default:
+                    // Default to normal mode for backward compatibility
                     eventType = "com.redhat.healthcare.genetic.sequence.raw";
                     kafkaTopic = "genetic-data-raw";
                     break;
@@ -174,16 +196,20 @@ public class GeneticPredictorEndpoint {
             // Send to appropriate topic based on mode
             switch (mode) {
                 case "big-data":
-                    geneticBigDataEmitter.send(cloudEventJson);
+                    geneticBigdataRawOutEmitter.send(cloudEventJson);
                     break;
                 case "node-scale":
-                    geneticNodeScaleEmitter.send(cloudEventJson);
+                    geneticNodescaleRawOutEmitter.send(cloudEventJson);
                     break;
                 case "kafka-lag":
-                    geneticLagDemoEmitter.send(cloudEventJson);
+                    geneticLagDemoRawOutEmitter.send(cloudEventJson);
                     break;
-                default: // "normal"
-                    geneticDataEmitter.send(cloudEventJson);
+                case "normal":
+                    geneticDataRawOutEmitter.send(cloudEventJson);
+                    break;
+                default:
+                    // Default to normal mode for backward compatibility
+                    geneticDataRawOutEmitter.send(cloudEventJson);
                     break;
             }
 
@@ -202,11 +228,22 @@ public class GeneticPredictorEndpoint {
                                     geneticSequence.length(), kafkaTopic));
                     break;
                 case "kafka-lag":
+                    // ADR-008: Multi-dimensional Pod Autoscaler (AEP-5342) - Development Phase
                     session.getAsyncRemote().sendText(
                         String.format("🔄 Kafka lag sequence (%d chars) queued for consumer lag demonstration → %s",
                                     geneticSequence.length(), kafkaTopic));
+                    session.getAsyncRemote().sendText(
+                        "⚠️ DEVELOPMENT PHASE: Kafka Lag Mode uses basic KEDA scaling (may have HPA conflicts)");
+                    session.getAsyncRemote().sendText(
+                        "🚧 Future: Multi-dimensional Pod Autoscaler (AEP-5342) will resolve coordination issues");
                     break;
-                default: // "normal"
+                case "normal":
+                    session.getAsyncRemote().sendText(
+                        String.format("🧬 Genetic sequence (%d chars) queued for VEP annotation and ML analysis → %s",
+                                    geneticSequence.length(), kafkaTopic));
+                    break;
+                default:
+                    // Default to normal mode for backward compatibility
                     session.getAsyncRemote().sendText(
                         String.format("🧬 Genetic sequence (%d chars) queued for VEP annotation and ML analysis → %s",
                                     geneticSequence.length(), kafkaTopic));

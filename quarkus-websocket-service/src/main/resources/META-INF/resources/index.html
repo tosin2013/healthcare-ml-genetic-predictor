@@ -552,9 +552,10 @@
             document.getElementById('normal-samples').style.display = 'none';
             document.getElementById('bigdata-samples').style.display = 'block';
             document.getElementById('kafka-samples').style.display = 'none';
-            updateScalingStatus('🔴 Node Scale Mode - Cluster Autoscaler Enabled', 'status-bigdata');
-            addMessage('⚡ Node Scale Mode activated - cluster autoscaler demonstration ready', 'system');
-            addMessage('💡 Click "⚡ Trigger Node Scale Demo" to create compute-intensive nodes', 'system');
+            updateScalingStatus('🔴 Node Scale Mode - Resource Pressure Scaling', 'status-bigdata');
+            addMessage('⚡ Node Scale Mode activated - resource pressure scaling ready', 'system');
+            addMessage('💡 Click "⚡ Trigger Node Scale Demo" to start CPU/memory intensive workload', 'system');
+            addMessage('🎯 This mode uses resource pressure (not Kafka lag) to trigger cluster autoscaler', 'system');
         }
 
         function setKafkaLagMode() {
@@ -637,35 +638,44 @@
 
         // Trigger node scaling demonstration (cluster autoscaler)
         function triggerNodeScaling() {
-            if (!connected) {
-                addMessage('❌ Connect to service first', 'system');
-                return;
-            }
+            updateScalingStatus('🔴 Triggering Resource Pressure Demo', 'status-bigdata');
+            addMessage('⚡ Triggering resource pressure workload - this will force cluster autoscaler!', 'system');
+            addMessage('🔥 Starting CPU and memory intensive tasks to trigger HPA scaling...', 'system');
 
-            updateScalingStatus('🔴 Triggering Node Scaling Demo', 'status-bigdata');
-            addMessage('⚡ Triggering node scaling demo - this will create compute-intensive nodes!', 'system');
-            addMessage('📊 Generating large genetic sequences for cluster autoscaler...', 'system');
+            // Use REST API to trigger resource pressure workload
+            const resourcePressureRequest = {
+                duration: 8  // 8 minutes of resource pressure
+            };
 
-            // Generate node-scale sequences (100KB each for reliable node scaling)
-            const nodeScaleSequences = generateNodeScaleDatasets();
+            fetch('/api/scaling/trigger-resource-pressure?duration=8', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    addMessage('✅ Resource pressure workload started successfully!', 'system');
+                    addMessage(`🔥 CPU-intensive tasks: ${data.data.threadsCreated} threads on ${data.data.cpuCores} cores`, 'system');
+                    addMessage(`💾 Memory-intensive tasks: Large data structures allocated`, 'system');
+                    addMessage(`⏱️ Duration: ${data.data.durationMinutes} minutes`, 'system');
+                    addMessage('📊 Expected flow: Resource pressure → HPA scaling → Cluster autoscaler → New nodes', 'system');
+                    addMessage('⏳ Monitor scaling above - new compute-intensive nodes should appear within 3-5 minutes', 'system');
+                    addMessage('💰 Watch for node scaling and increased cost attribution', 'system');
 
-            nodeScaleSequences.forEach((sequence, index) => {
-                setTimeout(() => {
-                    const message = JSON.stringify({
-                        mode: 'node-scale',
-                        sequence: sequence,
-                        size: sequence.length,
-                        timestamp: Date.now(),
-                        sessionId: 'node-scale-demo-' + Date.now() + '-' + index
-                    });
-
-                    socket.send(message);
-                    addMessage(`⚡ Sent node-scale sequence ${index + 1}/${nodeScaleSequences.length} (${sequence.length} chars)`, 'sent');
-                }, index * 2000); // 2 second delay between sequences
+                    // Update status with workload info
+                    updateScalingStatus(`🔴 Resource Pressure Active (${data.data.durationMinutes}min)`, 'status-bigdata');
+                } else {
+                    addMessage(`❌ Failed to start resource pressure workload: ${data.message}`, 'error');
+                    updateScalingStatus('❌ Resource Pressure Failed', 'status-error');
+                }
+            })
+            .catch(error => {
+                console.error('Error triggering resource pressure:', error);
+                addMessage(`❌ Error triggering resource pressure: ${error.message}`, 'error');
+                updateScalingStatus('❌ Resource Pressure Error', 'status-error');
             });
-
-            addMessage('⏳ Monitor scaling metrics above - cluster autoscaler should create new nodes within 3-5 minutes', 'system');
-            addMessage('💰 Watch for node scaling and increased cost attribution', 'system');
         }
 
         // Generate large genetic datasets for big-data mode (memory scaling)

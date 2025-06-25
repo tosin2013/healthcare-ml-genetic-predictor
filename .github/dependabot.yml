@@ -1,0 +1,114 @@
+# Dependabot configuration for Healthcare ML project
+version: 2
+updates:
+  # Enable version updates for Maven dependencies
+  - package-ecosystem: "maven"
+    directory: "/quarkus-websocket-service"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "deps(websocket)"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "websocket-service"
+      - "security"
+    reviewers:
+      - "platform-team"
+    assignees:
+      - "security-team"
+    # Healthcare ML specific: Group Quarkus updates
+    groups:
+      quarkus:
+        patterns:
+          - "io.quarkus*"
+          - "io.quarkus.platform*"
+      security:
+        patterns:
+          - "*security*"
+          - "*auth*"
+        update-types:
+          - "security"
+
+  - package-ecosystem: "maven"
+    directory: "/vep-service"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "deps(vep)"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "vep-service"
+      - "security"
+    reviewers:
+      - "platform-team"
+    assignees:
+      - "security-team"
+    # Healthcare ML specific: Group Quarkus updates
+    groups:
+      quarkus:
+        patterns:
+          - "io.quarkus*"
+          - "io.quarkus.platform*"
+      cloudevents:
+        patterns:
+          - "io.cloudevents*"
+      security:
+        patterns:
+          - "*security*"
+          - "*auth*"
+        update-types:
+          - "security"
+
+  # GitHub Actions updates
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: "ci"
+      include: "scope"
+    labels:
+      - "github-actions"
+      - "ci-cd"
+    reviewers:
+      - "platform-team"
+
+  # Docker base image updates
+  - package-ecosystem: "docker"
+    directory: "/quarkus-websocket-service"
+    schedule:
+      interval: "weekly"
+      day: "tuesday"
+      time: "06:00"
+    open-pull-requests-limit: 2
+    commit-message:
+      prefix: "docker(websocket)"
+    labels:
+      - "docker"
+      - "websocket-service"
+      - "security"
+
+  - package-ecosystem: "docker"
+    directory: "/vep-service"
+    schedule:
+      interval: "weekly"
+      day: "tuesday"
+      time: "06:00"
+    open-pull-requests-limit: 2
+    commit-message:
+      prefix: "docker(vep)"
+    labels:
+      - "docker"
+      - "vep-service"
+      - "security"

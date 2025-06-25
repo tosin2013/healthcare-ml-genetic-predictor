@@ -1,0 +1,132 @@
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: vep-service-nodescale-scaler
+  namespace: healthcare-ml-demo
+  labels:
+    app: vep-service-nodescale
+    component: keda-scaler
+    scaling-mode: nodescale
+    scaling-type: kafka-lag
+    app.kubernetes.io/name: healthcare-ml-scalers
+    app.kubernetes.io/component: keda-scaler
+    app.kubernetes.io/part-of: healthcare-ml-genetic-predictor
+    app.kubernetes.io/version: "1.0.0"
+    separation-of-concerns: "enforced"
+  annotations:
+    description: "KEDA scaler for node scale VEP processing - triggers initial pod creation"
+    deployment-method: "keda-kustomize"
+    insights.openshift.io/billing-model: "chargeback"
+    insights.openshift.io/cost-center: "genomics-research"
+    insights.openshift.io/project: "node-scaling-demo"
+    github-issue: "21"
+    # SEPARATION OF CONCERNS: This ScaledObject is dedicated to NODE SCALE mode only
+    # - Topic: genetic-nodescale-raw (exclusive to node scale mode)
+    # - Deployment: vep-service-nodescale (dedicated node scale service)
+    # - Consumer Group: vep-nodescale-service-group (isolated from other modes)
+    # - Max Replicas: 5 (limited to force cluster autoscaler activation)
+    # - Lag Threshold: 1 (immediate response for demo purposes)
+    # DO NOT modify these mappings without updating docs/KEDA_SEPARATION_OF_CONCERNS.md
+    separation-mode: "nodescale"
+    separation-rationale: "Dedicated to node scaling demonstration with resource pressure"
+spec:
+  # SEPARATION OF CONCERNS: Target the dedicated node scale deployment
+  # This ScaledObject ONLY manages vep-service-nodescale deployment
+  # Other modes have their own dedicated ScaledObjects:
+  # - Normal mode: vep-service-normal-scaler → vep-service-normal
+  # - Big data mode: vep-service-bigdata-scaler → vep-service-bigdata
+  # - Kafka lag mode: kafka-lag-scaler → vep-service-kafka-lag
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: vep-service-nodescale
+
+  # Scaling configuration optimized for NODE SCALE mode demonstration
+  minReplicaCount: 0        # Start at 0 pods (scale-to-zero capability)
+  maxReplicaCount: 5        # LIMITED to 5 pods to force cluster autoscaler activation
+                           # This limit is CRITICAL - higher values defeat node scaling purpose
+  idleReplicaCount: 0       # Scale down to 0 when no messages (cost optimization)
+  
+  # Polling and cooldown settings
+  pollingInterval: 10       # Check every 10 seconds
+  cooldownPeriod: 60        # Wait 60 seconds before scaling down
+  
+  # Fallback configuration
+  fallback:
+    failureThreshold: 3
+    replicas: 1
+  
+  # Advanced HPA configuration for aggressive scaling
+  advanced:
+    horizontalPodAutoscalerConfig:
+      name: vep-service-nodescale-keda-hpa
+      behavior:
+        scaleUp:
+          stabilizationWindowSeconds: 5    # Immediate scale up
+          selectPolicy: Max                 # Use most aggressive policy
+          policies:
+          - type: Percent
+            value: 1000                     # Scale up by 1000% (10x)
+            periodSeconds: 5                # Every 5 seconds
+          - type: Pods
+            value: 3                        # Or add 3 pods at once (3 * 8 CPU = 24 cores)
+            periodSeconds: 5                # Every 5 seconds
+        scaleDown:
+          stabilizationWindowSeconds: 60    # Wait 60 seconds before scale down
+          selectPolicy: Min                 # Use conservative scale down
+          policies:
+          - type: Percent
+            value: 50                       # Scale down by 50%
+            periodSeconds: 30               # Every 30 seconds
+  
+  # SEPARATION OF CONCERNS: Kafka trigger for NODE SCALE mode ONLY
+  # This trigger EXCLUSIVELY monitors genetic-nodescale-raw topic
+  # Other modes monitor their own dedicated topics:
+  # - Normal mode: genetic-data-raw
+  # - Big data mode: genetic-bigdata-raw
+  # - Kafka lag mode: genetic-lag-demo-raw
+  triggers:
+  - type: kafka
+    metadata:
+      # Kafka connection (shared infrastructure)
+      bootstrapServers: genetic-data-cluster-kafka-bootstrap.healthcare-ml-demo.svc.cluster.local:9092
+
+      # CRITICAL: Topic dedicated to node scale mode only
+      topic: genetic-nodescale-raw
+
+      # CRITICAL: Consumer group isolated from other modes
+      consumerGroup: vep-nodescale-service-group
+
+      # Node scale specific thresholds
+      lagThreshold: "1"                     # Immediate response (1 message triggers scaling)
+                                           # Lower than other modes for demo responsiveness
+      offsetResetPolicy: latest             # Start from latest messages
+      allowIdleConsumers: "false"           # Don't scale if no active consumers
+      excludePersistentLag: "false"         # Include all lag in calculations
+      scaleToZeroOnInvalidOffset: "true"    # Scale to zero on offset issues
+  
+  # Additional memory-based trigger for resource pressure demonstration
+  - type: memory
+    metricType: Utilization
+    metadata:
+      value: "70"                           # Scale up when memory > 70%
+
+---
+# ServiceMonitor for KEDA metrics
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: vep-service-nodescale-keda-metrics
+  namespace: healthcare-ml-demo
+  labels:
+    app: vep-service-nodescale
+    component: keda-monitoring
+spec:
+  selector:
+    matchLabels:
+      app: vep-service-nodescale
+  endpoints:
+  - port: http
+    path: /q/metrics
+    interval: 15s
+    scrapeTimeout: 10s

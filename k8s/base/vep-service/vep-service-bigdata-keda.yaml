@@ -1,0 +1,134 @@
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: vep-service-bigdata-scaler
+  namespace: healthcare-ml-demo
+  labels:
+    app: vep-service
+    mode: bigdata
+    component: keda-scaler
+    scaling-mode: bigdata
+    scaling-type: kafka-lag
+    app.kubernetes.io/name: healthcare-ml-scalers
+    app.kubernetes.io/component: keda-scaler
+    app.kubernetes.io/part-of: healthcare-ml-genetic-predictor
+    app.kubernetes.io/version: "1.0.0"
+    separation-of-concerns: "enforced"
+  annotations:
+    description: "KEDA scaler for big data VEP processing with high-memory pods"
+    deployment-method: "keda-kustomize"
+    insights.openshift.io/billing-model: "chargeback"
+    insights.openshift.io/cost-center: "genomics-research"
+    insights.openshift.io/project: "bigdata-mode-scaling"
+    github-issue: "21"
+    # SEPARATION OF CONCERNS: This ScaledObject is dedicated to BIG DATA mode only
+    # - Topic: genetic-bigdata-raw (exclusive to big data mode)
+    # - Deployment: vep-service-bigdata (dedicated big data service)
+    # - Consumer Group: vep-bigdata-service-group (isolated from other modes)
+    # - Max Replicas: 15 (higher capacity for big data processing)
+    # - Lag Threshold: 2 (balanced responsiveness for large datasets)
+    # DO NOT modify these mappings without updating docs/KEDA_SEPARATION_OF_CONCERNS.md
+    separation-mode: "bigdata"
+    separation-rationale: "Dedicated to memory-intensive processing of large genetic datasets"
+spec:
+  # SEPARATION OF CONCERNS: Target the dedicated big data deployment
+  # This ScaledObject ONLY manages vep-service-bigdata deployment
+  # Other modes have their own dedicated ScaledObjects:
+  # - Normal mode: vep-service-normal-scaler → vep-service-normal
+  # - Node scale mode: vep-service-nodescale-scaler → vep-service-nodescale
+  # - Kafka lag mode: kafka-lag-scaler → vep-service-kafka-lag
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: vep-service-bigdata
+  
+  # Scaling configuration optimized for BIG DATA mode
+  minReplicaCount: 0        # Start at 0 pods (scale-to-zero capability)
+  maxReplicaCount: 15       # Higher max for big data processing (15 * 1GB = 15GB memory)
+  idleReplicaCount: 0       # Scale down to 0 when no messages (cost optimization)
+  
+  # Polling and cooldown settings
+  pollingInterval: 10       # Check every 10 seconds
+  cooldownPeriod: 30        # Wait 30 seconds before scaling down (faster than node scale)
+  
+  # Fallback configuration
+  fallback:
+    failureThreshold: 3
+    replicas: 1
+  
+  # Advanced HPA configuration for big data scaling
+  advanced:
+    horizontalPodAutoscalerConfig:
+      name: vep-service-bigdata-hpa
+      behavior:
+        scaleUp:
+          stabilizationWindowSeconds: 5    # Quick scale up for big data
+          selectPolicy: Max                 # Use most aggressive policy
+          policies:
+          - type: Percent
+            value: 200                      # Scale up by 200% (3x)
+            periodSeconds: 5                # Every 5 seconds
+          - type: Pods
+            value: 5                        # Or add 5 pods at once
+            periodSeconds: 5                # Every 5 seconds
+        scaleDown:
+          stabilizationWindowSeconds: 30    # Wait 30 seconds before scale down
+          selectPolicy: Min                 # Use conservative scale down
+          policies:
+          - type: Percent
+            value: 50                       # Scale down by 50%
+            periodSeconds: 30               # Every 30 seconds
+  
+  # SEPARATION OF CONCERNS: Kafka trigger for BIG DATA mode ONLY
+  # This trigger EXCLUSIVELY monitors genetic-bigdata-raw topic
+  # Other modes monitor their own dedicated topics:
+  # - Normal mode: genetic-data-raw
+  # - Node scale mode: genetic-nodescale-raw
+  # - Kafka lag mode: genetic-lag-demo-raw
+  triggers:
+  - type: kafka
+    metadata:
+      # Kafka connection (shared infrastructure)
+      bootstrapServers: genetic-data-cluster-kafka-bootstrap.healthcare-ml-demo.svc.cluster.local:9092
+      
+      # CRITICAL: Topic dedicated to big data mode only
+      topic: genetic-bigdata-raw
+      
+      # CRITICAL: Consumer group isolated from other modes
+      consumerGroup: vep-bigdata-service-group
+      
+      # Big data specific thresholds
+      lagThreshold: "2"                     # Standard responsiveness (2 messages trigger scaling)
+                                           # Same as normal mode but higher max replicas
+      offsetResetPolicy: latest             # Start from latest messages
+      allowIdleConsumers: "false"           # Don't scale if no active consumers
+      excludePersistentLag: "false"         # Include all lag in calculations
+      scaleToZeroOnInvalidOffset: "true"    # Scale to zero on offset issues
+  
+  # Additional memory-based trigger for big data processing
+  - type: memory
+    metricType: Utilization
+    metadata:
+      value: "60"                           # Scale up when memory > 60% (lower threshold for big data)
+
+---
+# ServiceMonitor for Big Data Mode KEDA metrics
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: vep-service-bigdata-keda-metrics
+  namespace: healthcare-ml-demo
+  labels:
+    app: vep-service
+    mode: bigdata
+    component: keda-monitoring
+spec:
+  selector:
+    matchLabels:
+      app: vep-service
+      mode: bigdata
+  endpoints:
+  - port: http
+    path: /q/metrics
+    interval: 30s
+    scrapeTimeout: 10s

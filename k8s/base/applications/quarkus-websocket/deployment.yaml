@@ -17,7 +17,14 @@ metadata:
     deployment-method: "kustomize"
     app.openshift.io/connects-to: "genetic-data-cluster"
 spec:
-  replicas: 2  # High availability for persistent WebSocket connections
+  # CRITICAL: WebSocket service MUST have exactly 1 replica
+  # Multiple replicas cause:
+  # - Session loss during scaling events
+  # - Connection routing issues (sessions tied to specific pods)
+  # - Inconsistent state management across pods
+  # - Poor user experience with dropped connections
+  # DO NOT enable autoscaling for this service!
+  replicas: 1
   strategy:
     type: RollingUpdate
     rollingUpdate:

@@ -7,9 +7,25 @@ metadata:
     config.kubernetes.io/local-config: "true"
     description: "Multi-mode VEP service deployments for different scaling patterns"
 
-# Multi-Mode VEP Service Resources
+# Clean Separation of Concerns: One file per scaling mode button
+# Each mode has dedicated deployment + KEDA ScaledObject files
+# Perfect 1:1 mapping: UI Button → YAML files
 resources:
-  - multi-mode-deployments.yaml
+  # Normal Mode (Button: #normalModeBtn)
+  - vep-service-normal.yaml
+  - vep-service-normal-keda.yaml
+
+  # Big Data Mode (Button: #bigDataModeBtn)
+  - vep-service-bigdata.yaml
+  - vep-service-bigdata-keda.yaml
+
+  # Node Scale Mode (Button: #nodeScaleModeBtn)
+  - vep-service-nodescale.yaml
+  - vep-service-nodescale-keda.yaml
+
+  # Kafka Lag Mode (Button: #kafkaLagModeBtn)
+  - vep-service-kafka-lag.yaml
+  - vep-service-kafka-lag-keda.yaml
 
 # Multi-mode specific labels
 commonLabels:

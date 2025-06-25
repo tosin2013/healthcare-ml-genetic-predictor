@@ -50,61 +50,188 @@ jobs:
         key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
         restore-keys: ${{ runner.os }}-m2
         
-    - name: Validate Maven wrapper
+    - name: Validate Maven wrapper and scripts
       run: |
         cd quarkus-websocket-service
         chmod +x mvnw
         cd ../vep-service
         chmod +x mvnw
+        cd ..
+        chmod +x scripts/test-local-setup.sh
+        chmod +x scripts/test-local-integration.sh
 
-    - name: Compile projects
+    - name: Setup local testing environment
       run: |
+        echo "🧪 Setting up local testing environment..."
+
+        # Install podman-compose for local Kafka setup
+        pip install podman-compose
+
+        # Setup local Kafka cluster for testing (includes all 4 scaling mode topics)
+        ./scripts/test-local-setup.sh
+
+        # Wait for Kafka to be fully ready
+        echo "⏳ Waiting for Kafka cluster to be ready..."
+        sleep 15
+
+        # Verify Kafka is working and all scaling mode topics exist
+        if ! podman exec test-kafka kafka-topics --list --bootstrap-server localhost:9092 > /dev/null 2>&1; then
+          echo "❌ Kafka setup failed"
+          exit 1
+        fi
+
+        # Validate separation of concerns - ensure all 4 scaling mode topics exist
+        REQUIRED_TOPICS=("genetic-data-raw" "genetic-bigdata-raw" "genetic-nodescale-raw" "genetic-lag-demo-raw")
+        TOPIC_LIST=$(podman exec test-kafka kafka-topics --list --bootstrap-server localhost:9092)
+
+        for topic in "${REQUIRED_TOPICS[@]}"; do
+          if echo "$TOPIC_LIST" | grep -q "^$topic$"; then
+            echo "✅ Scaling mode topic verified: $topic"
+          else
+            echo "❌ Missing scaling mode topic: $topic"
+            exit 1
+          fi
+        done
+
+        echo "✅ Kafka cluster ready with all 4 scaling mode topics"
+
+    - name: Compile projects with local configuration
+      run: |
+        echo "🔨 Compiling projects with local test configuration..."
+
+        # Use the integration script to setup proper configurations
+        ./scripts/test-local-integration.sh vep-only &
+        VEP_SETUP_PID=$!
+
+        # Wait for VEP service to compile and start
+        sleep 30
+
+        # Kill the VEP service (we just needed the compilation and config)
+        kill $VEP_SETUP_PID 2>/dev/null || true
+
         echo "🔨 Compiling WebSocket Service..."
         cd quarkus-websocket-service
-        ./mvnw clean compile test-compile -B -q
+        ./mvnw clean compile test-compile -B
 
-        echo "🔨 Compiling VEP Service..."
-        cd ../vep-service
-        ./mvnw clean compile test-compile -B -q
-        
+        echo "✅ Compilation completed with local configuration"
+
+    - name: Validate separation of concerns before testing
+      run: |
+        echo "🔍 Validating separation of concerns before threading tests..."
+
+        # Check that all 4 scaling modes are properly configured
+        WEBSOCKET_SERVICE="quarkus-websocket-service/src/main/java/com/redhat/healthcare/GeneticPredictorEndpoint.java"
+
+        # Validate Java switch cases exist for all modes
+        EXPECTED_MODES=("normal" "big-data" "node-scale" "kafka-lag")
+        for mode in "${EXPECTED_MODES[@]}"; do
+          if grep -q "case \"$mode\":" "$WEBSOCKET_SERVICE"; then
+            echo "✅ Java mode case found: $mode"
+          else
+            echo "❌ Missing Java mode case: $mode"
+            exit 1
+          fi
+        done
+
+        # Validate Kafka topic configurations
+        APP_PROPS="quarkus-websocket-service/src/main/resources/application.properties"
+        EXPECTED_TOPICS=("genetic-data-raw" "genetic-bigdata-raw" "genetic-nodescale-raw" "genetic-lag-demo-raw")
+        for topic in "${EXPECTED_TOPICS[@]}"; do
+          if grep -q "topic=$topic" "$APP_PROPS"; then
+            echo "✅ Kafka topic configured: $topic"
+          else
+            echo "❌ Missing Kafka topic: $topic"
+            exit 1
+          fi
+        done
+
+        echo "✅ Separation of concerns validation passed"
+
     - name: Run Threading Validation Tests
       id: threading-tests
       run: |
-        echo "🧵 Running Threading Validation Tests..."
+        echo "🧵 Running Threading Validation Tests with Local Environment..."
 
         # Initialize combined test output
         echo "=== WebSocket Service Threading Tests ===" > threading-test-output.log
 
-        # Run WebSocket service tests
+        # Create local test configuration for WebSocket service
         cd quarkus-websocket-service
-        echo "🧵 Testing WebSocket Service..."
-        ./mvnw test -Dtest=ScalingTestControllerTest -B -q \
+        cat > src/test/resources/application-test.properties << EOF
+        # Local testing configuration for GitHub Actions
+        quarkus.kafka.devservices.enabled=false
+        kafka.bootstrap.servers=localhost:9092
+
+        # Override all messaging channels to use in-memory for unit tests
+        mp.messaging.outgoing.genetic-data-raw-out.connector=smallrye-in-memory
+        mp.messaging.outgoing.genetic-bigdata-raw-out.connector=smallrye-in-memory
+        mp.messaging.outgoing.genetic-nodescale-raw-out.connector=smallrye-in-memory
+        mp.messaging.outgoing.genetic-lag-demo-raw-out.connector=smallrye-in-memory
+        mp.messaging.incoming.genetic-data-annotated-in.connector=smallrye-in-memory
+
+        # Enable feature flags for testing
+        healthcare.ml.features.kafka-lag-mode.enabled=true
+        healthcare.ml.features.multi-dimensional-autoscaler.enabled=false
+
+        # Enhanced logging for debugging
+        quarkus.log.category."com.redhat.healthcare".level=DEBUG
+        EOF
+
+        echo "🧵 Testing WebSocket Service with local configuration..."
+        if ./mvnw test -Dtest=ScalingTestControllerTest -B \
+          -Dquarkus.profile=test \
           -Dquarkus.log.level=INFO \
           -Dquarkus.log.category."com.redhat.healthcare".level=DEBUG \
           -Dmaven.test.failure.ignore=false \
-          >> ../threading-test-output.log 2>&1
+          >> ../threading-test-output.log 2>&1; then
+          WEBSOCKET_EXIT_CODE=0
+          echo "✅ WebSocket Service tests passed"
+        else
+          WEBSOCKET_EXIT_CODE=$?
+          echo "❌ WebSocket Service tests failed (exit code: $WEBSOCKET_EXIT_CODE)"
+          echo "Last 20 lines of output:" >> ../threading-test-output.log
+          tail -20 ../threading-test-output.log
+        fi
 
-        WEBSOCKET_EXIT_CODE=$?
-
-        # Run VEP service tests
+        # Run VEP service tests with better error handling
         echo "" >> ../threading-test-output.log
         echo "=== VEP Service Threading Tests ===" >> ../threading-test-output.log
         cd ../vep-service
         echo "🧬 Testing VEP Service..."
-        ./mvnw test -B -q \
+        if ./mvnw test -B \
           -Dquarkus.log.level=INFO \
           -Dquarkus.log.category."com.redhat.healthcare".level=DEBUG \
           -Dmaven.test.failure.ignore=false \
-          >> ../threading-test-output.log 2>&1
-
-        VEP_EXIT_CODE=$?
+          >> ../threading-test-output.log 2>&1; then
+          VEP_EXIT_CODE=0
+          echo "✅ VEP Service tests passed"
+        else
+          VEP_EXIT_CODE=$?
+          echo "❌ VEP Service tests failed (exit code: $VEP_EXIT_CODE)"
+          echo "Last 20 lines of output:" >> ../threading-test-output.log
+          tail -20 ../threading-test-output.log
+        fi
 
         # Move back to root and determine overall result
         cd ..
         if [ $WEBSOCKET_EXIT_CODE -eq 0 ] && [ $VEP_EXIT_CODE -eq 0 ]; then
           TEST_EXIT_CODE=0
+          echo "✅ All tests passed successfully"
         else
           TEST_EXIT_CODE=1
+          echo "❌ Some tests failed"
+
+          # Check if this is a compilation/setup issue vs actual test failure
+          if grep -q "BUILD FAILURE" threading-test-output.log; then
+            echo "⚠️  Build failure detected - may be environment issue, not threading issue"
+            echo "Checking for specific threading violations..."
+
+            # If no threading violations found, treat as environment issue
+            if ! grep -q "event.*loop.*block\|blocking.*detected" threading-test-output.log; then
+              echo "ℹ️  No threading violations detected in logs"
+              echo "This appears to be a build/environment issue, not a threading problem"
+            fi
+          fi
         fi
 
         echo "WebSocket Service Tests: Exit Code $WEBSOCKET_EXIT_CODE"
@@ -170,7 +297,27 @@ jobs:
         echo "event_loop_blocks=${EVENT_LOOP_BLOCKS}" >> $GITHUB_OUTPUT
         
         exit $TEST_EXIT_CODE
-        
+
+    - name: Cleanup test environment
+      if: always()
+      run: |
+        echo "🧹 Cleaning up test environment..."
+
+        # Stop Kafka cluster
+        if [ -f podman-compose.test.yml ]; then
+          podman-compose -f podman-compose.test.yml down || true
+        fi
+
+        # Clean up any remaining containers
+        podman rm -f test-kafka test-zookeeper test-kafka-ui 2>/dev/null || true
+
+        # Clean up test configuration files
+        rm -f quarkus-websocket-service/src/test/resources/application-test.properties
+        rm -f quarkus-websocket-service/src/main/resources/application-local.properties
+        rm -f vep-service/src/main/resources/application-local.properties
+
+        echo "✅ Cleanup completed"
+
     - name: Upload test artifacts
       if: always()
       uses: actions/upload-artifact@v4
@@ -266,6 +413,18 @@ jobs:
 
         if [ "$TEST_EXIT_CODE" -ne 0 ]; then
           echo "❌ FAIL: Threading tests failed (exit code: $TEST_EXIT_CODE)"
+
+          # Check if this is a build failure vs threading issue
+          if [ -f threading-test-output.log ]; then
+            if grep -q "BUILD FAILURE\|compilation failure\|Cannot resolve dependencies" threading-test-output.log; then
+              echo "⚠️  Build/compilation failure detected - not a threading issue"
+              echo "This may be a temporary environment issue"
+              echo "Threading validation cannot be performed due to build failure"
+              # Still exit 1 but with different messaging
+            else
+              echo "This appears to be a genuine test failure"
+            fi
+          fi
           exit 1
         fi
 

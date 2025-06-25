@@ -1,0 +1,88 @@
+# Scaling Mode Separation of Concerns Configuration
+# This file defines the strict mapping between UI buttons, backend modes, and Kafka topics
+# Any changes to this mapping must be validated in CI/CD before merge
+
+version: "1.0"
+description: "Healthcare ML Genetic Predictor - Scaling Mode Separation Rules"
+
+scaling_modes:
+  normal:
+    ui_button_id: "normalModeBtn"
+    ui_button_text: "Normal Mode (Pod Scaling)"
+    backend_mode: "normal"
+    kafka_topic: "genetic-data-raw"
+    emitter_channel: "genetic-data-raw-out"
+    event_type: "com.redhat.healthcare.genetic.sequence.raw"
+    resource_profile: "normal"
+    description: "Standard KEDA pod scaling for typical genetic analysis workloads"
+    
+  big-data:
+    ui_button_id: "bigDataModeBtn"
+    ui_button_text: "Big Data Mode (Memory Scaling)"
+    backend_mode: "big-data"
+    kafka_topic: "genetic-bigdata-raw"
+    emitter_channel: "genetic-bigdata-raw-out"
+    event_type: "com.redhat.healthcare.genetic.sequence.bigdata"
+    resource_profile: "high-memory"
+    description: "Memory-intensive pod scaling for large genetic datasets"
+    
+  node-scale:
+    ui_button_id: "nodeScaleModeBtn"
+    ui_button_text: "Node Scale Mode (Cluster Autoscaler)"
+    backend_mode: "node-scale"
+    kafka_topic: "genetic-nodescale-raw"
+    emitter_channel: "genetic-nodescale-raw-out"
+    event_type: "com.redhat.healthcare.genetic.sequence.nodescale"
+    resource_profile: "cluster-scale"
+    description: "Cluster autoscaler triggering for massive computational workloads"
+    
+  kafka-lag:
+    ui_button_id: "kafkaLagModeBtn"
+    ui_button_text: "Kafka Lag Mode (KEDA Consumer Lag)"
+    backend_mode: "kafka-lag"
+    kafka_topic: "genetic-lag-demo-raw"
+    emitter_channel: "genetic-lag-demo-raw-out"
+    event_type: "com.redhat.healthcare.genetic.sequence.kafkalag"
+    resource_profile: "kafka-lag"
+    description: "KEDA consumer lag-based scaling for event-driven workloads"
+
+# Validation rules
+validation_rules:
+  - name: "UI Button Consistency"
+    description: "UI button IDs and text must match configuration"
+    files: ["quarkus-websocket-service/src/main/resources/META-INF/resources/index.html"]
+    
+  - name: "Backend Mode Mapping"
+    description: "Backend switch statement must handle all defined modes"
+    files: ["quarkus-websocket-service/src/main/java/com/redhat/healthcare/GeneticPredictorEndpoint.java"]
+    
+  - name: "Kafka Topic Configuration"
+    description: "application.properties must define all required Kafka topics"
+    files: ["quarkus-websocket-service/src/main/resources/application.properties"]
+    
+  - name: "Emitter Channel Injection"
+    description: "All emitter channels must be properly injected"
+    files: ["quarkus-websocket-service/src/main/java/com/redhat/healthcare/GeneticPredictorEndpoint.java"]
+    
+  - name: "Event Type Consistency"
+    description: "CloudEvent types must match configuration"
+    files: ["quarkus-websocket-service/src/main/java/com/redhat/healthcare/GeneticPredictorEndpoint.java"]
+
+# Test validation
+test_requirements:
+  - name: "UI Regression Test Coverage"
+    description: "All modes must be tested in UI regression tests"
+    files: ["scripts/test-ui-regression.js"]
+    
+  - name: "Mode Response Validation"
+    description: "Each mode must have appropriate response validation"
+    files: ["scripts/test-ui-regression.js"]
+
+# Documentation validation
+documentation_requirements:
+  - name: "Tutorial Coverage"
+    description: "All modes must be documented in tutorials"
+    files: 
+      - "docs/tutorials/03-first-genetic-analysis.md"
+      - "docs/tutorials/04-scaling-demo.md"
+      - "docs/tutorials/05-kafka-lag-scaling.md"

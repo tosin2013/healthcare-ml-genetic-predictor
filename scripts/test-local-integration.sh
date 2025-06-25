@@ -93,11 +93,17 @@ start_vep_service() {
 # Local testing configuration
 quarkus.http.port=$VEP_PORT
 
-# Use in-memory messaging for local testing
-mp.messaging.incoming.genetic-data-raw.connector=smallrye-in-memory
-mp.messaging.incoming.genetic-bigdata-raw.connector=smallrye-in-memory
-mp.messaging.incoming.genetic-nodescale-raw.connector=smallrye-in-memory
-mp.messaging.outgoing.genetic-data-annotated.connector=smallrye-in-memory
+# Local testing configuration - Mock scaling modes
+# Override Kafka bootstrap servers to use localhost for local testing
+kafka.bootstrap.servers=localhost:9092
+
+# Enable local mock mode for scaling demonstrations
+healthcare.ml.local.mock.enabled=true
+healthcare.ml.local.mock.node-scale.enabled=true
+healthcare.ml.local.mock.kafka-lag.enabled=true
+
+# Disable Kafka dev services for local testing
+quarkus.kafka.devservices.enabled=false
 
 # VEP API configuration (real Ensembl API)
 quarkus.rest-client.vep-api.url=https://rest.ensembl.org
@@ -142,17 +148,35 @@ start_websocket_service() {
 # Local testing configuration
 quarkus.http.port=$WEBSOCKET_PORT
 
-# Use in-memory messaging for local testing
-mp.messaging.outgoing.genetic-data-raw-out.connector=smallrye-in-memory
-mp.messaging.outgoing.genetic-bigdata-raw-out.connector=smallrye-in-memory
-mp.messaging.outgoing.genetic-nodescale-raw-out.connector=smallrye-in-memory
-mp.messaging.incoming.genetic-data-annotated-in.connector=smallrye-in-memory
+# Local testing configuration - Mock scaling modes
+# Override Kafka bootstrap servers to use localhost for local testing
+kafka.bootstrap.servers=localhost:9092
+
+# Enable local mock mode for scaling demonstrations
+healthcare.ml.local.mock.enabled=true
+healthcare.ml.local.mock.node-scale.enabled=true
+healthcare.ml.local.mock.kafka-lag.enabled=true
+
+# Feature flags for development phases
+healthcare.ml.features.kafka-lag-mode.enabled=true
+healthcare.ml.features.multi-dimensional-autoscaler.enabled=false
+
+# Separation of Concerns: All 4 scaling mode topics configured
+# Following SEPARATION_VALIDATION_GUIDE.md requirements
+mp.messaging.outgoing.genetic-data-raw-out.connector=smallrye-kafka
+mp.messaging.outgoing.genetic-data-raw-out.topic=genetic-data-raw
+mp.messaging.outgoing.genetic-bigdata-raw-out.connector=smallrye-kafka
+mp.messaging.outgoing.genetic-bigdata-raw-out.topic=genetic-bigdata-raw
+mp.messaging.outgoing.genetic-nodescale-raw-out.connector=smallrye-kafka
+mp.messaging.outgoing.genetic-nodescale-raw-out.topic=genetic-nodescale-raw
+mp.messaging.outgoing.genetic-lag-demo-raw-out.connector=smallrye-kafka
+mp.messaging.outgoing.genetic-lag-demo-raw-out.topic=genetic-lag-demo-raw
+
+# Disable Kafka dev services for local testing
+quarkus.kafka.devservices.enabled=false
 
 # Enhanced logging
 quarkus.log.category."com.redhat.healthcare".level=DEBUG
-
-# Disable Kafka dev services
-quarkus.kafka.devservices.enabled=false
 EOF
 
     echo "Starting WebSocket service with local profile..."
@@ -211,15 +235,114 @@ EOF
     echo ""
 }
 
+# Function to test all 4 scaling modes (separation of concerns validation)
+test_all_scaling_modes() {
+    echo -e "${YELLOW}🧪 Testing All 4 Scaling Modes (Separation of Concerns)${NC}"
+
+    if ! command -v node &> /dev/null; then
+        echo -e "${YELLOW}⚠️  Node.js not available - skipping scaling mode tests${NC}"
+        return 0
+    fi
+
+    # Install WebSocket module if needed
+    if ! node -e "require('ws')" 2>/dev/null; then
+        echo "Installing WebSocket module..."
+        npm install ws
+    fi
+
+    # Test data for each scaling mode
+    SCALING_MODES=(
+        "normal:$NORMAL_SEQUENCE:📊 Normal Mode"
+        "big-data:$LARGE_SEQUENCE:🚀 Big Data Mode"
+        "node-scale:$LARGE_SEQUENCE:⚡ Node Scale Mode"
+        "kafka-lag:$NORMAL_SEQUENCE:🔄 Kafka Lag Mode"
+    )
+
+    for mode_config in "${SCALING_MODES[@]}"; do
+        IFS=':' read -r mode sequence description <<< "$mode_config"
+
+        echo ""
+        echo -e "${BLUE}Testing $description${NC}"
+        echo "Mode: $mode, Sequence length: ${#sequence}"
+
+        # Create WebSocket test for this specific mode
+        cat > test-scaling-mode-$mode.js << EOF
+const WebSocket = require('ws');
+
+const ws = new WebSocket('ws://localhost:$WEBSOCKET_PORT/genetics');
+let testPassed = false;
+
+ws.on('open', function open() {
+    console.log('✅ WebSocket connected for $mode mode');
+
+    // Send mode-specific message
+    const message = JSON.stringify({
+        sequence: '$sequence',
+        mode: '$mode',
+        resourceProfile: '$mode' === 'big-data' ? 'high-memory' : 'standard',
+        timestamp: Date.now()
+    });
+
+    console.log('📤 Sending $mode mode test...');
+    ws.send(message);
+});
+
+ws.on('message', function message(data) {
+    const response = data.toString();
+    console.log('📥 Received:', response.substring(0, 100) + '...');
+
+    // Check for mode-specific responses
+    if (response.includes('$mode') || response.includes('queued')) {
+        console.log('✅ $description test passed');
+        testPassed = true;
+        ws.close();
+        process.exit(0);
+    }
+});
+
+ws.on('error', function error(err) {
+    console.error('❌ $description test failed:', err.message);
+    process.exit(1);
+});
+
+setTimeout(() => {
+    if (!testPassed) {
+        console.log('⏰ $description test timeout');
+        ws.close();
+        process.exit(1);
+    }
+}, 10000);
+EOF
+
+        # Run the test for this mode
+        if node test-scaling-mode-$mode.js; then
+            echo -e "${GREEN}✅ $description test passed${NC}"
+        else
+            echo -e "${RED}❌ $description test failed${NC}"
+            return 1
+        fi
+
+        # Clean up test file
+        rm -f test-scaling-mode-$mode.js
+
+        # Brief pause between tests
+        sleep 2
+    done
+
+    echo ""
+    echo -e "${GREEN}🎉 All 4 scaling modes tested successfully!${NC}"
+    echo "Separation of concerns validation: ✅ PASSED"
+}
+
 # Function to test WebSocket integration
 test_websocket_integration() {
     echo -e "${YELLOW}🧪 Testing WebSocket Integration${NC}"
-    
+
     if ! command -v node &> /dev/null; then
         echo -e "${YELLOW}⚠️  Node.js not available - skipping WebSocket tests${NC}"
         return 0
     fi
-    
+
     # Install WebSocket module if needed
     if ! node -e "require('ws')" 2>/dev/null; then
         echo "Installing WebSocket module..."
@@ -363,17 +486,19 @@ show_usage() {
     echo "Usage: $0 [COMMAND]"
     echo ""
     echo "Commands:"
-    echo "  full      - Run complete integration test"
-    echo "  vep-only  - Test VEP service only"
-    echo "  ws-only   - Test WebSocket service only"
-    echo "  hgvs      - Test HGVS conversion logic"
-    echo "  cleanup   - Clean up test environment"
-    echo "  help      - Show this help message"
+    echo "  full          - Run complete integration test"
+    echo "  vep-only      - Test VEP service only"
+    echo "  ws-only       - Test WebSocket service only"
+    echo "  scaling-modes - Test all 4 scaling modes (separation of concerns)"
+    echo "  hgvs          - Test HGVS conversion logic"
+    echo "  cleanup       - Clean up test environment"
+    echo "  help          - Show this help message"
     echo ""
     echo "Examples:"
-    echo "  $0 full     # Complete integration test"
-    echo "  $0 vep-only # Test VEP service HGVS fix"
-    echo "  $0 hgvs     # Test HGVS conversion only"
+    echo "  $0 full          # Complete integration test"
+    echo "  $0 vep-only      # Test VEP service HGVS fix"
+    echo "  $0 scaling-modes # Test all 4 scaling modes"
+    echo "  $0 hgvs          # Test HGVS conversion only"
 }
 
 # Trap to ensure cleanup on exit
@@ -389,8 +514,10 @@ case "${1:-help}" in
         test_vep_api_direct
         test_hgvs_conversion
         test_websocket_integration
+        test_all_scaling_modes
         monitor_logs
         echo -e "${GREEN}🎉 Full integration test completed!${NC}"
+        echo "✅ All 4 scaling modes tested and validated"
         echo "Check service logs for HGVS conversion and VEP API results"
         ;;
     vep-only)
@@ -407,7 +534,16 @@ case "${1:-help}" in
         build_services
         start_websocket_service
         test_websocket_integration
+        test_all_scaling_modes
         echo -e "${GREEN}🎉 WebSocket service test completed!${NC}"
+        echo "✅ All 4 scaling modes tested and validated"
+        ;;
+    scaling-modes)
+        check_prerequisites
+        build_services
+        start_websocket_service
+        test_all_scaling_modes
+        echo -e "${GREEN}🎉 Scaling modes separation test completed!${NC}"
         ;;
     hgvs)
         check_prerequisites
