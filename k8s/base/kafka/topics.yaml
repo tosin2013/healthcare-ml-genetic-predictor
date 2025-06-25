@@ -3,7 +3,7 @@ kind: KafkaTopic
 metadata:
   name: genetic-data-raw
   labels:
-    strimzi.io/cluster: my-cluster
+    strimzi.io/cluster: genetic-data-cluster
 spec:
   partitions: 3
   replicas: 3
@@ -17,11 +17,39 @@ kind: KafkaTopic
 metadata:
   name: genetic-data-annotated
   labels:
-    strimzi.io/cluster: my-cluster
+    strimzi.io/cluster: genetic-data-cluster
 spec:
   partitions: 3
   replicas: 3
   config:
     retention.ms: 3600000  # 1 hour
     segment.ms: 600000     # 10 minutes
+    cleanup.policy: delete
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: genetic-bigdata-raw
+  labels:
+    strimzi.io/cluster: genetic-data-cluster
+spec:
+  partitions: 6
+  replicas: 3
+  config:
+    retention.ms: 7200000  # 2 hours for big data
+    segment.ms: 900000     # 15 minutes
+    cleanup.policy: delete
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: genetic-nodescale-raw
+  labels:
+    strimzi.io/cluster: genetic-data-cluster
+spec:
+  partitions: 12
+  replicas: 3
+  config:
+    retention.ms: 14400000  # 4 hours for node scaling
+    segment.ms: 1800000     # 30 minutes
     cleanup.policy: delete

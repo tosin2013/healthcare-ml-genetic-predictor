@@ -51,11 +51,11 @@ metadata:
     insights.openshift.io/cost-center: "genomics-research"
 spec:
   minReplicas: 1
-  maxReplicas: 8
+  maxReplicas: 5
   scaleTargetRef:
     apiVersion: machine.openshift.io/v1beta1
     kind: MachineSet
-    name: aro-cluster-smrmt-xrbrh-worker-eastus1
+    name: aro-cluster-ftb5p-29cfv-worker-eastus1
 
 ---
 apiVersion: autoscaling.openshift.io/v1beta1
@@ -68,11 +68,11 @@ metadata:
     insights.openshift.io/cost-center: "genomics-research"
 spec:
   minReplicas: 1
-  maxReplicas: 8
+  maxReplicas: 5
   scaleTargetRef:
     apiVersion: machine.openshift.io/v1beta1
     kind: MachineSet
-    name: aro-cluster-smrmt-xrbrh-worker-eastus2
+    name: aro-cluster-ftb5p-29cfv-worker-eastus2
 
 ---
 apiVersion: autoscaling.openshift.io/v1beta1
@@ -85,8 +85,8 @@ metadata:
     insights.openshift.io/cost-center: "genomics-research"
 spec:
   minReplicas: 1
-  maxReplicas: 8
+  maxReplicas: 5
   scaleTargetRef:
     apiVersion: machine.openshift.io/v1beta1
     kind: MachineSet
-    name: aro-cluster-smrmt-xrbr3-worker-eastus3
+    name: aro-cluster-ftb5p-29cfv-worker-eastus3
