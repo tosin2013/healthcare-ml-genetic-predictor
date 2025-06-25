@@ -419,6 +419,36 @@ deploy_compute_intensive_nodes() {
     log_success "Phase 8.5 completed: Compute-intensive node scaling configured"
 }
 
+# Phase 9: Deploy demo environment overlays (CronJobs, cost management)
+deploy_demo_environment_overlays() {
+    log_info "Phase 9: Deploying demo environment overlays (CronJobs, cost management)..."
+    
+    # Deploy demo environment overlays that include CronJobs and cost management
+    if [ -d "k8s/overlays/environments/demo" ]; then
+        log_info "Deploying demo environment with cost management CronJob..."
+        oc apply -k k8s/overlays/environments/demo || log_warning "Demo environment overlay deployment had issues, continuing..."
+        
+        # Verify CronJob deployment
+        log_info "Verifying CronJob deployment..."
+        sleep 10
+        if oc get cronjob cost-attribution-report -n $NAMESPACE &>/dev/null; then
+            log_success "✅ Cost attribution CronJob deployed successfully"
+            oc get cronjob cost-attribution-report -n $NAMESPACE -o custom-columns="NAME:.metadata.name,SCHEDULE:.spec.schedule,LAST-SCHEDULE:.status.lastScheduleTime,ACTIVE:.status.active"
+        else
+            log_warning "⚠️ Cost attribution CronJob not found"
+        fi
+        
+        # Check for other scheduled tasks
+        log_info "Checking for other scheduled resources..."
+        oc get jobs,cronjobs -n $NAMESPACE || log_info "No additional scheduled jobs found"
+    else
+        log_warning "Demo environment overlays directory not found, skipping CronJob deployment..."
+        log_info "CronJobs and cost management features will not be available"
+    fi
+    
+    log_success "Phase 9 completed: Demo environment overlays processed"
+}
+
 # Show access information
 show_access_info() {
     log_info "Getting access information..."
@@ -438,6 +468,7 @@ show_access_info() {
     echo "  oc get pods -n $NAMESPACE"
     echo "  oc get builds -n $NAMESPACE"
     echo "  oc get ksvc -n $NAMESPACE"
+    echo "  oc get cronjob,jobs -n $NAMESPACE"
     echo "  oc logs -f deployment/quarkus-websocket-service -n $NAMESPACE"
     echo ""
     echo "🚀 Node Scaling Monitoring:"
@@ -450,6 +481,7 @@ show_access_info() {
     echo "  curl https://$route_url/q/health"
     echo "  ./scripts/test-api-endpoints.sh"
     echo "  ./scripts/test-keda-scaling-behavior.sh"
+    echo "  oc create job cost-attribution-manual-\$(date +%Y%m%d-%H%M) --from=cronjob/cost-attribution-report -n $NAMESPACE"
     echo ""
     echo "📚 Next Steps:"
     echo "  1. Open https://$route_url/genetic-client.html in your browser"
@@ -474,6 +506,7 @@ show_deployment_summary() {
     echo "✅ Routes: $(oc get routes -n $NAMESPACE --no-headers 2>/dev/null | wc -l) exposed"
     echo "✅ KEDA Scalers: $(oc get scaledobject -n $NAMESPACE --no-headers 2>/dev/null | wc -l) configured"
     echo "✅ Knative Services: $(oc get ksvc -n $NAMESPACE --no-headers 2>/dev/null | wc -l) deployed"
+    echo "✅ CronJobs: $(oc get cronjob -n $NAMESPACE --no-headers 2>/dev/null | wc -l) scheduled"
     
     # Check for specific components
     log_info "Component Status:"
@@ -505,6 +538,7 @@ main() {
     deploy_openshift_ai
     deploy_cluster_autoscaler
     deploy_compute_intensive_nodes
+    deploy_demo_environment_overlays
     show_deployment_summary
     show_access_info
     
