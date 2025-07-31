@@ -86,24 +86,20 @@ spec:
   # - Node scale mode: genetic-nodescale-raw
   # - Kafka lag mode: genetic-lag-demo-raw
   triggers:
-  - type: kafka
+  - type: prometheus
     metadata:
-      # Kafka connection (shared infrastructure)
-      bootstrapServers: genetic-data-cluster-kafka-bootstrap.healthcare-ml-demo.svc.cluster.local:9092
-      
-      # CRITICAL: Topic dedicated to big data mode only
-      topic: genetic-bigdata-raw
-      
-      # CRITICAL: Consumer group isolated from other modes
-      consumerGroup: vep-bigdata-service-group
-      
-      # Big data specific thresholds
-      lagThreshold: "2"                     # Standard responsiveness (2 messages trigger scaling)
+      # Prometheus server in OpenShift monitoring namespace
+      serverAddress: http://prometheus.openshift-monitoring.svc:9090
+
+      # CRITICAL: Metric name for Kafka consumer lag monitoring
+      metricName: kafka_consumer_lag_sum
+
+      # Big data specific threshold (ADR-003: Healthcare ML Architecture)
+      threshold: '2'                        # Standard responsiveness (2 messages trigger scaling)
                                            # Same as normal mode but higher max replicas
-      offsetResetPolicy: latest             # Start from latest messages
-      allowIdleConsumers: "false"           # Don't scale if no active consumers
-      excludePersistentLag: "false"         # Include all lag in calculations
-      scaleToZeroOnInvalidOffset: "true"    # Scale to zero on offset issues
+
+      # CRITICAL: Query dedicated to big data mode topic only
+      query: sum(kafka_consumer_lag_sum{topic="genetic-bigdata-raw",consumergroup="vep-bigdata-service-group"})
   
   # Additional memory-based trigger for big data processing
   - type: memory
