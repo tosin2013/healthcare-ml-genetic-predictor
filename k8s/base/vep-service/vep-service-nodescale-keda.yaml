@@ -51,10 +51,10 @@ spec:
   pollingInterval: 10       # Check every 10 seconds
   cooldownPeriod: 60        # Wait 60 seconds before scaling down
   
-  # Fallback configuration
+  # Fallback configuration (scale-to-zero)
   fallback:
     failureThreshold: 3
-    replicas: 1
+    replicas: 0
   
   # Advanced HPA configuration for aggressive scaling
   advanced:
@@ -86,20 +86,24 @@ spec:
   # - Big data mode: genetic-bigdata-raw
   # - Kafka lag mode: genetic-lag-demo-raw
   triggers:
-  - type: prometheus
+  - type: kafka
     metadata:
-      # Prometheus server in OpenShift monitoring namespace
-      serverAddress: http://prometheus.openshift-monitoring.svc:9090
+      # Kafka connection (shared infrastructure)
+      bootstrapServers: genetic-data-cluster-kafka-bootstrap.healthcare-ml-demo.svc.cluster.local:9092
 
-      # CRITICAL: Metric name for Kafka consumer lag monitoring
-      metricName: kafka_consumer_lag_sum
+      # CRITICAL: Topic dedicated to node scale mode only
+      topic: genetic-nodescale-raw
 
-      # Node scale specific threshold (ADR-003: Healthcare ML Architecture)
-      threshold: '1'                        # Immediate response (1 message triggers scaling)
+      # CRITICAL: Consumer group isolated from other modes
+      consumerGroup: vep-nodescale-service-group
+
+      # Node scale specific thresholds
+      lagThreshold: "1"                     # Immediate response (1 message triggers scaling)
                                            # Lower than other modes for demo responsiveness
-
-      # CRITICAL: Query dedicated to node scale mode topic only
-      query: sum(kafka_consumer_lag_sum{topic="genetic-nodescale-raw",consumergroup="vep-nodescale-service-group"})
+      offsetResetPolicy: latest             # Start from latest messages
+      allowIdleConsumers: "false"           # Don't scale if no active consumers
+      excludePersistentLag: "false"         # Include all lag in calculations
+      scaleToZeroOnInvalidOffset: "true"    # Scale to zero on offset issues
   
   # Additional memory-based trigger for resource pressure demonstration
   - type: memory

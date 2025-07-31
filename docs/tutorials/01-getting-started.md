@@ -179,14 +179,17 @@ oc policy add-role-to-user system:image-puller system:serviceaccount:healthcare-
 # Deploy base kustomization resources (buildconfigs, scaled objects, etc.)
 oc apply -k k8s/base -n healthcare-ml-demo
 
-# Deploy KEDA scaling configurations
-oc apply -k k8s/base/keda -n healthcare-ml-demo
+# Deploy KEDA scaling configurations (using separation of concerns approach)
+# Note: KEDA ScaledObjects are deployed with their respective VEP service modes
+# This prevents conflicts and ensures 1:1 mapping between modes and scalers
+oc apply -k k8s/base/vep-service -n healthcare-ml-demo
 
 # Deploy eventing configurations
 oc apply -k k8s/base/eventing -n healthcare-ml-demo
 
-# Verify KEDA ScaledObjects are created
+# Verify KEDA ScaledObjects are created (one per VEP service mode)
 oc get scaledobject -n healthcare-ml-demo
+# Expected: vep-service-normal-scaler, vep-service-bigdata-scaler, vep-service-nodescale-scaler, kafka-lag-scaler
 ```
 
 #### Step 2.6: Deploy OpenShift AI Components (Optional)
@@ -453,11 +456,11 @@ oc apply -f k8s/base/kafka/topics.yaml -n healthcare-ml-demo
 # Check KEDA operator status
 oc get pods -n openshift-keda
 
-# Deploy KEDA configurations
-oc apply -k k8s/base/keda -n healthcare-ml-demo
+# Deploy KEDA configurations (using separation of concerns approach)
+oc apply -k k8s/base/vep-service -n healthcare-ml-demo
 oc apply -k k8s/base/eventing -n healthcare-ml-demo
 
-# Verify ScaledObjects
+# Verify ScaledObjects (should see one per VEP service mode)
 oc get scaledobject -n healthcare-ml-demo
 ```
 

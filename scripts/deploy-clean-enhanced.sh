@@ -293,10 +293,9 @@ deploy_keda_and_base_resources() {
     oc apply -k k8s/base -n $NAMESPACE || log_warning "Some base resources may have conflicts, continuing..."
     
     # Deploy KEDA scaling configurations specifically - USING SEPARATION OF CONCERNS
-    # NOTE: k8s/base/keda contains legacy multi-topic ScaledObjects that violate separation
-    # We now use k8s/base/vep-service for proper 1:1 mode→deployment→scaler mapping
+    # NOTE: Legacy k8s/base/keda directory has been removed to prevent conflicts
+    # We use k8s/base/vep-service for proper 1:1 mode→deployment→scaler mapping
     log_info "KEDA ScaledObjects will be deployed via k8s/base/vep-service (separation of concerns)"
-    log_info "Skipping legacy k8s/base/keda to prevent conflicts"
     
     # Deploy eventing configurations
     if [ -d "k8s/base/eventing" ]; then
@@ -366,7 +365,18 @@ deploy_compute_intensive_nodes() {
     # Check if we have permissions to create machine sets
     if oc auth can-i create machineset -n openshift-machine-api &>/dev/null; then
         log_info "Deploying cost-optimized compute-intensive machine set for node scaling..."
-        
+
+        # Clean up any old MachineAutoscalers with incorrect cluster names
+        log_info "Cleaning up old MachineAutoscaler configurations..."
+        oc get machineautoscaler -n openshift-machine-api -o name 2>/dev/null | while read -r autoscaler; do
+            # Check if the autoscaler references a non-existent machineset
+            machineset_name=$(oc get "$autoscaler" -o jsonpath='{.spec.scaleTargetRef.name}' 2>/dev/null)
+            if [ -n "$machineset_name" ] && ! oc get machineset "$machineset_name" -n openshift-machine-api &>/dev/null; then
+                log_info "Removing outdated autoscaler: $autoscaler (references non-existent $machineset_name)"
+                oc delete "$autoscaler" 2>/dev/null || true
+            fi
+        done
+
         # Run the compute-intensive machine set deployment script
         if [ -f "scripts/deploy-compute-intensive-machineset.sh" ]; then
             log_info "Running compute-intensive machine set deployment..."

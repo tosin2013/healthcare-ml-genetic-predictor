@@ -20,7 +20,7 @@ metadata:
     topic-purpose: "Raw genetic data input from WebSocket frontend"
 spec:
   partitions: 3
-  replicas: 1
+  replicas: 3  # Fixed: Match Kafka cluster configuration (3 replicas)
   config:
     # Retention policy for raw genetic data
     retention.ms: 604800000  # 7 days in milliseconds
@@ -33,7 +33,7 @@ spec:
     # Compression for genetic data
     compression.type: snappy
     # Performance tuning for ML workloads
-    min.insync.replicas: 1
+    min.insync.replicas: 2  # Fixed: Match cluster min.insync.replicas
     unclean.leader.election.enable: false
     # Message size limits for genetic sequences
     max.message.bytes: 1048576  # 1MB
@@ -60,7 +60,7 @@ metadata:
     topic-purpose: "Processed genetic data output from ML inference service"
 spec:
   partitions: 3
-  replicas: 1
+  replicas: 3  # Fixed: Match Kafka cluster configuration (3 replicas)
   config:
     # Retention policy for processed genetic data
     retention.ms: 1209600000  # 14 days in milliseconds
@@ -73,7 +73,7 @@ spec:
     # Compression for processed data
     compression.type: snappy
     # Performance tuning for ML results
-    min.insync.replicas: 1
+    min.insync.replicas: 2  # Fixed: Match cluster min.insync.replicas
     unclean.leader.election.enable: false
     # Message size limits for ML results
     max.message.bytes: 2097152  # 2MB (larger for ML results with metadata)
@@ -102,7 +102,7 @@ metadata:
     github-issue: "21"
 spec:
   partitions: 3
-  replicas: 1
+  replicas: 3  # Fixed: Match Kafka cluster configuration (3 replicas)
   config:
     # Retention policy optimized for lag demonstration
     retention.ms: 3600000  # 1 hour (shorter for demo purposes)
@@ -115,7 +115,7 @@ spec:
     # Compression for genetic data
     compression.type: snappy
     # Performance tuning for lag demonstration
-    min.insync.replicas: 1
+    min.insync.replicas: 2  # Fixed: Match cluster min.insync.replicas
     unclean.leader.election.enable: false
     # Message size limits for batch genetic sequences
     max.message.bytes: 1048576  # 1MB (same as genetic-data-raw)
@@ -143,7 +143,7 @@ metadata:
     topic-purpose: "Big data genetic sequences for memory-intensive processing"
 spec:
   partitions: 3
-  replicas: 1
+  replicas: 3  # Fixed: Match Kafka cluster configuration (3 replicas)
   config:
     # Retention policy for big data processing
     retention.ms: 604800000  # 7 days
@@ -156,7 +156,7 @@ spec:
     # Compression for large genetic data
     compression.type: snappy
     # Performance tuning for big data workloads
-    min.insync.replicas: 1
+    min.insync.replicas: 2  # Fixed: Match cluster min.insync.replicas
     unclean.leader.election.enable: false
     # Message size limits for large genetic sequences
     max.message.bytes: 10485760  # 10MB (larger for big data sequences)
@@ -184,7 +184,7 @@ metadata:
     topic-purpose: "Node-scale genetic sequences for cluster autoscaler triggering"
 spec:
   partitions: 3
-  replicas: 1
+  replicas: 3  # Fixed: Match Kafka cluster configuration (3 replicas)
   config:
     # Retention policy for node scaling workloads
     retention.ms: 604800000  # 7 days
@@ -197,7 +197,7 @@ spec:
     # Compression for compute-intensive data
     compression.type: snappy
     # Performance tuning for node scaling workloads
-    min.insync.replicas: 1
+    min.insync.replicas: 2  # Fixed: Match cluster min.insync.replicas
     unclean.leader.election.enable: false
     # Message size limits for compute-intensive sequences
     max.message.bytes: 52428800  # 50MB (largest for node scaling sequences)

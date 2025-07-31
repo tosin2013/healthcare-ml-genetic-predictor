@@ -52,10 +52,10 @@ spec:
   pollingInterval: 10       # Check every 10 seconds
   cooldownPeriod: 60        # Wait 60 seconds before scaling down (allow lag to accumulate)
   
-  # Fallback configuration
+  # Fallback configuration (scale-to-zero)
   fallback:
     failureThreshold: 3
-    replicas: 1
+    replicas: 0
   
   # Advanced HPA configuration for lag-based scaling
   advanced:
@@ -87,20 +87,24 @@ spec:
   # - Big data mode: genetic-bigdata-raw
   # - Node scale mode: genetic-nodescale-raw
   triggers:
-  - type: prometheus
+  - type: kafka
     metadata:
-      # Prometheus server in OpenShift monitoring namespace
-      serverAddress: http://prometheus.openshift-monitoring.svc:9090
+      # Kafka connection (shared infrastructure)
+      bootstrapServers: genetic-data-cluster-kafka-bootstrap.healthcare-ml-demo.svc.cluster.local:9092
 
-      # CRITICAL: Metric name for Kafka consumer lag monitoring
-      metricName: kafka_consumer_lag_sum
+      # CRITICAL: Topic dedicated to kafka lag mode only
+      topic: genetic-lag-demo-raw
 
-      # Kafka lag specific threshold (ADR-003: Healthcare ML Architecture)
-      threshold: '3'                        # Higher threshold to demonstrate lag accumulation
+      # CRITICAL: Consumer group isolated from other modes
+      consumerGroup: vep-kafka-lag-service-group
+
+      # Kafka lag specific thresholds
+      lagThreshold: "3"                     # Higher threshold to demonstrate lag accumulation
                                            # Allows more messages to queue before scaling
-
-      # CRITICAL: Query dedicated to kafka lag mode topic only
-      query: sum(kafka_consumer_lag_sum{topic="genetic-lag-demo-raw",consumergroup="vep-kafka-lag-service-group"})
+      offsetResetPolicy: latest             # Start from latest messages
+      allowIdleConsumers: "false"           # Don't scale if no active consumers
+      excludePersistentLag: "false"         # Include all lag in calculations
+      scaleToZeroOnInvalidOffset: "true"    # Scale to zero on offset issues
   
   # Additional CPU-based trigger for lag processing
   - type: cpu

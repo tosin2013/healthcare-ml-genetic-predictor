@@ -36,19 +36,19 @@ spec:
     kind: Deployment
     name: vep-service-normal
   
-  # Scaling configuration for normal mode (ADR-006: Deployment strategy)
-  minReplicaCount: 1        # Maintain 1 pod minimum for consumer group (ADR-006)
+  # Scaling configuration for normal mode (true scale-to-zero)
+  minReplicaCount: 0        # Start at 0 pods (scale-to-zero)
   maxReplicaCount: 10       # Standard scaling for normal workloads
-  idleReplicaCount: 0       # Scale down to minimum when no messages
+  idleReplicaCount: 0       # Scale down to 0 when no messages
   
   # Polling and cooldown settings
   pollingInterval: 10       # Check every 10 seconds
   cooldownPeriod: 30        # Wait 30 seconds before scaling down (faster than node scale)
   
-  # Fallback configuration
+  # Fallback configuration (scale-to-zero)
   fallback:
     failureThreshold: 3
-    replicas: 1
+    replicas: 0
   
   # Standard HPA configuration for normal scaling
   advanced:
@@ -80,20 +80,24 @@ spec:
   # - Node scale mode: genetic-nodescale-raw
   # - Kafka lag mode: genetic-lag-demo-raw
   triggers:
-  - type: prometheus
+  - type: kafka
     metadata:
-      # Prometheus server in OpenShift monitoring namespace
-      serverAddress: http://prometheus.openshift-monitoring.svc:9090
+      # Kafka connection (using plain text port for KEDA compatibility)
+      bootstrapServers: genetic-data-cluster-kafka-bootstrap.healthcare-ml-demo.svc.cluster.local:9092
 
-      # CRITICAL: Metric name for Kafka consumer lag monitoring
-      metricName: kafka_consumer_lag_sum
+      # CRITICAL: Topic dedicated to normal mode only
+      topic: genetic-data-raw
 
-      # Normal mode specific threshold (ADR-003: Healthcare ML Architecture)
-      threshold: '2'                        # Standard responsiveness (2 messages trigger scaling)
+      # CRITICAL: Consumer group isolated from other modes
+      consumerGroup: vep-service-group
+
+      # Normal mode specific thresholds
+      lagThreshold: "2"                     # Standard responsiveness (2 messages trigger scaling)
                                            # Balanced between responsiveness and resource efficiency
-
-      # CRITICAL: Query dedicated to normal mode topic only
-      query: sum(kafka_consumer_lag_sum{topic="genetic-data-raw",consumergroup="vep-service-group"})
+      offsetResetPolicy: latest             # Start from latest messages
+      allowIdleConsumers: "false"           # Don't scale if no active consumers
+      excludePersistentLag: "false"         # Include all lag in calculations
+      scaleToZeroOnInvalidOffset: "true"    # Scale to zero on offset issues
 
 ---
 # ServiceMonitor for Normal Mode KEDA metrics

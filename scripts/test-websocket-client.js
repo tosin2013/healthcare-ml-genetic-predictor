@@ -24,7 +24,7 @@ const WebSocket = require('ws');
 const { generateGeneticSequence, getSequenceLengthForMode } = require('./generate-genetic-sequence.js');
 
 // Configuration
-const WEBSOCKET_URL = process.env.WEBSOCKET_URL || 'wss://quarkus-websocket-service-healthcare-ml-demo.apps.b9892ub1.eastus.aroapp.io/genetics';
+const WEBSOCKET_URL = process.env.WEBSOCKET_URL || 'wss://quarkus-websocket-service-healthcare-ml-demo.apps.ji1bm8qc.eastus.aroapp.io/genetics';
 const mode = process.argv[2] || 'normal';
 const sequenceArg = process.argv[3] || '--generate';
 const timeoutSeconds = parseInt(process.argv[4]) || 120;

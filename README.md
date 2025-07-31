@@ -41,10 +41,19 @@ graph TB
 - **⚡ KEDA**: Event-driven autoscaling for both pod and node scaling
 - **💰 Red Hat Insights**: Cost management and observability with chargeback capabilities
 
-### Scaling Modes
-1. **📊 Normal Mode**: Pod scaling only (genetic-data-raw topic)
+### Scaling Modes & KEDA Integration
+1. **📊 Normal Mode**: Pod scaling based on Kafka lag (genetic-data-raw topic)
+   - **KEDA Trigger**: Kafka consumer lag threshold
+   - **Scaling**: 0-10 pods based on message backlog
+   - **Use Case**: Standard genetic sequence processing
 2. **🚀 Big Data Mode**: Memory-intensive processing (genetic-bigdata-raw topic)
+   - **KEDA Trigger**: Higher partition count, memory-optimized scaling
+   - **Scaling**: 0-5 pods with increased memory allocation
+   - **Use Case**: Large genomic datasets, complex variant analysis
 3. **⚡ Node Scale Mode**: Cluster autoscaler with dedicated compute nodes (genetic-nodescale-raw topic)
+   - **KEDA Trigger**: Kafka lag + cluster autoscaler integration
+   - **Scaling**: Triggers new compute-intensive nodes when needed
+   - **Use Case**: Massive workloads requiring additional cluster capacity
 
 ## 🚀 Quick Start
 
@@ -63,17 +72,26 @@ Start with the [Getting Started Tutorial](./docs/tutorials/01-getting-started.md
 
 #### **🚀 Quick Deploy (Experienced Users)**
 **📖 For complete deployment instructions, see [DEPLOYMENT.md](DEPLOYMENT.md)**
+**🎯 Need help choosing? See [Deployment Decision Matrix](./docs/deployment-decision-matrix.md)**
 
-**✅ Automated Deployment (Recommended):**
+**✅ Comprehensive Deployment (Recommended):**
 ```bash
 # Clone repository
 git clone https://github.com/tosin2013/healthcare-ml-genetic-predictor.git
 cd healthcare-ml-genetic-predictor
 
-# Run validated deployment script
-./scripts/deploy-clean.sh
+# Run comprehensive enhanced deployment script (includes ALL components)
+./scripts/deploy-clean-enhanced.sh
 
 # Access application (get URL from script output)
+```
+
+**⚡ Basic Deployment (Minimal Components):**
+```bash
+# For basic deployment without KEDA scaling, OpenShift AI, or advanced features
+./scripts/deploy-clean.sh
+
+# Note: This deploys core components only. For full functionality, use enhanced script above.
 ```
 
 **Manual Quick Start:**
@@ -164,6 +182,21 @@ Open `http://localhost:8080/genetic-client.html` and test with sample genetic se
 ```bash
 curl http://localhost:8080/q/health
 curl http://localhost:8080/q/metrics
+```
+
+### KEDA Scaling Verification
+```bash
+# Check KEDA ScaledObjects
+oc get scaledobject -n healthcare-ml-demo
+
+# Check HPA created by KEDA
+oc get hpa -n healthcare-ml-demo
+
+# Monitor scaling in action
+watch oc get pods -n healthcare-ml-demo
+
+# Check KEDA operator status
+oc get pods -n openshift-keda | grep keda
 ```
 
 ## 📊 Monitoring & Observability

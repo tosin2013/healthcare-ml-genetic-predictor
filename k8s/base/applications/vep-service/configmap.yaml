@@ -24,7 +24,7 @@ data:
   # Kafka Topics
   kafka.topic.input: "genetic-data-raw"
   kafka.topic.output: "genetic-data-annotated"
-  kafka.consumer.group: "vep-annotation-service-group"
+  kafka.consumer.group: "vep-service-group"
   
   # Processing Configuration
   vep.batch.size: "10"
@@ -53,7 +53,7 @@ data:
   mp.messaging.incoming.genetic-data-raw.connector: "smallrye-kafka"
   mp.messaging.incoming.genetic-data-raw.topic: "genetic-data-raw"
   mp.messaging.incoming.genetic-data-raw.bootstrap.servers: "genetic-data-cluster-kafka-bootstrap.healthcare-ml-demo.svc.cluster.local:9092"
-  mp.messaging.incoming.genetic-data-raw.group.id: "vep-annotation-service-group"
+  mp.messaging.incoming.genetic-data-raw.group.id: "vep-service-group"
   mp.messaging.incoming.genetic-data-raw.auto.offset.reset: "latest"
   mp.messaging.incoming.genetic-data-raw.enable.auto.commit: "true"
   mp.messaging.incoming.genetic-data-raw.value.deserializer: "org.apache.kafka.common.serialization.StringDeserializer"

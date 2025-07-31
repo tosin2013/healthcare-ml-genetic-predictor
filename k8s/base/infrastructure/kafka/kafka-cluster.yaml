@@ -104,19 +104,19 @@ spec:
     topicOperator:
       resources:
         requests:
-          memory: 256Mi
-          cpu: 100m
+          memory: 512Mi  # Increased: More memory for topic processing
+          cpu: 200m      # Increased: More CPU to prevent thread blocking
         limits:
-          memory: 512Mi
-          cpu: 200m
+          memory: 1Gi    # Increased: Prevent OOM during topic reconciliation
+          cpu: 500m      # Increased: Prevent thread blocking issues
     userOperator:
       resources:
         requests:
-          memory: 256Mi
-          cpu: 100m
+          memory: 512Mi  # Increased: More memory for user processing
+          cpu: 200m      # Increased: More CPU to prevent crashes
         limits:
-          memory: 512Mi
-          cpu: 200m
+          memory: 1Gi    # Increased: Prevent OOM during user reconciliation
+          cpu: 500m      # Increased: Prevent liveness probe failures
   # Kafka Exporter for additional metrics
   kafkaExporter:
     topicRegex: ".*"

@@ -92,29 +92,16 @@ spec:
           timeoutSeconds: 5
           failureThreshold: 30
       
-      # Node affinity optimized for cluster autoscaler demo
+      # Node affinity REQUIRED for cluster autoscaler demo
       affinity:
         nodeAffinity:
-          # Prefer compute-intensive nodes but allow standard nodes for cluster autoscaler demo
-          preferredDuringSchedulingIgnoredDuringExecution:
-          - weight: 100
-            preference:
-              matchExpressions:
+          # REQUIRE compute-intensive nodes to trigger autoscaler
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
               - key: workload-type
                 operator: In
                 values: ["compute-intensive"]
-          - weight: 80
-            preference:
-              matchExpressions:
-              - key: resource-profile
-                operator: In
-                values: ["high-memory"]
-          - weight: 60
-            preference:
-              matchExpressions:
-              - key: workload-type
-                operator: In
-                values: ["standard"]
         podAntiAffinity:
           preferredDuringSchedulingIgnoredDuringExecution:
           - weight: 100
