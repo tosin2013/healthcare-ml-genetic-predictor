@@ -50,6 +50,11 @@ spec:
           workload.healthcare-ml/mode: nodescale
           workload.healthcare-ml/priority: high
       providerSpec:
+        tags:
+          billing-model: chargeback
+          cost-center: genomics-research
+          resource-profile: high-memory
+          workload-type: compute-intensive
         value:
           apiVersion: machine.openshift.io/v1beta1
           kind: AzureMachineProviderSpec  # Change to AWSMachineProviderSpec for AWS, etc.
