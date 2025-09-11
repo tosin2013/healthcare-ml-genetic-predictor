@@ -37,5 +37,5 @@ print_status "Starting local server..."
 print_success "Documentation will be available at: http://localhost:3000/healthcare-ml-genetic-predictor/"
 print_success "Press Ctrl+C to stop the server"
 
-# Start the server
-npm run serve
+# Start the server with proper base URL handling
+npm run serve -- --port 3000 --host 0.0.0.0
