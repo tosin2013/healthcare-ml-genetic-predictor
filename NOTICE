@@ -1,0 +1,14 @@
+Healthcare ML Genetic Predictor
+Copyright 2024 Tosin Akinosho
+
+This product includes software developed by
+Tosin Akinosho (https://github.com/tosin2013)
+
+This project is built using various open source technologies including:
+- Quarkus (https://quarkus.io/)
+- Apache Kafka (https://kafka.apache.org/)
+- KEDA (https://keda.sh/)
+- Docusaurus (https://docusaurus.io/)
+- Various other open source libraries
+
+See individual dependency licenses for more information.

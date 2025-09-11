@@ -1,5 +1,9 @@
 # Healthcare ML Genetic Risk Predictor
 
+[![Apache 2.0 License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
+[![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg)](CODE_OF_CONDUCT.md)
+[![Open Source Love](https://badges.frapsoft.com/os/v2/open-source.svg?v=103)](https://github.com/tosin2013/healthcare-ml-genetic-predictor)
+
 A real-time genetic risk prediction system built with Quarkus WebSockets, deployed on Azure Red Hat OpenShift with event-driven architecture and scale-to-zero capabilities.
 
 ## 🧬 Overview
@@ -259,7 +263,10 @@ oc get pods -n openshift-keda | grep keda
 
 We welcome contributions from the community! This project has many opportunities for enhancement and expansion.
 
-### 🎯 **[Complete Contributing Guide](./CONTRIBUTING.md)** - Comprehensive contribution opportunities
+### Community Guidelines
+- **[Code of Conduct](CODE_OF_CONDUCT.md)** - Our community standards
+- **[Security Policy](SECURITY.md)** - How to report vulnerabilities
+- **[Contributing Guide](CONTRIBUTING.md)** - Comprehensive contribution opportunities
 
 #### High Priority Areas
 - **🔥 Red Hat Cost Management Console Access** - Help validate console.redhat.com access

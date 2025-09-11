@@ -1,0 +1,33 @@
+{
+  "name": "healthcare-ml-genetic-predictor-docs",
+  "version": "1.0.0",
+  "description": "Documentation for Healthcare ML Genetic Predictor - A real-time genetic risk prediction system",
+  "license": "Apache-2.0",
+  "author": "Tosin Akinosho <tosin.akinosho@redhat.com>",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tosin2013/healthcare-ml-genetic-predictor.git"
+  },
+  "private": true,
+  "scripts": {
+    "docusaurus": "docusaurus",
+    "start": "docusaurus start",
+    "build": "docusaurus build",
+    "swizzle": "docusaurus swizzle",
+    "deploy": "docusaurus deploy",
+    "clear": "docusaurus clear",
+    "serve": "docusaurus serve"
+  },
+  "dependencies": {
+    "@docusaurus/core": "^3.0.0",
+    "@docusaurus/preset-classic": "^3.0.0",
+    "@mdx-js/react": "^3.0.0",
+    "clsx": "^2.0.0",
+    "prism-react-renderer": "^2.1.0",
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0"
+  },
+  "devDependencies": {
+    "@docusaurus/types": "^3.0.0"
+  }
+}
