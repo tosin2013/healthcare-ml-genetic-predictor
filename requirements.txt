@@ -1,0 +1,41 @@
+# Healthcare ML Genetic Predictor - Python Dependencies
+# Pinned versions for production stability
+
+# Core Data Science & ML
+pandas==2.0.3
+numpy==1.24.3
+scikit-learn==1.3.0
+matplotlib==3.7.2
+seaborn==0.12.2
+
+# Bioinformatics
+biopython==1.81
+
+# Kafka Integration
+kafka-python==2.0.2
+
+# HTTP Requests
+requests==2.31.0
+
+# Jupyter Notebooks
+jupyter==1.0.0
+ipykernel==6.25.2
+
+# Development & Testing
+pytest==7.4.0
+black==23.7.0
+ruff==0.0.286
+
+# Optional: Model Serialization
+joblib==1.3.2
+pickle5==0.0.12
+
+# Optional: Advanced ML
+xgboost==1.7.6
+lightgbm==4.1.0
+catboost==1.2.2
+
+# Note: For production deployment, consider:
+# - Using OpenShift AI for model serving
+# - Containerizing ML components
+# - Implementing proper model versioning
