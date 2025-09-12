@@ -25,7 +25,7 @@ function Homepage() {
         <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', justifyContent: 'center' }}>
           <Link
             className="button button--primary button--lg"
-            to="/docs/">
+            to="/docs/intro/">
             View Documentation
           </Link>
           <Link
