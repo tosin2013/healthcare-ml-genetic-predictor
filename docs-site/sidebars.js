@@ -5,6 +5,11 @@ module.exports = {
       id: 'intro',
     },
     {
+      type: 'doc',
+      id: 'architecture-decisions',
+      label: 'Architecture Decisions',
+    },
+    {
       type: 'category',
       label: 'Tutorials',
       items: [
