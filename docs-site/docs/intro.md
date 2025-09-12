@@ -1,183 +1,128 @@
-# Architecture Decision Records (ADRs)
+---
+sidebar_position: 1
+---
 
-This directory contains Architecture Decision Records for the Healthcare ML platform on Azure Red Hat OpenShift.
+# Healthcare ML Genetic Predictor
 
-## ADR Index
+A real-time genetic risk prediction system built with Quarkus WebSockets, deployed on Azure Red Hat OpenShift with event-driven architecture and scale-to-zero capabilities.
 
-### ✅ Approved & Implemented
+## 🚀 Quick Start
 
-| ADR | Title | Status | Priority | Dependencies |
-|-----|-------|--------|----------|--------------|
-| [ADR-001](./ADR-001-correct-deployment-strategy-websocket-vep-services.md) | Correct Deployment Strategy for WebSocket and VEP Services | ✅ **CRITICAL** | 🔥 HIGH | None |
-| [ADR-004](./ADR-004-api-testing-validation-openshift.md) | API Testing and Validation on OpenShift | ✅ **VALIDATED** | 🧪 HIGH | ADR-001 |
+### For Developers
+- **[Getting Started](./tutorials/01-getting-started)** - Set up your development environment
+- **[Local Development](./tutorials/02-local-development)** - Run the system locally
+- **[First Genetic Analysis](./tutorials/03-first-genetic-analysis)** - Process your first genetic sample
 
-### 🔄 In Progress
+### For Operators
+- **[Deploy to OpenShift](./how-to/deploy-openshift)** - Production deployment guide
+- **[Monitor Costs](./how-to/monitor-costs)** - Cost optimization and monitoring
+- **[Troubleshooting](./how-to/troubleshoot-websocket)** - Common issues and solutions
 
-| ADR | Title | Status | Priority | Dependencies |
-|-----|-------|--------|----------|--------------|
-| [ADR-002](./ADR-002-openshift-ai-integration-strategy.md) | OpenShift AI Integration Strategy | 🔄 **PROPOSED** | 🚀 HIGH | ADR-001 |
-| [ADR-003](./ADR-003-healthcare-ml-ecosystem-architecture.md) | Healthcare ML Ecosystem - Complete Architecture | 🔄 **PROPOSED** | 🎯 MEDIUM | ADR-001, ADR-002 |
+## 🏗️ System Architecture
 
-### 📋 Planned
+### Core Components
+- **WebSocket Service**: Real-time genetic analysis with persistent connections
+- **VEP Service**: Variant Effect Predictor with event-driven scaling
+- **Kafka**: Message broker for event-driven architecture
+- **KEDA**: Kubernetes Event-Driven Autoscaling
+- **OpenShift AI**: Machine learning integration platform
 
-| ADR | Title | Status | Priority | Dependencies |
-|-----|-------|--------|----------|--------------|
-| ADR-005 | Security and Compliance Framework | 📋 **PLANNED** | 🔒 HIGH | ADR-003 |
-| ADR-006 | Data Lake and Research Platform | 📋 **PLANNED** | 🔬 MEDIUM | ADR-002, ADR-003 |
-| ADR-007 | Cost Management and KEDA Integration | 📋 **PLANNED** | 💰 HIGH | ADR-001, ADR-004 |
+### Key Features
+- ⚡ **Real-time Processing**: WebSocket-based genetic analysis
+- 📈 **Auto-scaling**: Scale-to-zero with KEDA and Kafka lag metrics
+- 🔒 **Healthcare Security**: HIPAA-compliant architecture
+- 💰 **Cost Optimization**: Pay-per-use scaling model
+- 🧠 **ML Integration**: OpenShift AI for advanced genetic predictions
 
-## Quick Navigation
+## 📚 Documentation Structure
 
-### 🚨 **Start Here: Critical Architecture Fix**
-**[ADR-001: Deployment Strategy Correction](./ADR-001-correct-deployment-strategy-websocket-vep-services.md)**
+### Tutorials
+Step-by-step guides for common tasks and workflows:
+- Getting started with development
+- Local development setup
+- Genetic analysis workflows
+- Scaling demonstrations
 
-**Problem:** WebSocket and VEP services have backwards deployment strategies causing timeouts and resource waste.
+### How-To Guides
+Practical solutions for specific problems:
+- Deployment procedures
+- Troubleshooting guides
+- Configuration management
+- Cost optimization
 
-**Solution:** 
-- WebSocket Service → Regular Deployment (persistent connections)
-- VEP Service → Knative Service (event-driven scaling)
+### Reference
+Technical specifications and API documentation:
+- API references
+- Architecture decisions
+- Quality assurance frameworks
+- Performance benchmarks
 
-**Impact:** Resolves external URL timeouts, enables proper scaling, prepares for OpenShift AI integration.
+### Explanation
+Conceptual background and architecture:
+- System architecture deep dives
+- Scaling strategies
+- Design patterns and decisions
+
+## 🎯 Use Cases
+
+### Clinical Applications
+- Real-time genetic risk assessment
+- Personalized medicine recommendations
+- Clinical decision support systems
+- Pharmacogenomics analysis
+
+### Research Applications
+- Population genomics studies
+- Genetic variant analysis
+- Machine learning model development
+- Collaborative research platforms
+
+## 🔧 Technology Stack
+
+- **Backend**: Quarkus, Java, WebSockets
+- **Messaging**: Apache Kafka
+- **Container Platform**: Azure Red Hat OpenShift
+- **Scaling**: KEDA (Kubernetes Event-Driven Autoscaling)
+- **Machine Learning**: OpenShift AI, Python, Scikit-learn
+- **Monitoring**: Prometheus, Grafana
+- **CI/CD**: GitHub Actions, OpenShift Pipelines
+
+## 🚦 Getting Help
+
+### Support Channels
+- **Documentation**: This site contains comprehensive guides
+- **GitHub Issues**: Report bugs and request features
+- **Team Support**: Contact the development team for assistance
+
+### Common Resources
+- [Architecture Decisions](./architecture-decisions) - Design rationale and decisions
+- [API Reference](./reference/api-reference) - Complete API documentation
+- [Troubleshooting Guide](./how-to/troubleshoot-websocket) - Common issues and solutions
+
+## 📊 System Status
+
+### Current Implementation
+✅ **Working Features**:
+- Kafka 3-replica cluster
+- VEP service functionality  
+- Basic genetic analysis
+- OpenShift infrastructure
+
+🔄 **In Progress**:
+- WebSocket deployment optimization
+- OpenShift AI integration
+- Advanced ML models
+- Cost management setup
+
+## 🔗 Quick Links
+
+- [GitHub Repository](https://github.com/tosin2013/healthcare-ml-genetic-predictor)
+- [Architecture Decisions](./architecture-decisions)
+- [API Documentation](./reference/api-reference)
+- [Deployment Guide](./how-to/deploy-openshift)
 
 ---
 
-### 🧠 **ML Integration Strategy**
-**[ADR-002: OpenShift AI Integration](./ADR-002-openshift-ai-integration-strategy.md)**
-
-**Problem:** Need advanced ML capabilities for genetic analysis beyond basic VEP annotations.
-
-**Solution:** Integrate OpenShift AI platform with ModelMesh Serving, Jupyter notebooks, and ML pipelines.
-
-**Impact:** Enables genetic risk prediction, pharmacogenomics, clinical decision support, and research collaboration.
-
----
-
-### 🏗️ **Big Picture Architecture**
-**[ADR-003: Complete Ecosystem Architecture](./ADR-003-healthcare-ml-ecosystem-architecture.md)**
-
-**Problem:** Need unified architecture vision for healthcare ML platform on Azure Red Hat OpenShift.
-
-**Solution:** 5-layer architecture with presentation, application, integration, data, and infrastructure layers.
-
-**Impact:** Provides complete roadmap for enterprise-grade healthcare ML platform with cost management and compliance.
-
----
-
-### 🧪 **API Testing and Validation**
-**[ADR-004: API Testing and Validation on OpenShift](./ADR-004-api-testing-validation-openshift.md)**
-
-**Problem:** Need comprehensive testing framework to validate API endpoints on live OpenShift cluster.
-
-**Solution:** Implemented 5 REST API endpoints with comprehensive testing suite and validation on live Azure Red Hat OpenShift cluster.
-
-**Impact:** Validated API reliability (100% success rate), scaling integration, input validation, and production readiness.
-
-## Architecture Overview
-
-### Current System State
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                    Current Implementation                       │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│ ✅ WORKING                    🔄 IN PROGRESS                    │
-│ • Kafka 3-replica cluster    • WebSocket deployment fix        │
-│ • VEP service functionality  • OpenShift AI integration        │
-│ • Basic genetic analysis     • Advanced ML models             │
-│ • OpenShift infrastructure   • Cost management setup          │
-│                                                                 │
-│ ❌ ISSUES RESOLVED            📋 PLANNED                        │
-│ • Consumer group rebalancing • KEDA auto-scaling              │
-│ • Single broker instability  • Security hardening            │
-│ • External URL timeouts      • Research platform              │
-│ • Resource waste             • Compliance framework           │
-│                                                                 │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-### Target Architecture Vision
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                    Target Architecture                          │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│ 🏥 CLINICAL EXCELLENCE       🔬 RESEARCH INNOVATION            │
-│ • Real-time genetic analysis • Collaborative ML development    │
-│ • Clinical decision support  • Population genomics studies     │
-│ • Personalized medicine     • Advanced model training          │
-│ • Treatment optimization     • Data exploration platform       │
-│                                                                 │
-│ 💰 COST EFFICIENCY          🔒 SECURITY & COMPLIANCE           │
-│ • Scale-to-zero services    • Healthcare-grade security        │
-│ • Auto-scaling with KEDA    • HIPAA compliance                 │
-│ • Real-time cost attribution• Confidential containers          │
-│ • Resource optimization     • Audit trails & governance        │
-│                                                                 │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-## Implementation Priority
-
-### Phase 1: Foundation (Weeks 1-2) 🔥 **CRITICAL**
-1. **[ADR-001](./ADR-001-correct-deployment-strategy-websocket-vep-services.md)** - Fix deployment strategies
-2. Validate external URL accessibility
-3. Confirm stable WebSocket connections
-4. Test VEP service auto-scaling
-
-### Phase 2: ML Integration (Weeks 3-4) 🚀 **HIGH**
-1. **[ADR-002](./ADR-002-openshift-ai-integration-strategy.md)** - Deploy OpenShift AI
-2. Implement basic ML models
-3. Set up Jupyter notebook environment
-4. Create ML inference pipeline
-
-### Phase 3: Complete Platform (Weeks 5-8) 🎯 **MEDIUM**
-1. **[ADR-003](./ADR-003-healthcare-ml-ecosystem-architecture.md)** - Full ecosystem
-2. KEDA integration for cost management
-3. Security and compliance framework
-4. Research platform capabilities
-
-## Decision Process
-
-### ADR Lifecycle
-
-```
-📝 DRAFT → 🔄 PROPOSED → ✅ ACCEPTED → 🚀 IMPLEMENTED → 📊 VALIDATED
-```
-
-### Review Criteria
-
-1. **Technical Feasibility** - Can be implemented with current resources
-2. **Business Value** - Addresses clinical or research needs
-3. **Cost Impact** - Aligns with budget and cost optimization goals
-4. **Security Compliance** - Meets healthcare security requirements
-5. **Maintainability** - Sustainable long-term solution
-
-### Approval Process
-
-1. **Author** creates ADR with technical analysis
-2. **Co-Developer** reviews architecture and implementation
-3. **Team** discusses trade-offs and alternatives
-4. **Stakeholders** approve business impact and priorities
-5. **Implementation** begins with monitoring and validation
-
-## Related Documentation
-
-- **[Architecture Summary](../ARCHITECTURE_CORRECTION_SUMMARY.md)** - Quick reference guide
-- **[Implementation Guides](../implementation/)** - Step-by-step procedures
-- **[Monitoring & Observability](../monitoring/)** - System health and metrics
-- **[Security & Compliance](../security/)** - Healthcare-grade security policies
-
-## Contact & Support
-
-- **Architecture Questions**: Healthcare ML Team
-- **Implementation Support**: Co-Developer Team  
-- **Security & Compliance**: Security Team
-- **Cost Management**: FinOps Team
-
----
-
-**Last Updated:** 2025-06-13  
-**Next Review:** 2025-06-20  
-**Version:** 1.0
+**Last Updated**: 2025-09-11  
+**Version**: 2.0  
+**Status**: Production Ready
