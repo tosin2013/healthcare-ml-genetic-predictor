@@ -14,9 +14,9 @@ A real-time genetic risk prediction system built with Quarkus WebSockets, deploy
 - **[First Genetic Analysis](./tutorials/03-first-genetic-analysis.md)** - Process your first genetic sample
 
 ### For Operators
-- **[Deploy to OpenShift](./deploy-openshift.md)** - Production deployment guide
-- **[Monitor Costs](./monitor-costs.md)** - Cost optimization and monitoring
-- **[Troubleshooting](./troubleshoot-websocket.md)** - Common issues and solutions
+- **[Deploy to OpenShift](./how-to/deploy-openshift.md)** - Production deployment guide
+- **[Monitor Costs](./how-to/monitor-costs.md)** - Cost optimization and monitoring
+- **[Troubleshooting](./how-to/troubleshoot-websocket.md)** - Common issues and solutions
 
 ## 🏗️ System Architecture
 
@@ -95,9 +95,9 @@ Conceptual background and architecture:
 - **Team Support**: Contact the development team for assistance
 
 ### Common Resources
-- [Architecture Decisions](./architecture-decisions.md) - Design rationale and decisions
-- [API Reference](./api-reference.md) - Complete API documentation
-- [Troubleshooting Guide](./troubleshoot-websocket.md) - Common issues and solutions
+- [Architecture Decisions](./reference/architecture-decisions.md) - Design rationale and decisions
+- [API Reference](./reference/api-reference.md) - Complete API documentation
+- [Troubleshooting Guide](./how-to/troubleshoot-websocket.md) - Common issues and solutions
 
 ## 📊 System Status
 
@@ -117,9 +117,9 @@ Conceptual background and architecture:
 ## 🔗 Quick Links
 
 - [GitHub Repository](https://github.com/tosin2013/healthcare-ml-genetic-predictor)
-- [Architecture Decisions](./architecture-decisions.md)
-- [API Documentation](./api-reference.md)
-- [Deployment Guide](./deploy-openshift.md)
+- [Architecture Decisions](./reference/architecture-decisions.md)
+- [API Documentation](./reference/api-reference.md)
+- [Deployment Guide](./how-to/deploy-openshift.md)
 
 ---
 
