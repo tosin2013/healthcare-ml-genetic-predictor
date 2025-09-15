@@ -150,9 +150,9 @@ spec:
 - **Cost Attribution**: Validate scaling impact on OpenShift cost management
 
 ## Related Documents
-- [ADR-001: Healthcare ML Architecture](./ADR-001-healthcare-ml-architecture.md)
-- [ADR-002: Event-Driven Scaling Strategy](./ADR-002-event-driven-scaling-strategy.md)
-- [ADR-003: OpenShift Deployment Strategy](./ADR-003-openshift-deployment-strategy.md)
+- [ADR-001: Correct Deployment Strategy for WebSocket and VEP Services](./ADR-001-correct-deployment-strategy-websocket-vep-services.md)
+- [ADR-002: OpenShift AI Integration Strategy](./ADR-002-openshift-ai-integration-strategy.md)
+- [ADR-003: Healthcare ML Ecosystem Architecture](./ADR-003-healthcare-ml-ecosystem-architecture.md)
 - [ADR-004: API Testing and Validation](./ADR-004-api-testing-validation-openshift.md)
 
 ---

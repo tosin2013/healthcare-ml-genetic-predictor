@@ -160,8 +160,8 @@ spec:
 **Decision**: Doesn't meet event-driven requirements
 
 ## Related Documents
-- [ADR-001: Healthcare ML Architecture](./ADR-001-healthcare-ml-architecture.md)
-- [ADR-002: Event-Driven Scaling Strategy](./ADR-002-event-driven-scaling-strategy.md)
+- [ADR-001: Correct Deployment Strategy for WebSocket and VEP Services](./ADR-001-correct-deployment-strategy-websocket-vep-services.md)
+- [ADR-002: OpenShift AI Integration Strategy](./ADR-002-openshift-ai-integration-strategy.md)
 - [ADR-004: API Testing and Validation](./ADR-004-api-testing-validation-openshift.md)
 - [ADR-005: KEDA Troubleshooting and Configuration](./ADR-005-keda-troubleshooting-configuration.md)
 

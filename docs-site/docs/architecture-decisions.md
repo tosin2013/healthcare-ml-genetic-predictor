@@ -164,10 +164,10 @@ This directory contains Architecture Decision Records for the Healthcare ML plat
 
 ## Related Documentation
 
-- **[Architecture Summary](../ARCHITECTURE_CORRECTION_SUMMARY.md)** - Quick reference guide
-- **[Implementation Guides](../implementation/)** - Step-by-step procedures
-- **[Monitoring & Observability](../monitoring/)** - System health and metrics
-- **[Security & Compliance](../security/)** - Healthcare-grade security policies
+- **[Architecture Summary](system-architecture.md)** - Quick reference guide
+# - **[Implementation Guides](../implementation/)** - Step-by-step procedures (Directory not found)
+# - **[Monitoring & Observability](../monitoring/)** - System health and metrics (Directory not found)
+# - **[Security & Compliance](../security/)** - Healthcare-grade security policies (Directory not found)
 
 ## Contact & Support
 

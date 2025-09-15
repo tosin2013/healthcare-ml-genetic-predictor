@@ -137,9 +137,9 @@ watch oc get pods -l app=vep-service-nodescale
 
 ## 📚 Related Documentation
 
-- [Node Scaling Cost Optimization](../docs/how-to/node-scaling-cost-optimization.md)
-- [VEP Service Architecture](../k8s/base/vep-service/README.md)
-- [Separation of Concerns Guide](../.github/workflows/SEPARATION_VALIDATION_GUIDE.md)
+- [Node Scaling Cost Optimization](node-scaling-cost-optimization.md)
+- [VEP Service Architecture](ADR-006-vep-service-architecture-decision.md)
+- [Separation of Concerns Guide](../../.github/workflows/SEPARATION_VALIDATION_GUIDE.md)
 
 ---
 

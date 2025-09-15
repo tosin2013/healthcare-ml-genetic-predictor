@@ -367,10 +367,9 @@ curl -k https://quarkus-websocket-service-healthcare-ml-demo.apps.b9892ub1.eastu
 
 After completing this tutorial, explore:
 
-1. **[Scaling Strategy](../explanation/scaling-strategy.md)** - Understand when to use each scaling mode
-2. **[KEDA Scaling Reference](../reference/keda-scaling.md)** - Deep dive into KEDA configuration
-3. **[Cost Management](../how-to/monitor-costs.md)** - Optimize costs with scaling strategies
-4. **[System Architecture](../explanation/system-architecture.md)** - Understand the complete system design
+1. **[KEDA Scaling](keda-scaling.md)** - Deep dive into KEDA configuration
+2. **[Cost Management](monitor-costs.md)** - Optimize costs with scaling strategies
+3. **[System Architecture](system-architecture.md)** - Understand the complete system design
 
 ## Summary
 

@@ -9,14 +9,14 @@ A real-time genetic risk prediction system built with Quarkus WebSockets, deploy
 ## 🚀 Quick Start
 
 ### For Developers
-- **[Getting Started](./tutorials/01-getting-started)** - Set up your development environment
-- **[Local Development](./tutorials/02-local-development)** - Run the system locally
-- **[First Genetic Analysis](./tutorials/03-first-genetic-analysis)** - Process your first genetic sample
+- **[Getting Started](./tutorials/01-getting-started.md)** - Set up your development environment
+- **[Local Development](./tutorials/02-local-development.md)** - Run the system locally
+- **[First Genetic Analysis](./tutorials/03-first-genetic-analysis.md)** - Process your first genetic sample
 
 ### For Operators
-- **[Deploy to OpenShift](./how-to/deploy-openshift)** - Production deployment guide
-- **[Monitor Costs](./how-to/monitor-costs)** - Cost optimization and monitoring
-- **[Troubleshooting](./how-to/troubleshoot-websocket)** - Common issues and solutions
+- **[Deploy to OpenShift](./deploy-openshift.md)** - Production deployment guide
+- **[Monitor Costs](./monitor-costs.md)** - Cost optimization and monitoring
+- **[Troubleshooting](./troubleshoot-websocket.md)** - Common issues and solutions
 
 ## 🏗️ System Architecture
 
@@ -95,9 +95,9 @@ Conceptual background and architecture:
 - **Team Support**: Contact the development team for assistance
 
 ### Common Resources
-- [Architecture Decisions](./architecture-decisions) - Design rationale and decisions
-- [API Reference](./reference/api-reference) - Complete API documentation
-- [Troubleshooting Guide](./how-to/troubleshoot-websocket) - Common issues and solutions
+- [Architecture Decisions](./architecture-decisions.md) - Design rationale and decisions
+- [API Reference](./api-reference.md) - Complete API documentation
+- [Troubleshooting Guide](./troubleshoot-websocket.md) - Common issues and solutions
 
 ## 📊 System Status
 
@@ -117,9 +117,9 @@ Conceptual background and architecture:
 ## 🔗 Quick Links
 
 - [GitHub Repository](https://github.com/tosin2013/healthcare-ml-genetic-predictor)
-- [Architecture Decisions](./architecture-decisions)
-- [API Documentation](./reference/api-reference)
-- [Deployment Guide](./how-to/deploy-openshift)
+- [Architecture Decisions](./architecture-decisions.md)
+- [API Documentation](./api-reference.md)
+- [Deployment Guide](./deploy-openshift.md)
 
 ---
 

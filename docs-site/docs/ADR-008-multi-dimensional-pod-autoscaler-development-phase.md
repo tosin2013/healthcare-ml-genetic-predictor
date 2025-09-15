@@ -142,10 +142,10 @@ Future:  KEDA → Multi-dimensional Pod Autoscaler → Coordinated Scaling
 
 ## Related Documentation
 
-- [Research: KEDA Kafka Lag Scaling vs Node Autoscaling](../research/keda-kafka-lag-scaling-vs-node-autoscaling.md)
-- [Research: Red Hat Autoscaling Coordination Projects](../research/red-hat-autoscaling-coordination-projects.md)
+- [Research: KEDA Kafka Lag Scaling vs Node Autoscaling](keda-kafka-lag-scaling-vs-node-autoscaling.md)
+- [Research: Red Hat Autoscaling Coordination Projects](red-hat-autoscaling-coordination-projects.md)
 - [ADR-007: Multi-Topic KEDA and Node Scaling Architecture](./ADR-007-multi-topic-keda-node-scaling-architecture.md)
-- [Tutorial: Kafka Lag-Based Scaling](../tutorials/05-kafka-lag-scaling.md)
+- [Tutorial: Kafka Lag-Based Scaling](05-kafka-lag-scaling.md)
 
 ## References
 

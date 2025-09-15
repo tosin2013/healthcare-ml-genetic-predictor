@@ -15,7 +15,7 @@ This tutorial demonstrates **event-driven scaling** using KEDA's Kafka consumer 
 
 ## Prerequisites
 
-- Completed [Tutorial 1: Basic Setup](01-basic-setup.md)
+- Completed [Tutorial 1: Getting Started](01-getting-started.md)
 - OpenShift cluster with KEDA operator installed
 - Kafka cluster running in `healthcare-ml-demo` namespace
 
@@ -401,9 +401,9 @@ scripts/test-all-scaling-modes.sh --mode kafka-lag --quick
 
 ## Next Steps
 
-- **Tutorial 6**: [Cost Management and Monitoring](06-cost-management.md)
-- **Advanced**: [Multi-Topic Lag Scaling](advanced/multi-topic-scaling.md)
-- **Integration**: [OpenShift AI with Event-Driven Scaling](advanced/ai-event-driven.md)
+- **Cost Management**: [Cost Monitoring and Optimization](monitor-costs.md)
+- **Advanced**: [Multi-Topic KEDA Node Scaling Architecture](ADR-007-multi-topic-keda-node-scaling-architecture.md)
+- **Integration**: [OpenShift AI Integration Strategy](ADR-002-openshift-ai-integration-strategy.md)
 
 ## Summary
 

@@ -176,10 +176,10 @@ resources:
 
 ## 📚 Related Documentation
 
-- [Cluster Autoscaler Configuration](../docs/reference/cluster-autoscaler.md)
-- [Machine Sets and Autoscalers](../docs/how-to/configure-machine-autoscaler.md)
-- [VEP Service Node Scale Mode](../docs/tutorials/04-scaling-demo.md)
-- [Cost Management](../docs/how-to/cost-optimization.md)
+# - [Cluster Autoscaler Configuration](../docs/reference/cluster-autoscaler.md) (File not found)
+# - [Machine Sets and Autoscalers](../docs/how-to/configure-machine-autoscaler.md) (File not found)
+- [VEP Service Node Scale Mode](04-scaling-demo.md)
+- [Cost Management](monitor-costs.md)
 
 ---
 

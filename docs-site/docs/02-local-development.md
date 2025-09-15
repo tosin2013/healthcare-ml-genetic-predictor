@@ -423,7 +423,7 @@ You've successfully:
 ### Learn More
 - [First Genetic Analysis Tutorial](03-first-genetic-analysis.md) - Deep dive into genetic processing
 - [Scaling Demo Tutorial](04-scaling-demo.md) - Understand scaling modes
-- [API Reference](../reference/api-reference.md) - Complete API documentation
+- [API Reference](api-reference.md) - Complete API documentation
 
 ## 🧹 Cleanup
 

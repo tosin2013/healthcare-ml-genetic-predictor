@@ -477,13 +477,13 @@ oc get scaledobject -n healthcare-ml-demo
 - [Local Development Tutorial](02-local-development.md) - Set up local development
 - [First Genetic Analysis Tutorial](03-first-genetic-analysis.md) - Deep dive into genetic processing
 - [Scaling Demo Tutorial](04-scaling-demo.md) - Deep dive into scaling modes
-- [System Architecture](../explanation/system-architecture.md) - Understand the design
+- [System Architecture](system-architecture.md) - Understand the design
 
 ### Troubleshooting
 If you encounter issues:
-- Check [Troubleshoot WebSocket Issues](../how-to/troubleshoot-websocket.md)
-- Use [Debug Kafka Flow](../how-to/debug-kafka.md)
-- Review the [API Reference](../reference/api-reference.md)
+- Check [Troubleshoot WebSocket Issues](troubleshoot-websocket.md)
+- Use [Debug Kafka Flow](debug-kafka.md)
+- Review the [API Reference](api-reference.md)
 
 ## 🧹 Cleanup (Optional)
 
