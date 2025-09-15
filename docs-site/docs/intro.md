@@ -95,9 +95,9 @@ Conceptual background and architecture:
 - **Team Support**: Contact the development team for assistance
 
 ### Common Resources
-- [Architecture Decisions](./architecture-decisions.md) - Design rationale and decisions
-- [API Reference](./api-reference.md) - Complete API documentation
-- [Troubleshooting Guide](./troubleshoot-websocket.md) - Common issues and solutions
+- [Architecture Decisions](./reference/architecture-decisions.md) - Design rationale and decisions
+- [API Reference](./reference/api-reference.md) - Complete API documentation
+- [Troubleshooting Guide](./how-to/troubleshoot-websocket.md) - Common issues and solutions
 
 ## 📊 System Status
 
@@ -117,9 +117,9 @@ Conceptual background and architecture:
 ## 🔗 Quick Links
 
 - [GitHub Repository](https://github.com/tosin2013/healthcare-ml-genetic-predictor)
-- [Architecture Decisions](./architecture-decisions.md)
-- [API Documentation](./api-reference.md)
-- [Deployment Guide](./deploy-openshift.md)
+- [Architecture Decisions](./reference/architecture-decisions.md)
+- [API Documentation](./reference/api-reference.md)
+- [Deployment Guide](./how-to/deploy-openshift.md)
 
 ---
 
