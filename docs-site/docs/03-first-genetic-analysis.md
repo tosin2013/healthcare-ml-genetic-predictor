@@ -477,8 +477,8 @@ You've successfully:
 
 ### Explore Advanced Features
 1. **[Scaling Demo Tutorial](04-scaling-demo.md)** - Deep dive into multi-tier scaling
-2. **[System Architecture](../explanation/system-architecture.md)** - Understand the complete design
-3. **[API Reference](../reference/api-reference.md)** - Explore all available endpoints
+2. **[System Architecture](system-architecture.md)** - Understand the complete design
+3. **[API Reference](api-reference.md)** - Explore all available endpoints
 
 ### Real-World Applications
 - **Research Workflows**: Integrate with existing bioinformatics pipelines

@@ -205,7 +205,7 @@ This separation allows users to understand different scaling paradigms and their
 
 ## Related Documentation
 
-- [Tutorial 5: Kafka Lag-Based Scaling with KEDA](../tutorials/05-kafka-lag-scaling.md)
-- [Tutorial 4: Scaling Demonstrations](../tutorials/04-scaling-demo.md)
-- [System Architecture](../explanation/system-architecture.md)
-- [Scaling Strategy](../explanation/scaling-strategy.md)
+- [Tutorial 5: Kafka Lag-Based Scaling with KEDA](05-kafka-lag-scaling.md)
+- [Tutorial 4: Scaling Demonstrations](04-scaling-demo.md)
+- [System Architecture](system-architecture.md)
+- [KEDA Scaling Strategy](keda-scaling.md)

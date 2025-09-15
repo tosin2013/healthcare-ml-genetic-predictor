@@ -199,10 +199,10 @@ Proper separation enables:
 
 ## 📚 Related Documentation
 
-- [Separation Validation Guide](.github/workflows/SEPARATION_VALIDATION_GUIDE.md)
-- [GitHub Actions Validation](.github/workflows/separation-of-concerns-validation.yml)
-- [KEDA Configuration Files](k8s/base/vep-service/)
-- [Architecture Decision Records](docs/adr/)
+- [Separation Validation Guide](../../.github/workflows/SEPARATION_VALIDATION_GUIDE.md)
+- [GitHub Actions Validation](../../.github/workflows/separation-of-concerns-validation.yml)
+- [KEDA Configuration Files](../../k8s/base/vep-service/)
+- [Architecture Decision Records](../../docs/adr/)
 
 ---
 

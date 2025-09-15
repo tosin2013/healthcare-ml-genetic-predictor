@@ -188,8 +188,8 @@ oc scale deployment quarkus-websocket-service --replicas=1 -n healthcare-ml-demo
 
 ## Related Decisions
 
-- [ADR-001: Event-Driven Architecture](ADR-001-event-driven-architecture.md) - WebSocket integration with Kafka
-- [ADR-006: KEDA Scaling Strategy](ADR-006-keda-scaling-strategy.md) - Why VEP services scale but WebSocket doesn't
+- [ADR-001: Correct Deployment Strategy for WebSocket and VEP Services](ADR-001-correct-deployment-strategy-websocket-vep-services.md) - WebSocket integration with Kafka
+- [ADR-006: VEP Service Architecture Decision](ADR-006-vep-service-architecture-decision.md) - Why VEP services scale but WebSocket doesn't
 
 ## References
 
