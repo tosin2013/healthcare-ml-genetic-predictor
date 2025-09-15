@@ -6,7 +6,7 @@ Welcome to the Healthcare ML Genetic Predictor project! We're excited to have yo
 
 This project implements a healthcare ML application that processes genetic data in real-time using WebSocket connections, Kafka event streaming, and machine learning inference. The system is designed for cost-effective deployment on OpenShift with comprehensive monitoring and HIPAA-compliant security.
 
-**Live Demo**: [Healthcare ML Demo](https://quarkus-websocket-service-healthcare-ml-demo.apps.b9892ub1.eastus.aroapp.io/genetic-client.html)
+**Live Demo**: [Healthcare ML Demo](https://tosin2013.github.io/healthcare-ml-genetic-predictor/)
 
 ## 🎯 Areas Seeking Contributions
 
