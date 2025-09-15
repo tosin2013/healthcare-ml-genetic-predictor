@@ -14,9 +14,9 @@ A real-time genetic risk prediction system built with Quarkus WebSockets, deploy
 - **[First Genetic Analysis](./tutorials/03-first-genetic-analysis.md)** - Process your first genetic sample
 
 ### For Operators
-- **[Deploy to OpenShift](./deploy-openshift.md)** - Production deployment guide
-- **[Monitor Costs](./monitor-costs.md)** - Cost optimization and monitoring
-- **[Troubleshooting](./troubleshoot-websocket.md)** - Common issues and solutions
+- **[Deploy to OpenShift](./how-to/deploy-openshift.md)** - Production deployment guide
+- **[Monitor Costs](./how-to/monitor-costs.md)** - Cost optimization and monitoring
+- **[Troubleshooting](./how-to/troubleshoot-websocket.md)** - Common issues and solutions
 
 ## 🏗️ System Architecture
 
