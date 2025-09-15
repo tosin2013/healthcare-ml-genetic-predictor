@@ -1,0 +1,99 @@
+# Healthcare ML Genetic Risk Predictor
+
+> A real-time genetic risk prediction system built with Quarkus WebSockets, deployed on Azure Red Hat OpenShift with event-driven architecture and scale-to-zero capabilities. The system processes genetic data in real-time using WebSocket connections, Kafka event streaming, and machine learning inference, designed for cost-effective deployment on OpenShift with comprehensive monitoring and HIPAA-compliant security. Features multi-tier autoscaling with KEDA for different workload types: normal mode (pod scaling), big data mode (memory-intensive), and node scale mode (cluster autoscaler integration).
+
+This is a sophisticated healthcare ML application that demonstrates enterprise-grade genetic sequence processing with real-time scaling capabilities. The system uses an event-driven microservices architecture where genetic sequences are submitted via WebSocket connections, processed through Kafka topics, annotated using the Ensembl VEP API, and results are returned in real-time. The architecture supports three distinct scaling modes based on sequence size and complexity, enabling cost optimization through scale-to-zero capabilities.
+
+The project showcases modern cloud-native development patterns including reactive programming with Quarkus, event streaming with Kafka, CloudEvents for message standardization, and comprehensive observability with Prometheus metrics. It includes extensive documentation following the Diátaxis framework, comprehensive deployment automation, and production-ready security configurations for healthcare compliance.
+
+Key technical concepts include genetic variant annotation (VEP), HGVS notation, multi-tier autoscaling strategies, cost attribution and chargeback models, and event-driven architecture patterns. The system integrates with Red Hat OpenShift AI for machine learning model serving and includes Jupyter notebooks for interactive genetic analysis and demonstration purposes.
+
+## Core Documentation
+
+README.md: Main project documentation with quick start guide, architecture overview, and comprehensive deployment instructions
+docs/README.md: Complete documentation suite following Diátaxis framework with tutorials, how-to guides, reference materials, and explanations
+DEPLOYMENT.md: Detailed deployment guide for OpenShift with multiple deployment strategies and troubleshooting
+CONTRIBUTING.md: Comprehensive contribution guidelines with high-priority areas including cost management, security, ML models, and documentation
+docs/explanation/system-architecture.md: In-depth system architecture documentation with component details, data flows, and design principles
+docs/explanation/event-driven-design.md: Event-driven architecture patterns and implementation details
+
+## Application Services
+
+quarkus-websocket-service/: Main WebSocket service built with Quarkus for real-time genetic data processing and session management
+quarkus-websocket-service/src/main/java/: Java source code for WebSocket endpoints, Kafka integration, and reactive messaging
+quarkus-websocket-service/pom.xml: Maven configuration with Quarkus 3.8.6, WebSockets, Kafka reactive messaging, and CloudEvents dependencies
+vep-service/: VEP (Variant Effect Predictor) annotation service for genetic variant processing
+vep-service/src/main/java/: Java source code for VEP API integration, Kafka message processing, and annotation logic
+vep-service/pom.xml: Maven configuration for VEP service with REST client, Kafka messaging, and caching capabilities
+
+## Infrastructure & Deployment
+
+k8s/: Complete OpenShift/Kubernetes deployment manifests using Kustomize
+k8s/base/: Base Kustomize resources including operators, infrastructure, applications, and eventing configurations
+k8s/base/operators/: Operator subscriptions for AMQ Streams, OpenShift Serverless, KEDA, and OpenShift AI
+k8s/base/infrastructure/: Kafka cluster, namespace, and infrastructure component definitions
+k8s/base/applications/: Application deployments for Quarkus WebSocket service and VEP service with comprehensive configurations
+k8s/base/eventing/: KEDA ScaledObjects for event-driven autoscaling with different scaling modes and triggers
+k8s/overlays/: Environment-specific configurations for dev, staging, and prod with resource limits and scaling parameters
+k8s/components/: Reusable components including cost labels and security contexts for HIPAA compliance
+
+## Scripts & Automation
+
+scripts/deploy-clean-enhanced.sh: Comprehensive deployment script with all components including KEDA, OpenShift AI, and cost management
+scripts/deploy-clean.sh: Basic deployment script for minimal component setup without advanced features
+scripts/test-*.sh: Comprehensive testing scripts for API endpoints, scaling behavior, WebSocket flow, and integration testing
+scripts/generate-genetic-sequence.js: Genetic sequence generation utility for testing and demonstration purposes
+scripts/setup-*.sh: Setup scripts for cost management, dynamic autoscaling, and Red Hat Insights integration
+
+## Machine Learning & Analysis
+
+notebooks/: Jupyter notebooks for genetic analysis and machine learning demonstrations
+notebooks/genetic-analysis/01_genetic_risk_prediction.ipynb: Genetic risk prediction ML model with Random Forest classifier and feature engineering
+notebooks/genetic-analysis/02_kafka_realtime_processing.ipynb: Real-time Kafka integration for genetic data processing and KEDA scaling demonstrations
+notebooks/genetic-analysis/03_cost_monitoring_scaling.ipynb: Cost monitoring and scaling analysis with resource usage visualization
+notebooks/genetic-analysis/sample_genetic_data.csv: Sample genetic sequence data with risk scores and sequence metrics
+requirements.txt: Python dependencies for data science including pandas, scikit-learn, biopython, and Kafka integration
+
+## Configuration & Data
+
+test-data/: Sample genetic sequence files including FASTA format for testing
+test-data/genetic_sequence_5kb.txt: Large genetic sequence for testing big data scaling mode
+test-data/sample_genome.fasta: Standard FASTA format genetic data for VEP annotation testing
+k8s/base/infrastructure/kafka-topics.yaml: Kafka topic configurations for different scaling modes with retention policies
+docs/reference/configuration.md: Complete configuration reference for all services and scaling parameters
+
+## Documentation Structure
+
+docs/tutorials/: Step-by-step tutorials for getting started, local development, first genetic analysis, and scaling demonstrations
+docs/how-to/: Practical how-to guides for OpenShift deployment, KEDA configuration, Kafka debugging, and advanced troubleshooting
+docs/reference/: Reference documentation for API endpoints, configuration options, Kafka topics, and KEDA scaling parameters
+docs/adr/: Architecture Decision Records documenting key technical decisions and design rationale
+docs/research/: Research documentation on threading patterns, CloudEvent processing, and performance benchmarking
+
+## Testing & Validation
+
+quarkus-websocket-service/src/test/: Unit and integration tests for WebSocket service
+vep-service/src/test/: Unit and integration tests for VEP annotation service
+scripts/test-local-*.sh: Local testing scripts for development environment validation
+scripts/test-api-endpoints.sh: API testing script for all service endpoints
+scripts/test-keda-scaling-behavior.sh: KEDA scaling behavior validation and testing
+scripts/performance-benchmark-rq27.sh: Performance benchmarking script for load testing
+
+## Security & Compliance
+
+SECURITY.md: Security policy and vulnerability reporting procedures for healthcare compliance
+docs/how-to/validate-separation-of-concerns.sh: Security validation script for service isolation
+k8s/components/security-context/: Security context configurations for non-root containers and HIPAA compliance
+CODE_OF_CONDUCT.md: Community standards and code of conduct for contributors
+LICENSE: Apache 2.0 license for open source compliance
+
+## Optional: Extended Resources
+
+docs-site/: Docusaurus documentation site with complete project documentation in web format
+docs-site/package.json: Node.js configuration for documentation site with Docusaurus dependencies
+AGENTS.md: AI agent integration guide for automated development and deployment workflows
+strategic-commits-summary.md: Summary of strategic development decisions and commit patterns
+ENHANCED-DEPLOYMENT-SUMMARY.md: Comprehensive deployment summary with all component integration details
+KEDA_SCALING_VALIDATION_REPORT.md: Detailed KEDA scaling validation report with performance metrics
+PRODUCTION_READINESS_ASSESSMENT.md: Production readiness checklist and assessment criteria
+docs/research/keda-kafka-lag-scaling-vs-node-autoscaling.md: Research on optimal scaling strategies for genetic workloads
